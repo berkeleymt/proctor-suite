@@ -18,6 +18,20 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest
 
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run gen && git diff --exit-code src/api-types.ts
+      - run: npm run build
+
   shellcheck:
     runs-on: ubuntu-24.04
     steps:

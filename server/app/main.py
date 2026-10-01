@@ -1,4 +1,4 @@
-"""Proctor Suite server. Phase 0: health endpoints only.
+"""Proctor Suite server. Slice 1: health + in-memory auth/time/commands (app/api.py).
 
 Invariant 9: run exactly one process (uvicorn --workers 1).
 Invariant 1: /readyz touches Postgres, so it is for ops/monitoring only.
@@ -12,7 +12,10 @@ import asyncpg
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
+from app.api import router
+
 app = FastAPI(title="Proctor Suite", docs_url=None, redoc_url=None)
+app.include_router(router)
 
 
 @app.get("/healthz", response_class=PlainTextResponse)
