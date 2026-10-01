@@ -1,0 +1,2890 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content="Devin artifact kit" />
+    <title>Swire spec wireframes</title>
+    <style>
+:root {
+  color-scheme: light;
+
+  --bg-page: 252 252 252;
+  --bg-wash: 248 248 248;
+  --bg-elevated: 255 255 255;
+  --tint-tertiary: 0 0 0 / 0.04;
+  --tint-secondary: 0 0 0 / 0.06;
+  --tint-primary: 0 0 0 / 0.08;
+  --text-primary: 25 25 25;
+  --text-secondary: 25 25 25 / 0.64;
+  --text-tertiary: 25 25 25 / 0.4;
+  --text-accent: 49 124 255;
+  --bg-accent: 49 124 255;
+  --border-secondary: 0 0 0 / 0.08;
+  --border-primary: 0 0 0 / 0.1;
+  --text-green: 0 165 88;
+  --text-orange: 245 142 58;
+  --text-red: 245 59 58;
+  --text-blue: 51 125 244;
+  --text-purple: 149 108 222;
+  --shadow-l1: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-l2: 0 4px 12px rgb(0 0 0 / 0.08);
+
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "Roboto Mono", ui-monospace, monospace;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --unit: 4px;
+  --max-width: 1120px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-page: 20 20 20;
+  --bg-wash: 25 25 25;
+  --bg-elevated: 31 31 31;
+  --tint-tertiary: 255 255 255 / 0.03;
+  --tint-secondary: 255 255 255 / 0.05;
+  --tint-primary: 255 255 255 / 0.08;
+  --text-primary: 255 255 255 / 0.9;
+  --text-secondary: 255 255 255 / 0.52;
+  --text-tertiary: 255 255 255 / 0.4;
+  --text-accent: 73 176 255;
+  --bg-accent: 68 137 255;
+  --border-secondary: 255 255 255 / 0.04;
+  --border-primary: 255 255 255 / 0.08;
+  --text-green: 0 236 126;
+  --text-orange: 245 142 58;
+  --text-red: 255 108 107;
+  --text-blue: 92 154 255;
+  --text-purple: 178 145 240;
+  --shadow-l1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-l2: 0 4px 12px rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --bg-page: 20 20 20;
+    --bg-wash: 25 25 25;
+    --bg-elevated: 31 31 31;
+    --tint-tertiary: 255 255 255 / 0.03;
+    --tint-secondary: 255 255 255 / 0.05;
+    --tint-primary: 255 255 255 / 0.08;
+    --text-primary: 255 255 255 / 0.9;
+    --text-secondary: 255 255 255 / 0.52;
+    --text-tertiary: 255 255 255 / 0.4;
+    --text-accent: 73 176 255;
+    --bg-accent: 68 137 255;
+    --border-secondary: 255 255 255 / 0.04;
+    --border-primary: 255 255 255 / 0.08;
+    --text-green: 0 236 126;
+    --text-orange: 245 142 58;
+    --text-red: 255 108 107;
+    --text-blue: 92 154 255;
+    --text-purple: 178 145 240;
+    --shadow-l1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-l2: 0 4px 12px rgb(0 0 0 / 0.5);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: rgb(var(--bg-page));
+  color: rgb(var(--text-primary));
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+:where(button, a, input, select, summary, [tabindex]):focus-visible {
+  outline: 1px solid rgb(var(--bg-accent));
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- layout ---------- */
+
+.a-shell {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: calc(var(--unit) * 8) calc(var(--unit) * 6) calc(var(--unit) * 16);
+}
+
+.a-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--unit) * 3);
+  padding-bottom: calc(var(--unit) * 4);
+  border-bottom: 1px solid rgb(var(--border-primary));
+}
+
+.a-header__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.a-header__subtitle {
+  margin: calc(var(--unit) * 1) 0 0;
+  color: rgb(var(--text-secondary));
+  font-size: 13px;
+  line-height: 18px;
+  max-width: 68ch;
+}
+
+.a-section {
+  margin-top: calc(var(--unit) * 9);
+}
+
+.a-section__title {
+  margin: 0 0 calc(var(--unit) * 1);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.a-section__note,
+.a-prose {
+  margin: 0 0 calc(var(--unit) * 4);
+  color: rgb(var(--text-secondary));
+  font-size: 13px;
+  line-height: 20px;
+  max-width: 72ch;
+}
+
+.a-grid {
+  display: grid;
+  gap: calc(var(--unit) * 3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.a-grid--halves {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+/* ---------- surfaces ---------- */
+
+.a-panel {
+  background: rgb(var(--bg-elevated));
+  border: 1px solid rgb(var(--border-secondary));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-l1);
+  padding: calc(var(--unit) * 4);
+}
+
+.a-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--unit) * 2);
+  margin-bottom: calc(var(--unit) * 3);
+}
+
+.a-panel__title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+.a-label {
+  color: rgb(var(--text-tertiary));
+  font-size: 12px;
+  line-height: 16px;
+  text-transform: none;
+}
+
+/* ---------- metrics ---------- */
+
+.a-metric {
+  background: rgb(var(--tint-tertiary));
+  border: 1px solid rgb(var(--border-secondary));
+  border-radius: var(--radius);
+  padding: calc(var(--unit) * 3);
+}
+
+.a-metric__label {
+  color: rgb(var(--text-secondary));
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.a-metric__value {
+  margin-top: calc(var(--unit) * 1);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.a-metric__delta {
+  margin-top: calc(var(--unit) * 1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: rgb(var(--text-secondary));
+}
+
+.a-metric__delta[data-trend="up"] {
+  color: rgb(var(--text-green));
+}
+
+.a-metric__delta[data-trend="down"] {
+  color: rgb(var(--text-red));
+}
+
+/* ---------- status ---------- */
+
+.a-status {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--unit) * 1.5);
+  font-size: 12px;
+  line-height: 16px;
+  color: rgb(var(--text-secondary));
+  white-space: nowrap;
+}
+
+.a-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.a-status[data-state="done"] {
+  color: rgb(var(--text-green));
+}
+
+.a-status[data-state="active"] {
+  color: rgb(var(--text-blue));
+}
+
+.a-status[data-state="at-risk"] {
+  color: rgb(var(--text-orange));
+}
+
+.a-status[data-state="blocked"] {
+  color: rgb(var(--text-red));
+}
+
+.a-status[data-state="planned"] {
+  color: rgb(var(--text-tertiary));
+}
+
+/* ---------- tables ---------- */
+
+.a-table-scroll {
+  overflow-x: auto;
+  border: 1px solid rgb(var(--border-secondary));
+  border-radius: var(--radius);
+  background: rgb(var(--bg-elevated));
+}
+
+.a-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.a-table th,
+.a-table td {
+  text-align: left;
+  padding: calc(var(--unit) * 2) calc(var(--unit) * 3);
+  border-bottom: 1px solid rgb(var(--border-secondary));
+  vertical-align: top;
+}
+
+.a-table thead th {
+  position: sticky;
+  top: 0;
+  background: rgb(var(--bg-wash));
+  color: rgb(var(--text-secondary));
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  z-index: 1;
+}
+
+.a-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.a-table tbody tr:hover td {
+  background: rgb(var(--tint-tertiary));
+}
+
+.a-table td[data-numeric],
+.a-table th[data-numeric] {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+/* Pinned columns: `data-a-sticky-columns="N"` keeps the first N columns in
+   view while the table scrolls sideways. CSS alone pins the first column, so
+   N=1 works without script; kit.js measures the leading columns, marks each
+   pinned cell `data-a-sticky` with its `--a-sticky-left` offset, and flags the
+   table `data-a-sticky-ready`. Pinned cells need opaque backgrounds or the
+   scrolled columns show through them. */
+.a-table[data-a-sticky-columns]:not([data-a-sticky-ready]):not([data-a-sticky-columns="0"])
+  tr
+  > :first-child,
+.a-table[data-a-sticky-ready] [data-a-sticky] {
+  position: sticky;
+  left: var(--a-sticky-left, 0);
+  z-index: 1;
+  background-color: rgb(var(--bg-elevated));
+}
+
+/* Header row above pinned body cells; the pinned corner above both. */
+.a-table[data-a-sticky-columns] thead th {
+  z-index: 2;
+}
+
+.a-table[data-a-sticky-columns]:not([data-a-sticky-ready]):not([data-a-sticky-columns="0"])
+  thead
+  tr
+  > :first-child,
+.a-table[data-a-sticky-ready] thead [data-a-sticky] {
+  z-index: 3;
+  background-color: rgb(var(--bg-wash));
+}
+
+/* The row tint is translucent, so layer it over the opaque surface. */
+.a-table[data-a-sticky-columns]:not([data-a-sticky-ready]):not([data-a-sticky-columns="0"])
+  tbody
+  tr:hover
+  > td:first-child,
+.a-table[data-a-sticky-ready] tbody tr:hover > td[data-a-sticky] {
+  background: linear-gradient(
+      rgb(var(--tint-tertiary)),
+      rgb(var(--tint-tertiary))
+    )
+    rgb(var(--bg-elevated));
+}
+
+/* Divider on the last pinned column. Table cells don't paint box-shadow when
+   borders collapse, so it is a pseudo-element. Without script there is no
+   scroll state and it is always shown; with it, only while scrolled. */
+.a-table[data-a-sticky-columns]:not([data-a-sticky-ready]):not([data-a-sticky-columns="0"])
+  tr
+  > :first-child::after,
+.a-table[data-a-sticky-ready] [data-a-sticky="edge"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 8px;
+  border-left: 1px solid rgb(var(--border-primary));
+  background: linear-gradient(to right, rgb(0 0 0 / 0.08), transparent);
+  pointer-events: none;
+}
+
+.a-table-scroll:not([data-a-scrolled])
+  .a-table[data-a-sticky-ready]
+  [data-a-sticky="edge"]::after {
+  display: none;
+}
+
+/* ---------- charts (inline SVG + CSS bars) ---------- */
+
+.a-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.a-chart__grid line {
+  stroke: rgb(var(--border-primary));
+  stroke-dasharray: 2 3;
+}
+
+.a-chart__axis text {
+  fill: rgb(var(--text-tertiary));
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.a-chart__series {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.a-chart__point {
+  stroke: rgb(var(--bg-elevated));
+  stroke-width: 1.5;
+}
+
+.a-bars {
+  display: grid;
+  gap: calc(var(--unit) * 2);
+  margin: 0;
+}
+
+.a-bars__row {
+  display: grid;
+  grid-template-columns: minmax(88px, 22%) 1fr auto;
+  align-items: center;
+  gap: calc(var(--unit) * 2);
+  font-size: 13px;
+}
+
+.a-bars__track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(var(--tint-secondary));
+  overflow: hidden;
+}
+
+.a-bars__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: rgb(var(--bg-accent));
+}
+
+.a-bars__value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgb(var(--text-secondary));
+}
+
+.a-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--unit) * 3);
+  margin: calc(var(--unit) * 3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: rgb(var(--text-secondary));
+}
+
+.a-legend li {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--unit) * 1.5);
+}
+
+.a-legend__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* Series colors stay stable across themes so legends keep meaning. */
+.a-series-1 {
+  --series: 49 124 255;
+}
+.a-series-2 {
+  --series: 0 165 88;
+}
+.a-series-3 {
+  --series: 149 108 222;
+}
+.a-series-4 {
+  --series: 245 142 58;
+}
+
+.a-chart__series.a-series-1,
+.a-chart__series.a-series-2,
+.a-chart__series.a-series-3,
+.a-chart__series.a-series-4 {
+  stroke: rgb(var(--series));
+}
+
+.a-chart__point.a-series-1,
+.a-chart__point.a-series-2,
+.a-chart__point.a-series-3,
+.a-chart__point.a-series-4 {
+  fill: rgb(var(--series));
+}
+
+.a-series-1 .a-legend__swatch,
+.a-series-2 .a-legend__swatch,
+.a-series-3 .a-legend__swatch,
+.a-series-4 .a-legend__swatch {
+  background: rgb(var(--series));
+}
+
+.a-chart__bar.a-series-1,
+.a-chart__bar.a-series-2,
+.a-chart__bar.a-series-3,
+.a-chart__bar.a-series-4 {
+  fill: rgb(var(--series));
+}
+
+/* Dimming the rest of the plot reads as "this is the value you asked for"
+   without moving anything, which keeps the highlight legible under
+   reduced motion. */
+.a-chart__bar,
+.a-chart__point,
+.a-chart__series {
+  transition: opacity 120ms ease;
+}
+
+.a-chart__plot:has([data-a-active]) .a-chart__bar:not([data-a-active]) {
+  opacity: 0.45;
+}
+
+.a-chart__point[data-a-active] {
+  r: 4.25;
+}
+
+.a-chart__crosshair {
+  stroke: rgb(var(--border-primary));
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.a-chart__band {
+  fill: transparent;
+  /* Vertical scrolling must still work when a finger lands on the plot. */
+  touch-action: pan-y;
+}
+
+.a-chart__band[data-a-active] {
+  fill: rgb(var(--tint-secondary));
+}
+
+.a-chart__band:focus-visible {
+  outline: 1px solid rgb(var(--bg-accent));
+  outline-offset: -2px;
+}
+
+.a-chart {
+  touch-action: pan-y;
+}
+
+/* Shown in place of the plot when a filter leaves the source table empty. */
+.a-chart__empty {
+  margin: 0 0 calc(var(--unit) * 3);
+  padding: calc(var(--unit) * 6) 0;
+  border: 1px dashed rgb(var(--border-secondary));
+  border-radius: var(--radius);
+  color: rgb(var(--text-secondary));
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------- tooltip ---------- */
+
+.a-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  min-width: 120px;
+  max-width: 260px;
+  padding: calc(var(--unit) * 2) calc(var(--unit) * 2.5);
+  border: 1px solid rgb(var(--border-secondary));
+  border-radius: var(--radius);
+  background: rgb(var(--bg-elevated));
+  box-shadow: var(--shadow-l2);
+  color: rgb(var(--text-primary));
+  font-size: 12px;
+  line-height: 16px;
+  pointer-events: none;
+}
+
+.a-tip__title {
+  margin-bottom: var(--unit);
+  font-weight: 600;
+  color: rgb(var(--text-primary));
+}
+
+.a-tip__text {
+  color: rgb(var(--text-secondary));
+}
+
+.a-tip__row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--unit) * 1.5);
+  white-space: nowrap;
+}
+
+.a-tip__swatch {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 2px;
+  background: rgb(var(--series, var(--bg-accent)));
+}
+
+.a-tip__name {
+  color: rgb(var(--text-secondary));
+}
+
+.a-tip__value {
+  margin-left: auto;
+  padding-left: calc(var(--unit) * 2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- controls: tabs, filters, toggles ---------- */
+
+.a-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--unit) * 2);
+  margin-bottom: calc(var(--unit) * 4);
+}
+
+.a-tabs {
+  display: flex;
+  gap: calc(var(--unit) * 1);
+  padding: 2px;
+  background: rgb(var(--tint-tertiary));
+  border: 1px solid rgb(var(--border-secondary));
+  border-radius: var(--radius);
+}
+
+.a-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgb(var(--text-secondary));
+  font: inherit;
+  font-size: 13px;
+  padding: calc(var(--unit) * 1) calc(var(--unit) * 2.5);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.a-btn:hover {
+  background: rgb(var(--tint-secondary));
+  color: rgb(var(--text-primary));
+}
+
+.a-btn[aria-selected="true"],
+.a-btn[aria-pressed="true"] {
+  background: rgb(var(--bg-elevated));
+  border-color: rgb(var(--border-primary));
+  color: rgb(var(--text-primary));
+  box-shadow: var(--shadow-l1);
+}
+
+.a-btn--outline {
+  border-color: rgb(var(--border-primary));
+  background: rgb(var(--bg-elevated));
+}
+
+.a-btn--icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+}
+
+.a-theme-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.a-theme-icon--moon {
+  display: none;
+}
+
+:root[data-theme="dark"] .a-theme-icon--sun {
+  display: none;
+}
+
+:root[data-theme="dark"] .a-theme-icon--moon {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .a-theme-icon--sun {
+    display: none;
+  }
+
+  :root:not([data-theme]) .a-theme-icon--moon {
+    display: block;
+  }
+}
+
+.a-select {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  color: rgb(var(--text-primary));
+  background: rgb(var(--bg-elevated));
+  border: 1px solid rgb(var(--border-primary));
+  border-radius: var(--radius-sm);
+  padding: calc(var(--unit) * 1) calc(var(--unit) * 2);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- diagram ---------- */
+
+.a-diagram {
+  position: relative;
+  background: rgb(var(--bg-wash));
+  border: 1px solid rgb(var(--border-secondary));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.a-diagram__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.a-diagram__canvas:active {
+  cursor: grabbing;
+}
+
+.a-group rect {
+  fill: rgb(var(--tint-tertiary));
+  stroke: rgb(var(--border-primary));
+  stroke-dasharray: 4 4;
+  rx: 10;
+}
+
+.a-group text {
+  fill: rgb(var(--text-tertiary));
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.a-node rect {
+  fill: rgb(var(--bg-elevated));
+  stroke: rgb(var(--border-primary));
+  rx: 8;
+}
+
+.a-node__title {
+  fill: rgb(var(--text-primary));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.a-node__sub {
+  fill: rgb(var(--text-secondary));
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.a-node {
+  cursor: pointer;
+}
+
+.a-node:hover rect,
+.a-node:focus-visible rect {
+  stroke: rgb(var(--bg-accent));
+}
+
+.a-node[aria-current="true"] rect {
+  stroke: rgb(var(--bg-accent));
+  stroke-width: 2;
+}
+
+.a-edge {
+  fill: none;
+  stroke: rgb(var(--text-tertiary));
+  stroke-width: 1.25;
+}
+
+.a-edge--dim {
+  stroke: rgb(var(--border-primary));
+}
+
+.a-edge__label {
+  fill: rgb(var(--text-tertiary));
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.a-inspector {
+  border-top: 1px solid rgb(var(--border-secondary));
+  background: rgb(var(--bg-elevated));
+  padding: calc(var(--unit) * 3) calc(var(--unit) * 4);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.a-inspector__title {
+  margin: 0 0 calc(var(--unit) * 1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- plan / process ---------- */
+
+.a-phase {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: calc(var(--unit) * 3);
+  padding: calc(var(--unit) * 4) 0;
+  border-bottom: 1px solid rgb(var(--border-secondary));
+}
+
+.a-phase:last-child {
+  border-bottom: none;
+}
+
+.a-phase__index {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgb(var(--text-tertiary));
+  padding-top: 2px;
+}
+
+.a-phase__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: calc(var(--unit) * 2);
+  justify-content: space-between;
+}
+
+.a-phase__title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.a-meta-list {
+  display: grid;
+  gap: calc(var(--unit) * 1);
+  margin: calc(var(--unit) * 2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: rgb(var(--text-secondary));
+}
+
+.a-meta-list li,
+.a-meta-list > div {
+  display: grid;
+  grid-template-columns: minmax(96px, 15%) 1fr;
+  gap: calc(var(--unit) * 2);
+}
+
+.a-meta-list dt,
+.a-meta-list .a-meta-list__key {
+  color: rgb(var(--text-tertiary));
+  font-size: 12px;
+}
+
+.a-meta-list dd {
+  margin: 0;
+}
+
+.a-timeline {
+  display: grid;
+  gap: calc(var(--unit) * 1);
+  margin: 0;
+  font-size: 12px;
+}
+
+.a-timeline__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 20%) 1fr;
+  align-items: center;
+  gap: calc(var(--unit) * 2);
+}
+
+.a-timeline__track {
+  position: relative;
+  height: 10px;
+  background: rgb(var(--tint-tertiary));
+  border-radius: var(--radius-sm);
+}
+
+.a-timeline__span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-sm);
+  background: rgb(var(--bg-accent) / 0.75);
+}
+
+.a-timeline__span[data-state="at-risk"] {
+  background: rgb(var(--text-orange) / 0.75);
+}
+
+.a-timeline__span[data-state="done"] {
+  background: rgb(var(--text-green) / 0.7);
+}
+
+.a-timeline__scale {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  color: rgb(var(--text-tertiary));
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.a-callout {
+  border: 1px solid rgb(var(--border-secondary));
+  border-left: 2px solid rgb(var(--text-orange));
+  border-radius: var(--radius-sm);
+  background: rgb(var(--tint-tertiary));
+  padding: calc(var(--unit) * 3);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.a-callout--decision {
+  border-left-color: rgb(var(--bg-accent));
+}
+
+.a-callout--risk {
+  border-left-color: rgb(var(--text-red));
+}
+
+.a-callout__title {
+  margin: 0 0 calc(var(--unit) * 1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+details.a-disclosure {
+  border-top: 1px solid rgb(var(--border-secondary));
+  padding: calc(var(--unit) * 2) 0;
+}
+
+details.a-disclosure > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: rgb(var(--text-secondary));
+  list-style: none;
+}
+
+details.a-disclosure > summary::marker,
+details.a-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.a-disclosure > summary::before {
+  content: "+ ";
+  font-family: var(--font-mono);
+}
+
+details.a-disclosure[open] > summary::before {
+  content: "− ";
+}
+
+/* ---------- empty and error states ---------- */
+
+.a-empty,
+.a-error {
+  border: 1px dashed rgb(var(--border-primary));
+  border-radius: var(--radius);
+  padding: calc(var(--unit) * 6);
+  text-align: center;
+  color: rgb(var(--text-secondary));
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.a-error {
+  border-style: solid;
+  border-color: rgb(var(--text-red) / 0.4);
+  color: rgb(var(--text-primary));
+  text-align: left;
+}
+
+.a-error__title {
+  margin: 0 0 calc(var(--unit) * 1);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--text-red));
+}
+
+.a-footnote {
+  margin-top: calc(var(--unit) * 10);
+  padding-top: calc(var(--unit) * 4);
+  border-top: 1px solid rgb(var(--border-secondary));
+  color: rgb(var(--text-tertiary));
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.a-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 640px) {
+  .a-shell {
+    padding: calc(var(--unit) * 5) calc(var(--unit) * 4)
+      calc(var(--unit) * 12);
+  }
+
+  .a-header__title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .a-bars__row,
+  .a-timeline__row,
+  .a-meta-list li,
+  .a-meta-list > div {
+    grid-template-columns: 1fr;
+    gap: calc(var(--unit) * 1);
+  }
+
+  .a-phase {
+    grid-template-columns: 1fr;
+  }
+
+  .a-phase__index {
+    padding-top: 0;
+  }
+
+  .a-toolbar {
+    align-items: stretch;
+  }
+
+  .a-tabs {
+    overflow-x: auto;
+  }
+}
+
+/* ---------- motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- print / export ---------- */
+
+@media print {
+  :root[data-theme],
+  :root:not([data-theme]) {
+    color-scheme: light only;
+    --bg-page: 252 252 252;
+    --bg-wash: 248 248 248;
+    --bg-elevated: 255 255 255;
+    --tint-tertiary: 0 0 0 / 0.04;
+    --tint-secondary: 0 0 0 / 0.06;
+    --tint-primary: 0 0 0 / 0.08;
+    --text-primary: 25 25 25;
+    --text-secondary: 25 25 25 / 0.64;
+    --text-tertiary: 25 25 25 / 0.4;
+    --text-accent: 49 124 255;
+    --bg-accent: 49 124 255;
+    --border-secondary: 0 0 0 / 0.08;
+    --border-primary: 0 0 0 / 0.1;
+    --text-green: 0 165 88;
+    --text-orange: 245 142 58;
+    --text-red: 245 59 58;
+    --text-blue: 51 125 244;
+    --text-purple: 149 108 222;
+    --shadow-l1: none;
+    --shadow-l2: none;
+  }
+
+  body {
+    background: #fff;
+    color: #111;
+  }
+
+  .a-no-print,
+  .a-toolbar,
+  .a-diagram__hint {
+    display: none !important;
+  }
+
+  .a-panel,
+  .a-table-scroll,
+  .a-diagram {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  .a-table[data-a-sticky-columns] tr > :first-child,
+  .a-table [data-a-sticky] {
+    position: static !important;
+  }
+
+  .a-table[data-a-sticky-columns] tr > :first-child::after,
+  .a-table [data-a-sticky]::after {
+    display: none !important;
+  }
+
+  .a-section {
+    break-inside: avoid;
+    margin-top: 24px;
+  }
+
+  [hidden].a-print-reveal {
+    display: revert !important;
+  }
+}
+    </style>
+  </head>
+  <body>
+    <main class="a-shell">
+      <header class="a-header">
+        <div>
+          <h1 class="a-header__title">Swire spec wireframes</h1>
+          <p class="a-header__subtitle">Screen-by-screen wireframes for the Swire spec, based on the original swire app and marked with what's kept, what's new, and what still needs a decision.</p>
+        </div>
+        <button
+          type="button"
+          class="a-btn a-btn--icon a-no-print"
+          data-a-theme-toggle
+          aria-label="Switch to dark mode"
+          title="Switch to dark mode"
+        >
+          <svg
+            class="a-theme-icon a-theme-icon--moon"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+          >
+            <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+          </svg>
+          <svg
+            class="a-theme-icon a-theme-icon--sun"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <section
+        class="a-section a-error"
+        data-a-error
+        role="alert"
+        aria-live="polite"
+        hidden
+      >
+        <p class="a-error__title">Something in this artifact failed to run</p>
+        <p>
+          The content below is still readable, but an interactive control may
+          not respond.
+          <span data-a-error-detail></span>
+        </p>
+      </section>
+
+<style>
+  .wf-layout { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin-top: 12px; }
+  @media (max-width: 860px) { .wf-layout { grid-template-columns: minmax(0, 1fr); } }
+  .wf { border: 1px solid rgb(var(--text-tertiary)); border-radius: var(--radius); background: rgb(var(--bg-elevated)); overflow: hidden; font-size: 13px; color: rgb(var(--text-primary)); }
+  .wf-chrome { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid rgb(var(--border-secondary)); background: rgb(var(--bg-wash)); color: rgb(var(--text-tertiary)); font-family: var(--font-mono); font-size: 11px; }
+  .wf-chrome::before { content: "● ● ●"; letter-spacing: 1px; opacity: .6; }
+  .wf-body { padding: 14px; position: relative; }
+  .wf-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .wf-row--between { justify-content: space-between; }
+  .wf-stack > * + * { margin-top: 10px; }
+  .wf-box { border: 1px dashed rgb(var(--text-tertiary)); border-radius: var(--radius-sm); padding: 10px; }
+  .wf-box__label { font-size: 11px; color: rgb(var(--text-tertiary)); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .wf-input { border: 1px solid rgb(var(--text-tertiary)); border-radius: var(--radius-sm); padding: 5px 8px; color: rgb(var(--text-tertiary)); min-width: 120px; background: rgb(var(--bg-page)); }
+  .wf-input--grow { flex: 1; }
+  .wf-textarea { min-height: 54px; }
+  .wf-btn { border: 1px solid rgb(var(--text-tertiary)); border-radius: var(--radius-sm); padding: 4px 9px; background: rgb(var(--bg-page)); color: rgb(var(--text-primary)); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .wf-btn--primary { background: rgb(var(--text-primary)); color: rgb(var(--bg-page)); border-color: rgb(var(--text-primary)); }
+  .wf-btn--danger { border-color: rgb(var(--text-red)); color: rgb(var(--text-red)); }
+  .wf-btn[aria-pressed="true"] { background: rgb(var(--tint-secondary)); border-color: rgb(var(--text-primary)); font-weight: 600; }
+  .wf-btn[aria-pressed="true"]::before { content: "✓ "; }
+  .wf-btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .wf-muted { color: rgb(var(--text-tertiary)); }
+  .wf-small { font-size: 11px; }
+  .wf-mono { font-family: var(--font-mono); }
+  .wf-h { font-weight: 600; font-size: 14px; }
+  .wf-nav { display: flex; gap: 2px; border-bottom: 1px solid rgb(var(--border-secondary)); padding: 0 10px; background: rgb(var(--bg-wash)); flex-wrap: wrap; }
+  .wf-nav span { padding: 7px 10px; font-size: 12px; color: rgb(var(--text-secondary)); border-bottom: 2px solid transparent; }
+  .wf-nav span.is-on { color: rgb(var(--text-primary)); border-bottom-color: rgb(var(--text-primary)); font-weight: 600; }
+  .wf-nav span.is-later { font-style: italic; }
+  .wf-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .wf-table th, .wf-table td { border-bottom: 1px solid rgb(var(--border-secondary)); padding: 6px 6px; text-align: left; vertical-align: middle; }
+  .wf-table th { font-weight: 600; color: rgb(var(--text-secondary)); font-size: 11px; }
+  .wf-scroll { overflow-x: auto; }
+  .wf-pill { display: inline-block; border: 1px solid rgb(var(--border-primary)); border-radius: 999px; padding: 1px 8px; font-size: 11px; white-space: nowrap; }
+  .wf-pill--run::before { content: "▶ "; }
+  .wf-pill--idle::before { content: "■ "; }
+  .wf-pill--done::before { content: "✓ "; }
+  .wf-pill--out { border-color: rgb(var(--text-orange)); color: rgb(var(--text-orange)); font-weight: 600; }
+  .wf-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: rgb(var(--text-accent)); color: rgb(var(--bg-page)); font-size: 11px; font-weight: 700; flex: none; font-family: var(--font-sans); }
+  .wf-projector { aspect-ratio: 16 / 9; display: flex; flex-direction: column; background: rgb(var(--bg-page)); }
+  .wf-projector__head { display: flex; align-items: stretch; border-bottom: 2px solid rgb(var(--text-primary)); }
+  .wf-projector__timer { font-family: var(--font-mono); font-weight: 700; line-height: 1; padding: 8px 14px; border-right: 1px solid rgb(var(--border-primary)); }
+  .wf-projector__ctrl { display: flex; align-items: center; gap: 4px; padding: 0 8px; border-right: 1px solid rgb(var(--border-primary)); }
+  .wf-projector__room { margin-left: auto; padding: 8px 14px; color: rgb(var(--text-tertiary)); align-self: center; }
+  .wf-projector__clars { flex: 1; padding: 10px 16px; overflow: hidden; }
+  .wf-projector__clars li { margin: 4px 0; }
+  .wf-split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+  @media (max-width: 640px) { .wf-split { grid-template-columns: minmax(0, 1fr); } }
+  .wf-modal-wrap { position: absolute; inset: 0; background: color-mix(in srgb, rgb(var(--bg-page)) 70%, transparent); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .wf-modal { background: rgb(var(--bg-elevated)); border: 1px solid rgb(var(--text-primary)); border-radius: var(--radius); padding: 14px; max-width: 360px; box-shadow: var(--shadow-l2); }
+  .wf-chat { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+  .wf-chat p { margin: 0; }
+  .wf-dropdown { border: 1px solid rgb(var(--border-primary)); border-radius: var(--radius-sm); background: rgb(var(--bg-page)); margin-top: 2px; }
+  .wf-dropdown div { padding: 4px 8px; border-bottom: 1px solid rgb(var(--border-secondary)); }
+  .wf-dropdown div:last-child { border-bottom: 0; }
+  .wf-dropdown .is-hl { background: rgb(var(--tint-secondary)); font-weight: 600; }
+  .wf-center { display: flex; justify-content: center; padding: 24px 12px; }
+  .wf-card { border: 1px solid rgb(var(--border-primary)); border-radius: var(--radius); padding: 16px; width: 100%; max-width: 300px; }
+  .notes { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+  .notes li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid rgb(var(--border-secondary)); }
+  .notes li:last-child { border-bottom: 0; }
+  .notes p { margin: 2px 0 0; color: rgb(var(--text-secondary)); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); padding: 0 6px; margin-right: 4px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag--kept { color: rgb(var(--text-green)); }
+  .tag--kept::before { content: "= "; }
+  .tag--new { color: rgb(var(--text-blue)); }
+  .tag--new::before { content: "+ "; }
+  .tag--changed { color: rgb(var(--text-purple)); }
+  .tag--changed::before { content: "~ "; }
+  .tag--later { color: rgb(var(--text-tertiary)); }
+  .tag--later::before { content: "… "; }
+  .tag--decision { color: rgb(var(--text-orange)); }
+  .tag--decision::before { content: "? "; }
+  .tag--dropped { color: rgb(var(--text-red)); }
+  .tag--dropped::before { content: "× "; }
+</style>
+
+<section class="a-section" aria-labelledby="summary-heading">
+  <h2 class="a-section__title" id="summary-heading">Summary</h2>
+  <div class="a-prose">
+    <p>These wireframes cover every screen in the Swire spec. Anything the spec doesn't describe follows the original swire app (<code>berkeleymt/swire</code>, SolidJS + Koa, 2024). The core loop stays the same as swire: a <strong>room</strong> has one <strong>timer</strong> plus some <strong>clarifications</strong>. Admins create and adjust them, and each room's projector shows a large countdown with the clarifications underneath. The spec adds:</p>
+    <ul>
+      <li>a room dropdown on the login screen, replacing swire's namespace + username login</li>
+      <li>a room picker for sending clarifications, replacing swire's comma-separated text field</li>
+      <li>a proper deletion screen</li>
+      <li>a bathroom log for proctors and admins</li>
+      <li>a ContestDojo roster</li>
+      <li>a super-admin screen for passwords</li>
+    </ul>
+  </div>
+</section>
+
+<section class="a-section" aria-labelledby="map-heading">
+  <h2 class="a-section__title" id="map-heading">Feature map: original swire → spec</h2>
+  <p class="a-section__note">Filter by status to see only what's new or only what still needs a decision.</p>
+  <div class="a-toolbar">
+    <label>Status
+      <select data-a-filter="#feature-table" data-a-filter-key="status">
+        <option value="all">All</option>
+        <option value="kept">From swire</option>
+        <option value="changed">Changed from swire</option>
+        <option value="new">New in spec</option>
+        <option value="later">Spec says later</option>
+        <option value="decision">Needs decision</option>
+        <option value="dropped">Dropped</option>
+      </select>
+    </label>
+  </div>
+  <div class="a-table-scroll">
+    <table class="a-table" id="feature-table" data-a-sticky-columns="1">
+      <caption class="a-visually-hidden">Mapping of original swire features to the Swire spec and the wireframe screen that covers each</caption>
+      <thead>
+        <tr><th scope="col">Feature</th><th scope="col">Original swire</th><th scope="col">Spec</th><th scope="col">Screen</th><th scope="col">Status</th></tr>
+      </thead>
+      <tbody>
+        <tr data-status="changed"><td>Login</td><td>Namespace + username (e.g. <code>soda801</code>) + one of two shared passwords (proctor vs admin)</td><td>Room dropdown + password; “Admin” option in the same dropdown</td><td>Login</td><td><span class="tag tag--changed">Changed</span></td></tr>
+        <tr data-status="kept"><td>Room countdown</td><td>Monospace <code>H:MM:SS</code>, <code>size++</code> / <code>size--</code>, shows full duration before start</td><td>Timer on display screen</td><td>Proctor · Display</td><td><span class="tag tag--kept">From swire</span></td></tr>
+        <tr data-status="kept"><td>Clarifications on projector</td><td>Markdown bullet list, font auto-shrinks to fit, hidden once time runs out; optional Google Doc embed instead</td><td>Space for clarifications + text bigger/smaller</td><td>Proctor · Display</td><td><span class="tag tag--kept">From swire</span></td></tr>
+        <tr data-status="changed"><td>Projector vs laptop view</td><td><code>?projector</code> link opens a light-theme timer + clarifications page</td><td>Display screen + separate non-display screen</td><td>Proctor · Display / Control</td><td><span class="tag tag--changed">Changed</span></td></tr>
+        <tr data-status="kept"><td>Admin timer list</td><td>Rows sorted by room: Start/Reset, +5 min, Change duration, Add/Change doc URL, Hide</td><td>List of every room/timer; reset, change time</td><td>Admin · Timers</td><td><span class="tag tag--kept">From swire</span></td></tr>
+        <tr data-status="kept"><td>Create room/timer</td><td>Room, duration (default 180 min), optional doc URL</td><td>Add rooms with a specified duration</td><td>Admin · Timers</td><td><span class="tag tag--kept">From swire</span></td></tr>
+        <tr data-status="changed"><td>Clarification targeting</td><td>Free-text comma-separated rooms; blank = all</td><td>Pick a subset of rooms; make it intuitive</td><td>Admin · Clarifications</td><td><span class="tag tag--changed">Changed</span></td></tr>
+        <tr data-status="kept"><td>Edit / hide clarification, preview projector</td><td>Edit via prompt, Hide/Unhide, “Preview Projector Mode” link</td><td>—</td><td>Admin · Clarifications</td><td><span class="tag tag--kept">From swire</span></td></tr>
+        <tr data-status="new"><td>Delete rooms &amp; clarifications</td><td>Soft “hide” only; running timers can't be hidden; Shift skips confirm</td><td>Deletion screen with confirmation window</td><td>Admin · Deletion</td><td><span class="tag tag--new">New</span></td></tr>
+        <tr data-status="new"><td>Bathroom log (proctor)</td><td>—</td><td>Enter student ID, mark gone, “came back” button</td><td>Proctor · Control</td><td><span class="tag tag--new">New</span></td></tr>
+        <tr data-status="later"><td>Bathroom log (admin)</td><td>—</td><td>Timestamped log across rooms</td><td>Admin · Bathroom log</td><td><span class="tag tag--later">Later</span></td></tr>
+        <tr data-status="later"><td>Roster</td><td>—</td><td>Per-room students + contacts via ContestDojo</td><td>Admin · Roster</td><td><span class="tag tag--later">Later</span></td></tr>
+        <tr data-status="new"><td>Password management</td><td>Env vars <code>PROCTOR_PASSWORD</code> / <code>USER_PASSWORD</code></td><td>Super-admin panel</td><td>Super-admin</td><td><span class="tag tag--new">New</span></td></tr>
+        <tr data-status="changed"><td>Debug toolbar</td><td><kbd>Ctrl</kbd>+<kbd>;</kbd>: disable refresh, show hidden, “sus” mode</td><td>—</td><td>Admin · header (“Show hidden” only)</td><td><span class="tag tag--changed">Changed</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- LOGIN -->
+<section class="a-section" aria-labelledby="login-heading">
+  <h2 class="a-section__title" id="login-heading">Login (proctors and admins)</h2>
+  <p class="a-section__note">Proctors and admins use the same screen. Picking “Admin” sends you to the admin panel after sign-in.</p>
+  <div class="wf-layout">
+    <div class="wf" role="img" aria-label="Login wireframe: room dropdown opened with Admin at the top, a password field, and a Sign in button">
+      <div class="wf-chrome">swire.berkeley.mt/login</div>
+      <div class="wf-body">
+        <div class="wf-center">
+          <div class="wf-card wf-stack">
+            <div class="wf-h">Swire</div>
+            <div>
+              <div class="wf-row"><span class="wf-mark">1</span><span class="wf-small wf-muted">Room</span></div>
+              <div class="wf-input" style="margin-top:4px">Select a room ▾</div>
+              <div class="wf-dropdown wf-small">
+                <div class="is-hl">Admin</div>
+                <div>Dwinelle 145</div>
+                <div>Evans 10</div>
+                <div>Soda 306</div>
+                <div class="wf-muted">…type to filter</div>
+              </div>
+            </div>
+            <div>
+              <div class="wf-row"><span class="wf-mark">2</span><span class="wf-small wf-muted">Password</span></div>
+              <div class="wf-input" style="margin-top:4px">••••••••</div>
+            </div>
+            <div class="wf-row"><span class="wf-mark">3</span><button class="wf-btn wf-btn--primary" type="button">Sign in</button></div>
+            <div class="wf-small wf-muted">Wrong password for this room.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="notes" aria-label="Login annotations">
+      <li><span class="wf-mark">1</span><div><span class="tag tag--changed">Changed</span><strong>Room dropdown</strong><p>Options are the rooms created on Admin · Timers, sorted alphabetically, with “Admin” pinned first. You can type to filter, which matters with 50+ rooms. This replaces swire's free-text namespace and username.</p></div></li>
+      <li><span class="wf-mark">2</span><div><span class="tag tag--kept">From swire</span><strong>Shared password</strong><p>There is one proctor password for every room and one admin password, the same model as swire's two env-var passwords. The spec sets both passwords for now. Super-admins can change them later.</p></div></li>
+      <li><span class="wf-mark">3</span><div><span class="tag tag--kept">From swire</span><strong>Deep link</strong><p>Swire could prefill fields from the URL. The equivalent here is <code>/login?room=evans10</code>, which lets PMs send each proctor a link that preselects their room.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- PROCTOR -->
+<section class="a-section" aria-labelledby="proctor-heading">
+  <h2 class="a-section__title" id="proctor-heading">Proctor panel</h2>
+  <p class="a-section__note">The display screen goes on the projector for students. The control screen stays on the proctor's laptop. Open them in two windows when the laptop drives an extended display.</p>
+
+  <div class="a-toolbar" data-a-tabs role="tablist" aria-label="Proctor screens">
+    <div class="a-tabs">
+      <button type="button" class="a-btn" id="tab-p-display" role="tab" aria-controls="panel-p-display" aria-selected="true">Display screen</button>
+      <button type="button" class="a-btn" id="tab-p-control" role="tab" aria-controls="panel-p-control" aria-selected="false">Control screen</button>
+    </div>
+  </div>
+
+  <div id="panel-p-display" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-p-display" tabindex="0">
+    <div class="wf-layout">
+      <div>
+        <div class="wf" role="img" aria-label="Projector display wireframe: large countdown timer with size buttons, room name, and a bulleted list of clarifications filling the rest of the screen">
+          <div class="wf-chrome">swire.berkeley.mt/display · projector</div>
+          <div class="wf-projector">
+            <div class="wf-projector__head">
+              <div class="wf-projector__timer" id="demo-timer" style="font-size:40px">1:42:17</div>
+              <div class="wf-projector__ctrl"><span class="wf-mark">2</span><button class="wf-btn" type="button" data-timer-size="-" aria-label="Smaller timer">A−</button><button class="wf-btn" type="button" data-timer-size="+" aria-label="Larger timer">A+</button></div>
+              <div class="wf-projector__ctrl"><span class="wf-mark">4</span><button class="wf-btn" type="button" data-clar-size="-" aria-label="Smaller clarifications">¶−</button><button class="wf-btn" type="button" data-clar-size="auto" aria-pressed="true">Auto</button><button class="wf-btn" type="button" data-clar-size="+" aria-label="Larger clarifications">¶+</button></div>
+              <div class="wf-projector__room"><span class="wf-mark">1</span> Evans 10 · Individual Round</div>
+            </div>
+            <div class="wf-projector__clars" id="demo-clars" style="font-size:18px">
+              <div class="wf-row wf-small wf-muted" style="margin-bottom:6px"><span class="wf-mark">3</span> Clarifications</div>
+              <ul style="margin:0;padding-left:1.1em">
+                <li>Problem 7: “integer” means <em>positive</em> integer.</li>
+                <li>Problem 12: the diagram is <strong>not</strong> to scale.</li>
+                <li>Calculators are not allowed.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="wf-small wf-muted" style="margin-top:6px">Try the A−/A+ and ¶−/Auto/¶+ buttons. The timer ticks live.</p>
+      </div>
+      <ol class="notes" aria-label="Display screen annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--new">New</span><strong>Room + test label</strong><p>Kept small so students can confirm they're in the right room.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--kept">From swire</span><strong>Timer + size buttons</strong><p>Same as swire: <code>H:MM:SS</code> monospace, shows the full duration until started, stops at <code>0:00:00</code>. The countdown is computed on the client from <code>started_at + duration</code>, so a dropped connection doesn't freeze it.</p></div></li>
+        <li><span class="wf-mark">3</span><div><span class="tag tag--kept">From swire</span><strong>Clarifications</strong><p>Markdown bullets, oldest first, only those targeted at this room or all rooms. Swire hid them when time ran out, and this keeps that. If the room has a doc URL, the embedded Google Doc replaces the list (swire behavior).</p></div></li>
+        <li><span class="wf-mark">4</span><div><span class="tag tag--changed">Changed</span><strong>Text bigger/smaller</strong><p>Swire always auto-shrank text to fit. The spec asks for manual control, so Auto stays the default and ¶−/¶+ override it. Controls sit on the header row and could fade out after a few seconds without mouse movement.</p></div></li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="panel-p-control" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-p-control" tabindex="0" hidden>
+    <div class="wf-layout">
+      <div class="wf" role="img" aria-label="Proctor control screen wireframe: header with room, timer and buttons; bathroom log with student ID entry and a list of students currently out with Returned buttons; messages panel">
+        <div class="wf-chrome">swire.berkeley.mt/proctor · laptop</div>
+        <div class="wf-body wf-stack">
+          <div class="wf-row wf-row--between">
+            <div class="wf-row"><span class="wf-mark">1</span><span class="wf-h">Evans 10</span><span class="wf-pill wf-pill--run">Running</span><span class="wf-mono" id="demo-timer-mini">1:42:17</span></div>
+            <div class="wf-row"><button class="wf-btn" type="button" disabled>Start</button><button class="wf-btn" type="button">Open display window ↗</button><button class="wf-btn" type="button">Log out</button></div>
+          </div>
+          <div class="wf-split">
+            <div class="wf-box">
+              <div class="wf-row wf-box__label"><span class="wf-mark">2</span> Bathroom log</div>
+              <div class="wf-row">
+                <div class="wf-input wf-input--grow">Student ID (e.g. 054A) — or pick from roster ▾</div>
+                <button class="wf-btn wf-btn--primary" type="button">Mark out</button>
+              </div>
+              <div class="wf-box__label" style="margin-top:12px">Currently out</div>
+              <table class="wf-table" id="bath-table">
+                <thead><tr><th>ID</th><th>Left</th><th>Out for</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td class="wf-mono">054A</td><td>10:42</td><td><span class="wf-pill wf-pill--out">6 min</span></td><td><button class="wf-btn" type="button" data-returned>Returned</button></td></tr>
+                  <tr><td class="wf-mono">117C</td><td>10:46</td><td><span class="wf-pill wf-pill--out">2 min</span></td><td><button class="wf-btn" type="button" data-returned>Returned</button></td></tr>
+                </tbody>
+              </table>
+              <details style="margin-top:8px"><summary class="wf-small">Returned today (3)</summary><div class="wf-small wf-muted" style="padding:4px 0">089B 10:05–10:09 · 033A 10:12–10:15 · 140D 10:30–10:36</div></details>
+            </div>
+            <div class="wf-stack">
+              <div class="wf-box">
+                <div class="wf-row wf-box__label"><span class="wf-mark">3</span> Messages with admins</div>
+                <div class="wf-chat">
+                  <p><span class="wf-muted wf-mono">[2m]</span> <strong>admin</strong>: Please remind students no calculators.</p>
+                  <p><span class="wf-muted wf-mono">[1m]</span> <strong>evans10</strong>: Done 👍 need more scratch paper</p>
+                </div>
+                <div class="wf-row" style="margin-top:8px"><div class="wf-input wf-input--grow">Message</div><button class="wf-btn" type="button">Send</button></div>
+              </div>
+              <div class="wf-box">
+                <div class="wf-row wf-box__label"><span class="wf-mark">4</span> On the projector now</div>
+                <div class="wf-small">3 clarifications · timer size A+ · <a href="#tab-p-display">preview</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ol class="notes" aria-label="Control screen annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--decision">Decision</span><strong>Status header + Start</strong><p>Swire let proctors press Start on their own room. The spec only gives timer control to admins. The wireframe shows Start disabled until an admin allows it. Alternative: remove it and have admins start every room. “Open display window” launches the display screen for dragging onto the projector.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--new">New</span><strong>Bathroom log</strong><p>Type an ID (the dropdown arrives with the roster) and press Mark out. The student moves to “Currently out” with a live timer. Returned moves them to the history list. Rows over about 10 minutes could be highlighted. Try the Returned buttons.</p></div></li>
+        <li><span class="wf-mark">3</span><div><span class="tag tag--decision">Decision</span><strong>Chat with admins</strong><p>This was a core swire feature: per-room threads, admin broadcast, desktop notifications. The spec doesn't mention it. It's included here because it's the channel proctors use for problems during the test. Removing it is a one-panel change.</p></div></li>
+        <li><span class="wf-mark">4</span><div><span class="tag tag--new">New</span><strong>Projector mirror</strong><p>Lets the proctor check what students see without looking up at the screen.</p></div></li>
+      </ol>
+    </div>
+    <div class="a-callout a-callout--decision" style="margin-top:12px"><strong>Single-screen rooms.</strong> The spec marks this screen optional because it needs an extended display. Fallback: the display screen gets a small “Log” button that opens the bathroom log as a drawer.</div>
+  </div>
+</section>
+
+<!-- ADMIN -->
+<section class="a-section" aria-labelledby="admin-heading">
+  <h2 class="a-section__title" id="admin-heading">Admin panel</h2>
+  <p class="a-section__note">Admins get one tabbed page, like swire's admin view. The tabs below match the spec's screens. Italic tabs are marked “later” in the spec.</p>
+
+  <div class="a-toolbar" data-a-tabs role="tablist" aria-label="Admin screens">
+    <div class="a-tabs">
+      <button type="button" class="a-btn" id="tab-a-timers" role="tab" aria-controls="panel-a-timers" aria-selected="true">Timers</button>
+      <button type="button" class="a-btn" id="tab-a-clars" role="tab" aria-controls="panel-a-clars" aria-selected="false">Clarifications</button>
+      <button type="button" class="a-btn" id="tab-a-delete" role="tab" aria-controls="panel-a-delete" aria-selected="false">Deletion</button>
+      <button type="button" class="a-btn" id="tab-a-bath" role="tab" aria-controls="panel-a-bath" aria-selected="false">Bathroom log</button>
+      <button type="button" class="a-btn" id="tab-a-roster" role="tab" aria-controls="panel-a-roster" aria-selected="false">Roster</button>
+    </div>
+  </div>
+
+  <!-- Timers -->
+  <div id="panel-a-timers" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-a-timers" tabindex="0">
+    <div class="wf-layout">
+      <div class="wf" role="img" aria-label="Admin timers wireframe: summary counts, add room form, table of rooms with status, remaining time and per-row actions, and a messages rail">
+        <div class="wf-chrome">swire.berkeley.mt/admin/timers</div>
+        <div class="wf-nav"><span class="is-on">Timers</span><span>Clarifications</span><span>Deletion</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span><span style="margin-left:auto">Show hidden ☐ · Log out</span></div>
+        <div class="wf-body wf-stack">
+          <div class="wf-row wf-row--between">
+            <div class="wf-row"><span class="wf-mark">1</span><span class="wf-small">12 rooms · <strong>8 running</strong> · 3 not started · 1 finished · 2 students out</span></div>
+            <div class="wf-row"><span class="wf-mark">2</span><button class="wf-btn" type="button">Start selected</button><button class="wf-btn" type="button">+5 min selected</button></div>
+          </div>
+          <div class="wf-box">
+            <div class="wf-row wf-box__label"><span class="wf-mark">3</span> Add room</div>
+            <div class="wf-row"><div class="wf-input">Room name</div><div class="wf-input" style="min-width:80px">60 min</div><div class="wf-input wf-input--grow">Test label (optional)</div><div class="wf-input wf-input--grow">Doc URL (optional)</div><button class="wf-btn wf-btn--primary" type="button">Add</button></div>
+          </div>
+          <div class="wf-scroll">
+            <table class="wf-table">
+              <thead><tr><th>☐</th><th>Room</th><th>Status</th><th>Remaining</th><th>Duration</th><th>Out</th><th><span class="wf-mark">4</span> Actions</th></tr></thead>
+              <tbody>
+                <tr><td>☐</td><td>Dwinelle 145</td><td><span class="wf-pill wf-pill--idle">Not started</span></td><td class="wf-mono">1:00:00</td><td>60m</td><td>0</td><td class="wf-row"><button class="wf-btn" type="button">Start</button><button class="wf-btn" type="button">+5</button><button class="wf-btn" type="button">Edit…</button></td></tr>
+                <tr><td>☑</td><td>Evans 10</td><td><span class="wf-pill wf-pill--run">Running</span></td><td class="wf-mono">0:42:17</td><td>60m</td><td><span class="wf-pill wf-pill--out">2</span></td><td class="wf-row"><button class="wf-btn" type="button">Reset</button><button class="wf-btn" type="button">+5</button><button class="wf-btn" type="button">Edit…</button></td></tr>
+                <tr><td>☑</td><td>Soda 306</td><td><span class="wf-pill wf-pill--run">Running</span></td><td class="wf-mono">0:41:02</td><td>60m</td><td>0</td><td class="wf-row"><button class="wf-btn" type="button">Reset</button><button class="wf-btn" type="button">+5</button><button class="wf-btn" type="button">Edit…</button></td></tr>
+                <tr><td>☐</td><td>Wheeler 150</td><td><span class="wf-pill wf-pill--done">Finished</span></td><td class="wf-mono">0:00:00</td><td>60m</td><td>0</td><td class="wf-row"><button class="wf-btn" type="button">Reset</button><button class="wf-btn" type="button">+5</button><button class="wf-btn" type="button">Edit…</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <ol class="notes" aria-label="Timers annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--new">New</span><strong>At-a-glance summary</strong><p>Room counts by state, plus students currently out once the bathroom log exists.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--new">New</span><strong>Bulk actions</strong><p>Swire only had per-row actions. Starting 50 rooms at once is the common case on test day.</p></div></li>
+        <li><span class="wf-mark">3</span><div><span class="tag tag--kept">From swire</span><strong>Add room with duration</strong><p>Same fields as swire's “Create Timer”: room, duration (swire defaulted to 180 min), optional doc URL. Adds an optional test label for the display header. Room names must be unique.</p></div></li>
+        <li><span class="wf-mark">4</span><div><span class="tag tag--kept">From swire</span><strong>Row actions</strong><p>Start/Reset, +5 min, and Edit… (duration, doc URL, test label). Reset and +5 ask for confirmation, and Shift-click skips it, as in swire. “Change time” from the spec is Edit → set remaining or total duration.</p></div></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Clarifications -->
+  <div id="panel-a-clars" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-a-clars" tabindex="0" hidden>
+    <div class="wf-layout">
+      <div class="wf" role="img" aria-label="Admin clarifications wireframe: composer with markdown text box and room picker made of toggle chips grouped by building, target count, and a list of posted clarifications with edit and hide actions">
+        <div class="wf-chrome">swire.berkeley.mt/admin/clarifications</div>
+        <div class="wf-nav"><span>Timers</span><span class="is-on">Clarifications</span><span>Deletion</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span></div>
+        <div class="wf-body wf-stack">
+          <div class="wf-box">
+            <div class="wf-row wf-box__label"><span class="wf-mark">1</span> New clarification</div>
+            <div class="wf-input wf-textarea">Problem 7: “integer” means *positive* integer.  (Markdown + math supported)</div>
+            <div class="wf-row wf-box__label" style="margin-top:10px"><span class="wf-mark">2</span> Send to</div>
+            <div class="wf-row" id="room-picker-quick">
+              <button class="wf-btn" type="button" data-pick="all">All rooms</button>
+              <button class="wf-btn" type="button" data-pick="none">Clear</button>
+              <button class="wf-btn" type="button" data-pick="bld" data-bld="Evans">All Evans</button>
+              <button class="wf-btn" type="button" data-pick="bld" data-bld="Soda">All Soda</button>
+              <button class="wf-btn" type="button" data-pick="test" data-test="ind">Individual Round rooms</button>
+            </div>
+            <div class="wf-row" id="room-picker" style="margin-top:8px">
+              <button class="wf-btn" type="button" aria-pressed="false" data-bld="Dwinelle" data-test="team">Dwinelle 145</button>
+              <button class="wf-btn" type="button" aria-pressed="true" data-bld="Evans" data-test="ind">Evans 10</button>
+              <button class="wf-btn" type="button" aria-pressed="true" data-bld="Evans" data-test="ind">Evans 60</button>
+              <button class="wf-btn" type="button" aria-pressed="false" data-bld="Soda" data-test="team">Soda 306</button>
+              <button class="wf-btn" type="button" aria-pressed="false" data-bld="Soda" data-test="ind">Soda 405</button>
+              <button class="wf-btn" type="button" aria-pressed="false" data-bld="Wheeler" data-test="team">Wheeler 150</button>
+            </div>
+            <div class="wf-row wf-row--between" style="margin-top:10px">
+              <span class="wf-small" id="pick-count" aria-live="polite">Will post to 2 of 6 rooms</span>
+              <div class="wf-row"><span class="wf-mark">3</span><button class="wf-btn" type="button">Preview display</button><button class="wf-btn wf-btn--primary" type="button">Post</button></div>
+            </div>
+          </div>
+          <div>
+            <div class="wf-row wf-box__label"><span class="wf-mark">4</span> Posted</div>
+            <table class="wf-table">
+              <thead><tr><th>Time</th><th>Rooms</th><th>Clarification</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>10:31</td><td><span class="wf-pill">All</span></td><td>Calculators are not allowed.</td><td class="wf-row"><button class="wf-btn" type="button">Edit</button><button class="wf-btn" type="button">Hide</button></td></tr>
+                <tr><td>10:38</td><td><span class="wf-pill">Evans 10</span> <span class="wf-pill">Evans 60</span></td><td>Problem 12: the diagram is <strong>not</strong> to scale.</td><td class="wf-row"><button class="wf-btn" type="button">Edit</button><button class="wf-btn" type="button">Hide</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <ol class="notes" aria-label="Clarifications annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--kept">From swire</span><strong>Composer</strong><p>Markdown with MathJax, same as swire's last version.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--changed">Changed</span><strong>Room picker</strong><p>Covers the spec's “make selecting certain rooms intuitive”. Rooms are toggle chips, with shortcuts for all, clear, by building (from the room name prefix), and by test. The live count guards against posting to the wrong set. Swire used a comma-separated text field. Try the chips.</p></div></li>
+        <li><span class="wf-mark">3</span><div><span class="tag tag--kept">From swire</span><strong>Preview</strong><p>Swire's “Preview Projector Mode” link, updated to preview the display screen for the first selected room.</p></div></li>
+        <li><span class="wf-mark">4</span><div><span class="tag tag--kept">From swire</span><strong>Posted list</strong><p>Edit and Hide/Unhide work as in swire. One post targeted at several rooms shows as one row with several room pills; swire stored and listed a separate copy per room. Permanent delete is on the Deletion tab.</p></div></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Deletion -->
+  <div id="panel-a-delete" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-a-delete" tabindex="0" hidden>
+    <div class="wf-layout">
+      <div class="wf" role="img" aria-label="Admin deletion wireframe: list of rooms with checkboxes where running rooms are disabled, a panel to pick a room and delete its clarifications, and a confirmation dialog overlay">
+        <div class="wf-chrome">swire.berkeley.mt/admin/delete</div>
+        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span class="is-on">Deletion</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span></div>
+        <div class="wf-body">
+          <div class="wf-split">
+            <div class="wf-box">
+              <div class="wf-row wf-box__label"><span class="wf-mark">1</span> Delete rooms</div>
+              <table class="wf-table">
+                <tbody>
+                  <tr><td>☐</td><td>Dwinelle 145</td><td class="wf-muted">not started</td></tr>
+                  <tr><td class="wf-muted">—</td><td class="wf-muted">Evans 10</td><td class="wf-muted">running · reset first</td></tr>
+                  <tr><td>☑</td><td>Wheeler 150</td><td class="wf-muted">finished</td></tr>
+                  <tr><td>☑</td><td>Soda 405</td><td class="wf-muted">finished</td></tr>
+                </tbody>
+              </table>
+              <button class="wf-btn wf-btn--danger" type="button" style="margin-top:8px">Delete 2 rooms…</button>
+            </div>
+            <div class="wf-box">
+              <div class="wf-row wf-box__label"><span class="wf-mark">2</span> Delete clarifications</div>
+              <div class="wf-input">Room: Evans 10 ▾</div>
+              <table class="wf-table" style="margin-top:6px">
+                <tbody>
+                  <tr><td>Problem 12: diagram not to scale</td><td><button class="wf-btn wf-btn--danger" type="button">Delete</button></td></tr>
+                  <tr><td class="wf-muted">Calculators not allowed <span class="wf-small">(All rooms)</span></td><td><button class="wf-btn wf-btn--danger" type="button">Delete…</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="wf-modal-wrap">
+            <div class="wf-modal wf-stack">
+              <div class="wf-row"><span class="wf-mark">3</span><span class="wf-h">Delete 2 rooms?</span></div>
+              <div class="wf-small">Wheeler 150, Soda 405. This permanently removes their timers, clarifications and bathroom log. Proctors signed in to these rooms will be logged out.</div>
+              <div class="wf-input">Type DELETE to confirm</div>
+              <div class="wf-row" style="justify-content:flex-end"><button class="wf-btn" type="button">Cancel</button><button class="wf-btn wf-btn--danger" type="button">Delete rooms</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ol class="notes" aria-label="Deletion annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--new">New</span><strong>Delete rooms</strong><p>Multi-select. Running rooms are disabled, following swire's rule that an in-progress timer can't be hidden.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--new">New</span><strong>Per-room clarifications</strong><p>Pick a room and delete its clarifications. Deleting an “All rooms” clarification from one room raises a choice: remove it everywhere, or only here.</p></div></li>
+        <li><span class="wf-mark">3</span><div><span class="tag tag--new">New</span><strong>Confirmation window</strong><p>Required by the spec. Room deletion requires typing DELETE, which is stronger than swire's <code>confirm()</code>, and Shift doesn't bypass it here. Deleting a single clarification only needs a simple confirm.</p></div></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Bathroom log -->
+  <div id="panel-a-bath" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-a-bath" tabindex="0" hidden>
+    <div class="wf-layout">
+      <div class="wf" role="img" aria-label="Admin bathroom log wireframe: filters for room and status, a table of timestamped entries with student, room, time out, time back and duration">
+        <div class="wf-chrome">swire.berkeley.mt/admin/bathroom</div>
+        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span>Deletion</span><span class="is-on">Bathroom log</span><span class="is-later">Roster</span></div>
+        <div class="wf-body wf-stack">
+          <div class="wf-row"><span class="wf-mark">1</span><div class="wf-input">Room: All ▾</div><button class="wf-btn" type="button" aria-pressed="true">Out now</button><button class="wf-btn" type="button" aria-pressed="false">Returned</button><div class="wf-input wf-input--grow">Search student ID / name</div><button class="wf-btn" type="button">Export CSV</button></div>
+          <div class="wf-scroll">
+            <table class="wf-table">
+              <thead><tr><th>Student</th><th>Room</th><th>Out</th><th>Back</th><th><span class="wf-mark">2</span> Duration</th></tr></thead>
+              <tbody>
+                <tr><td class="wf-mono">054A <span class="wf-muted">· A. Student</span></td><td>Evans 10</td><td>10:42</td><td>—</td><td><span class="wf-pill wf-pill--out">Out 6 min</span></td></tr>
+                <tr><td class="wf-mono">117C <span class="wf-muted">· B. Student</span></td><td>Evans 10</td><td>10:46</td><td>—</td><td><span class="wf-pill wf-pill--out">Out 2 min</span></td></tr>
+                <tr><td class="wf-mono">140D <span class="wf-muted">· C. Student</span></td><td>Soda 306</td><td>10:30</td><td>10:36</td><td>6 min</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <ol class="notes" aria-label="Bathroom log annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--later">Later</span><strong>Filters</strong><p>Defaults to “Out now” across all rooms, the view PMs need during a round. CSV export is for records after the test.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--later">Later</span><strong>Timestamped entries</strong><p>Each entry records who left, which room, when, and whether and when they returned, as the spec lists. Names fill in once the roster is connected to ContestDojo. Until then only IDs show.</p></div></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Roster -->
+  <div id="panel-a-roster" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-a-roster" tabindex="0" hidden>
+    <div class="wf-layout">
+      <div class="wf" role="img" aria-label="Admin roster wireframe: room selector and sync button, table of students with name, ID, school, coach contact, and presence status">
+        <div class="wf-chrome">swire.berkeley.mt/admin/roster</div>
+        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span>Deletion</span><span class="is-later">Bathroom log</span><span class="is-on">Roster</span></div>
+        <div class="wf-body wf-stack">
+          <div class="wf-row wf-row--between"><div class="wf-row"><span class="wf-mark">1</span><div class="wf-input">Room: Evans 10 ▾</div><span class="wf-small">32 students · 2 out</span></div><div class="wf-row"><span class="wf-mark">2</span><span class="wf-small wf-muted">Synced from ContestDojo 10:15</span><button class="wf-btn" type="button">Sync</button></div></div>
+          <div class="wf-scroll">
+            <table class="wf-table">
+              <thead><tr><th>Name</th><th>ID</th><th>School / team</th><th>Parent / coach contact</th><th><span class="wf-mark">3</span> Status</th></tr></thead>
+              <tbody>
+                <tr><td>A. Student</td><td class="wf-mono">054A</td><td>Moor High School</td><td class="wf-muted">coach@example.org · (555) 010-0001</td><td><span class="wf-pill wf-pill--out">Out since 10:42</span></td></tr>
+                <tr><td>D. Student</td><td class="wf-mono">061B</td><td>Moor High School</td><td class="wf-muted">parent@example.org · (555) 010-0002</td><td>Present</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <ol class="notes" aria-label="Roster annotations">
+        <li><span class="wf-mark">1</span><div><span class="tag tag--later">Later</span><strong>Room selector</strong><p>Students are listed per room, as the spec asks. This needs a room mapping in ContestDojo, either seat or room assignments.</p></div></li>
+        <li><span class="wf-mark">2</span><div><span class="tag tag--later">Later</span><strong>ContestDojo sync</strong><p>Pulled on demand, not live, so swire keeps working if ContestDojo is slow. The same data powers the student dropdown in the proctor bathroom log. This is the spec's “bathroom button” item.</p></div></li>
+        <li><span class="wf-mark">3</span><div><span class="tag tag--later">Later</span><strong>Missing status</strong><p>Comes from the bathroom log.</p></div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- SUPER ADMIN -->
+<section class="a-section" aria-labelledby="super-heading">
+  <h2 class="a-section__title" id="super-heading">Super-admin panel</h2>
+  <p class="a-section__note">The spec has a question mark on this panel. It's sketched as the smallest screen that removes hard-coded passwords.</p>
+  <div class="wf-layout">
+    <div class="wf" role="img" aria-label="Super-admin wireframe: fields to change the proctor and admin passwords, and a list of super-admin users">
+      <div class="wf-chrome">swire.berkeley.mt/super</div>
+      <div class="wf-body wf-stack">
+        <div class="wf-box">
+          <div class="wf-row wf-box__label"><span class="wf-mark">1</span> Passwords</div>
+          <table class="wf-table">
+            <tbody>
+              <tr><td>Proctor password (all rooms)</td><td class="wf-mono">••••••••</td><td><button class="wf-btn" type="button">Show</button> <button class="wf-btn" type="button">Change…</button></td></tr>
+              <tr><td>Admin password</td><td class="wf-mono">••••••••</td><td><button class="wf-btn" type="button">Show</button> <button class="wf-btn" type="button">Change…</button></td></tr>
+            </tbody>
+          </table>
+          <label class="wf-small wf-row" style="margin-top:8px">☐ Log out everyone signed in with the old password</label>
+        </div>
+        <div class="wf-box">
+          <div class="wf-row wf-box__label"><span class="wf-mark">2</span> Super-admins</div>
+          <div class="wf-small">Only people on this list can open this page. Sign in with Google (@berkeley.mt).</div>
+        </div>
+      </div>
+    </div>
+    <ol class="notes" aria-label="Super-admin annotations">
+      <li><span class="wf-mark">1</span><div><span class="tag tag--new">New</span><strong>Passwords</strong><p>Replaces swire's <code>PROCTOR_PASSWORD</code> / <code>USER_PASSWORD</code> env vars, so passwords can change without a redeploy. Optionally log out existing sessions after a change.</p></div></li>
+      <li><span class="wf-mark">2</span><div><span class="tag tag--decision">Decision</span><strong>Access</strong><p>The spec says “a select few people” without saying how access works. Options are a separate super-admin password, or Google sign-in against an allow-list. The wireframe assumes the allow-list.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="a-section" aria-labelledby="decisions-heading">
+  <h2 class="a-section__title" id="decisions-heading">Open decisions</h2>
+  <div class="a-callout a-callout--decision"><strong>Can proctors start their own timer?</strong> No. The wireframe shows Start disabled until an admin allows it, and admins can also start rooms in bulk.</div>
+  <div class="a-callout a-callout--decision"><strong>Keep Google Doc clarifications?</strong> Swire's per-room doc URL embedded a doc instead of native clarifications. It's kept as an optional field.</div>
+</section>
+
+<script>
+(function () {
+  var secs = 1 * 3600 + 42 * 60 + 17;
+  var big = document.getElementById("demo-timer");
+  var mini = document.getElementById("demo-timer-mini");
+  function fmt(s) { var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h + ":" + String(m).padStart(2, "0") + ":" + String(x).padStart(2, "0"); }
+  setInterval(function () { if (secs > 0) secs--; var t = fmt(secs); if (big) big.textContent = t; if (mini) mini.textContent = t; }, 1000);
+
+  var tSize = 40;
+  document.querySelectorAll("[data-timer-size]").forEach(function (b) {
+    b.addEventListener("click", function () { tSize = Math.max(20, Math.min(72, tSize + (b.dataset.timerSize === "+" ? 6 : -6))); big.style.fontSize = tSize + "px"; });
+  });
+  var clars = document.getElementById("demo-clars"), cSize = 18, autoBtn = document.querySelector('[data-clar-size="auto"]');
+  document.querySelectorAll("[data-clar-size]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = b.dataset.clarSize;
+      if (v === "auto") { cSize = 18; autoBtn.setAttribute("aria-pressed", "true"); }
+      else { cSize = Math.max(11, Math.min(30, cSize + (v === "+" ? 3 : -3))); autoBtn.setAttribute("aria-pressed", "false"); }
+      clars.style.fontSize = cSize + "px";
+    });
+  });
+
+  document.querySelectorAll("[data-returned]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var row = b.closest("tr"); var pill = row.querySelector(".wf-pill");
+      pill.className = "wf-pill wf-pill--done"; pill.textContent = "Back";
+      b.disabled = true; b.textContent = "Returned";
+    });
+  });
+
+  var chips = Array.prototype.slice.call(document.querySelectorAll("#room-picker [aria-pressed]"));
+  var count = document.getElementById("pick-count");
+  function upd() { var n = chips.filter(function (c) { return c.getAttribute("aria-pressed") === "true"; }).length; count.textContent = n === chips.length ? "Will post to all " + n + " rooms" : n === 0 ? "No rooms selected" : "Will post to " + n + " of " + chips.length + " rooms"; }
+  chips.forEach(function (c) { c.addEventListener("click", function () { c.setAttribute("aria-pressed", c.getAttribute("aria-pressed") === "true" ? "false" : "true"); upd(); }); });
+  document.querySelectorAll("[data-pick]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = b.dataset.pick;
+      chips.forEach(function (c) {
+        var on = p === "all" || (p === "bld" && c.dataset.bld === b.dataset.bld) || (p === "test" && c.dataset.test === b.dataset.test);
+        if (p === "none") on = false;
+        if (p === "bld" || p === "test") { if (on) c.setAttribute("aria-pressed", "true"); } else c.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      upd();
+    });
+  });
+  upd();
+})();
+</script>
+
+
+    </main>
+    <script>
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var THEMES = { light: 1, dark: 1 };
+
+  function showError(message) {
+    document.querySelectorAll("[data-a-error]").forEach(function (region) {
+      region.hidden = false;
+      var detail = region.querySelector("[data-a-error-detail]");
+      if (detail && message) detail.textContent = message;
+    });
+  }
+
+  window.addEventListener("error", function (event) {
+    showError(event.message);
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    showError(String(event.reason || "An interactive control failed."));
+  });
+
+  /* ---------- theme ----------
+     Order of precedence:
+       1. an explicit host signal (`?theme=`/`#theme=`, a `devin:theme`
+          message from an embedding page, or a preset `data-theme`),
+       2. a reader's in-document choice,
+       3. the OS/browser preference via `prefers-color-scheme`.
+     Hosts that expose no signal simply fall through to step 3. */
+  function hostTheme() {
+    var search = new URLSearchParams(
+      window.location.search + "&" + window.location.hash.replace(/^#/, "")
+    );
+    var fromUrl = search.get("theme");
+    if (fromUrl && THEMES[fromUrl]) return fromUrl;
+    var preset = root.getAttribute("data-theme");
+    if (preset && THEMES[preset]) return preset;
+    return null;
+  }
+
+  function systemTheme() {
+    return window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+
+  var pinned = hostTheme();
+
+  function apply(theme) {
+    root.setAttribute("data-theme", theme);
+    document.querySelectorAll("[data-a-theme-toggle]").forEach(function (el) {
+      var label =
+        theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+      el.setAttribute("aria-label", label);
+      el.setAttribute("title", label);
+    });
+  }
+
+  apply(pinned || systemTheme());
+
+  if (window.matchMedia) {
+    var media = window.matchMedia("(prefers-color-scheme: dark)");
+    var onChange = function () {
+      if (!pinned) apply(systemTheme());
+    };
+    if (media.addEventListener) media.addEventListener("change", onChange);
+    else if (media.addListener) media.addListener(onChange);
+  }
+
+  window.addEventListener("message", function (event) {
+    if (window.parent === window || event.source !== window.parent) return;
+    var data = event.data;
+    if (!data || data.type !== "devin:theme" || !THEMES[data.theme]) return;
+    pinned = data.theme;
+    apply(pinned);
+  });
+
+  document.addEventListener("click", function (event) {
+    var toggle = event.target.closest("[data-a-theme-toggle]");
+    if (!toggle) return;
+    pinned = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    apply(pinned);
+  });
+
+  /* ---------- tabs ----------
+     <div data-a-tabs role="tablist">
+       <button class="a-btn" role="tab" aria-controls="panel-id">Label</button>
+     Panels are plain elements toggled with `hidden`, so print reveals the
+     active one and `.a-print-reveal` can opt others in. */
+  function selectTab(list, tab) {
+    list.querySelectorAll('[role="tab"]').forEach(function (candidate) {
+      var selected = candidate === tab;
+      candidate.setAttribute("aria-selected", String(selected));
+      candidate.tabIndex = selected ? 0 : -1;
+      var panel = document.getElementById(
+        candidate.getAttribute("aria-controls") || ""
+      );
+      if (panel) panel.hidden = !selected;
+    });
+  }
+
+  document.querySelectorAll("[data-a-tabs]").forEach(function (list) {
+    var tabs = Array.prototype.slice.call(
+      list.querySelectorAll('[role="tab"]')
+    );
+    if (!tabs.length) return;
+    var active =
+      tabs.filter(function (t) {
+        return t.getAttribute("aria-selected") === "true";
+      })[0] || tabs[0];
+    selectTab(list, active);
+
+    list.addEventListener("click", function (event) {
+      var tab = event.target.closest('[role="tab"]');
+      if (tab) selectTab(list, tab);
+    });
+
+    list.addEventListener("keydown", function (event) {
+      var step =
+        event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      var current = tabs.indexOf(document.activeElement);
+      var next = tabs[(current + step + tabs.length) % tabs.length];
+      next.focus();
+      selectTab(list, next);
+    });
+  });
+
+  /* ---------- row filters ----------
+     <select data-a-filter="#table-id" data-a-filter-key="team">
+     Rows opt in with a matching `data-team` attribute; "all" clears it. */
+  document.querySelectorAll("[data-a-filter]").forEach(function (control) {
+    var target = document.querySelector(control.getAttribute("data-a-filter"));
+    var key = control.getAttribute("data-a-filter-key") || "filter";
+    if (!target) return;
+
+    var emptySelector = control.getAttribute("data-a-filter-empty");
+    var empty = emptySelector ? document.querySelector(emptySelector) : null;
+
+    var applyFilter = function () {
+      var value = control.value;
+      var shown = 0;
+      /* Re-read the rows every time: a script may have replaced them since
+         the last pass, and those rows must obey the current selection too. */
+      target.querySelectorAll("[data-" + key + "]").forEach(function (row) {
+        var match = value === "all" || row.getAttribute("data-" + key) === value;
+        row.hidden = !match;
+        if (match) shown += 1;
+      });
+      if (empty) empty.hidden = shown !== 0;
+      target.hidden = shown === 0 && !!empty;
+    };
+
+    control.addEventListener("change", applyFilter);
+    applyFilter();
+
+    /* Rows swapped in by a script are filtered as soon as they land, so a
+       redraw never shows rows the current selection excludes. Only childList
+       is watched, so the `hidden` writes above cannot retrigger this. */
+    new MutationObserver(function () {
+      applyFilter();
+    }).observe(target, { childList: true, subtree: true });
+  });
+
+  /* ---------- pinned columns ----------
+     <table class="a-table" data-a-sticky-columns="2">
+     CSS pins the first column on its own. The kit measures the leading
+     columns so every pinned cell gets its cumulative `--a-sticky-left`, and
+     re-measures when the table resizes, its rows change, or a filter hides
+     rows. Cells spanning past the last pinned column stay unpinned. The
+     scroll wrapper carries `data-a-scrolled` while the table is scrolled
+     sideways, so the divider only shows with columns underneath it. */
+  function stickyCount(table) {
+    var count = parseInt(table.getAttribute("data-a-sticky-columns"), 10);
+    return count > 0 ? count : 0;
+  }
+
+  function layoutSticky(table) {
+    var count = stickyCount(table);
+    var pinned = [];
+    var widths = [];
+    var columns = 0;
+    /* Rows spanned into from above shift where later cells start. */
+    var carried = [];
+    Array.prototype.forEach.call(table.rows, function (row, index) {
+      var taken = carried[index] || [];
+      var column = 0;
+      Array.prototype.forEach.call(row.cells, function (cell) {
+        while (taken[column]) column += 1;
+        var end = column + Math.max(1, cell.colSpan || 1);
+        if (end <= count) {
+          pinned.push({ cell: cell, start: column, end: end });
+          /* Hidden rows measure 0, so a later visible row fills the gap. */
+          if (end === column + 1 && !widths[column]) {
+            widths[column] = cell.getBoundingClientRect().width;
+          }
+        }
+        for (var below = 1; below < (cell.rowSpan || 1); below += 1) {
+          var next = (carried[index + below] = carried[index + below] || []);
+          for (var spanned = column; spanned < end; spanned += 1) {
+            next[spanned] = true;
+          }
+        }
+        column = end;
+        columns = Math.max(columns, end);
+      });
+    });
+
+    var edge = Math.min(count, columns);
+    var offsets = [0];
+    for (var position = 1; position < edge; position += 1) {
+      /* Not rendered yet (a closed disclosure or hidden tab): keep the last
+         layout and measure again once the table has a size. */
+      if (!widths[position - 1]) return;
+      offsets[position] = offsets[position - 1] + widths[position - 1];
+    }
+
+    var keep = new Set();
+    pinned.forEach(function (entry) {
+      keep.add(entry.cell);
+      entry.cell.setAttribute("data-a-sticky", entry.end === edge ? "edge" : "");
+      entry.cell.style.setProperty(
+        "--a-sticky-left",
+        offsets[entry.start] + "px"
+      );
+    });
+    table.querySelectorAll("[data-a-sticky]").forEach(function (cell) {
+      if (keep.has(cell)) return;
+      cell.removeAttribute("data-a-sticky");
+      cell.style.removeProperty("--a-sticky-left");
+    });
+    if (count) table.setAttribute("data-a-sticky-ready", "");
+    else table.removeAttribute("data-a-sticky-ready");
+  }
+
+  document
+    .querySelectorAll(".a-table[data-a-sticky-columns]")
+    .forEach(function (table) {
+      var queued = false;
+      var schedule = function () {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function () {
+          queued = false;
+          layoutSticky(table);
+        });
+      };
+      layoutSticky(table);
+      if (window.ResizeObserver) new ResizeObserver(schedule).observe(table);
+      /* Only structure and content are watched, so the kit's own
+         `data-a-sticky` and offset writes cannot retrigger this. */
+      new MutationObserver(schedule).observe(table, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: ["hidden", "colspan", "rowspan", "data-a-sticky-columns"]
+      });
+
+      /* The wrapper element survives a chart moving it into its "Data
+         table" disclosure, so the listener does too. */
+      var scroller = table.closest(".a-table-scroll");
+      if (!scroller) return;
+      var syncScrolled = function () {
+        scroller.toggleAttribute("data-a-scrolled", scroller.scrollLeft > 0);
+      };
+      scroller.addEventListener("scroll", syncScrolled, { passive: true });
+      syncScrolled();
+    });
+
+  /* ---------- tooltips ----------
+     One shared tooltip serves every chart and any element carrying
+     `data-a-tip`. Pointer, keyboard focus, and touch all route through the
+     same show/hide pair, so an exact value is never hover-only. */
+  var tipEl = null;
+  var tipRelease = null;
+  var tipHost = null;
+
+  function tipNode() {
+    if (tipEl) return tipEl;
+    tipEl = document.createElement("div");
+    tipEl.className = "a-tip a-no-print";
+    tipEl.setAttribute("role", "tooltip");
+    tipEl.hidden = true;
+    document.body.appendChild(tipEl);
+    return tipEl;
+  }
+
+  function hideTip() {
+    var release = tipRelease;
+    tipRelease = null;
+    tipHost = null;
+    if (release) release();
+    if (tipEl) tipEl.hidden = true;
+  }
+
+  function positionTip(anchor, pointer) {
+    var el = tipNode();
+    var width = el.offsetWidth;
+    var height = el.offsetHeight;
+    var edge = 8;
+    var x = pointer ? pointer.x + 14 : anchor.left + anchor.width / 2 - width / 2;
+    var y = pointer ? pointer.y - height - 16 : anchor.top - height - 10;
+    if (y < edge) y = pointer ? pointer.y + 22 : anchor.bottom + 10;
+    x = Math.max(edge, Math.min(x, window.innerWidth - width - edge));
+    y = Math.max(edge, Math.min(y, window.innerHeight - height - edge));
+    el.style.transform =
+      "translate(" + Math.round(x) + "px, " + Math.round(y) + "px)";
+  }
+
+  function tipRow(row) {
+    var line = document.createElement("div");
+    line.className =
+      "a-tip__row" + (row.series ? " a-series-" + row.series : "");
+    if (row.series) {
+      var swatch = document.createElement("span");
+      swatch.className = "a-tip__swatch";
+      line.appendChild(swatch);
+    }
+    var name = document.createElement("span");
+    name.className = "a-tip__name";
+    name.textContent = row.name || "";
+    line.appendChild(name);
+    var value = document.createElement("span");
+    value.className = "a-tip__value";
+    value.textContent = row.value == null || row.value === "" ? "—" : row.value;
+    line.appendChild(value);
+    return line;
+  }
+
+  /* `content` is { title, text, rows: [{ name, value, series }] }. `release`
+     runs when the tooltip is replaced or dismissed so the owner can drop its
+     highlight state. */
+  function showTip(content, host, anchor, pointer, release) {
+    if (tipRelease && tipRelease !== release) {
+      var previous = tipRelease;
+      tipRelease = null;
+      previous();
+    }
+    tipRelease = release || null;
+    tipHost = host || null;
+    var el = tipNode();
+    el.textContent = "";
+    if (content.title) {
+      var title = document.createElement("div");
+      title.className = "a-tip__title";
+      title.textContent = content.title;
+      el.appendChild(title);
+    }
+    if (content.text) {
+      var text = document.createElement("div");
+      text.className = "a-tip__text";
+      text.textContent = content.text;
+      el.appendChild(text);
+    }
+    (content.rows || []).forEach(function (row) {
+      el.appendChild(tipRow(row));
+    });
+    el.hidden = false;
+    positionTip(anchor, pointer);
+  }
+
+  /* Escape hatch for hand-authored marks: `data-a-tip` holds the value text
+     and the optional `data-a-tip-title` holds a heading. */
+  function annotatedHost(node) {
+    return node && node.closest ? node.closest("[data-a-tip]") : null;
+  }
+
+  function showAnnotatedTip(host, pointer) {
+    showTip(
+      {
+        title: host.getAttribute("data-a-tip-title") || "",
+        text: host.getAttribute("data-a-tip") || ""
+      },
+      host,
+      host.getBoundingClientRect(),
+      pointer,
+      null
+    );
+  }
+
+  document.addEventListener("pointerover", function (event) {
+    var host = annotatedHost(event.target);
+    if (!host) return;
+    showAnnotatedTip(
+      host,
+      event.pointerType === "touch" ? null : { x: event.clientX, y: event.clientY }
+    );
+  });
+
+  document.addEventListener("pointermove", function (event) {
+    if (!tipHost || event.pointerType === "touch") return;
+    if (!tipHost.hasAttribute || !tipHost.hasAttribute("data-a-tip")) return;
+    if (annotatedHost(event.target) !== tipHost) return;
+    positionTip(tipHost.getBoundingClientRect(), {
+      x: event.clientX,
+      y: event.clientY
+    });
+  });
+
+  document.addEventListener("pointerout", function (event) {
+    var host = annotatedHost(event.target);
+    if (!host || host !== tipHost) return;
+    if (event.relatedTarget && host.contains(event.relatedTarget)) return;
+    hideTip();
+  });
+
+  document.addEventListener("focusin", function (event) {
+    var host = annotatedHost(event.target);
+    if (host) showAnnotatedTip(host, null);
+  });
+
+  document.addEventListener("focusout", function (event) {
+    var host = annotatedHost(event.target);
+    if (!host || host !== tipHost) return;
+    /* A still-hovered mark keeps its tooltip; `pointerout` closes that one. */
+    if (host.matches && host.matches(":hover")) return;
+    hideTip();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") hideTip();
+  });
+
+  window.addEventListener("scroll", hideTip, true);
+  window.addEventListener("resize", hideTip);
+
+  /* ---------- charts ----------
+     <figure class="a-figure" data-a-chart="bar|stacked-bar|line"> wrapping a
+     plain <table> of the same numbers. The table is both the data source and
+     the no-script fallback: the kit draws the chart from it and then keeps it
+     under a disclosure as the exact-value equivalent. Each category gets a
+     hover band that also takes keyboard focus, so pointer, arrow keys, and
+     tap all produce the same readout. */
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var CHART_WIDTH = 640;
+  var CHART_TYPES = { bar: 1, "stacked-bar": 1, line: 1 };
+
+  function svgNode(name, attrs) {
+    var node = document.createElementNS(SVG_NS, name);
+    Object.keys(attrs || {}).forEach(function (key) {
+      node.setAttribute(key, String(attrs[key]));
+    });
+    return node;
+  }
+
+  /* `data-value` wins so cells can stay human-readable ("1,284", "18m 24s"). */
+  function cellNumber(cell) {
+    var explicit = cell.getAttribute("data-value");
+    var text = (explicit === null ? cell.textContent : explicit) || "";
+    var match = text
+      .replace(/\u2212/g, "-")
+      .replace(/,/g, "")
+      .match(/-?\d*\.?\d+/);
+    return match ? parseFloat(match[0]) : null;
+  }
+
+  function readChartTable(table) {
+    var headCells = table.querySelectorAll("thead th");
+    if (headCells.length < 2) return null;
+    var series = [];
+    for (var column = 1; column < headCells.length; column += 1) {
+      series.push(headCells[column].textContent.trim());
+    }
+    var categories = [];
+    table.querySelectorAll("tbody tr").forEach(function (row) {
+      var cells = row.children;
+      if (cells.length < 2) return;
+      /* A hidden row is filtered out, so the chart matches what is listed. */
+      if (row.hidden || row.hasAttribute("data-a-excluded")) return;
+      var point = {
+        label: cells[0].textContent.trim(),
+        row: row,
+        values: [],
+        texts: []
+      };
+      series.forEach(function (name, position) {
+        var cell = cells[position + 1];
+        point.values.push(cell ? cellNumber(cell) : null);
+        point.texts.push(cell ? cell.textContent.trim() : "");
+      });
+      categories.push(point);
+    });
+    return categories.length
+      ? { series: series, categories: categories }
+      : null;
+  }
+
+  function niceCeil(value) {
+    if (!(value > 0)) return 1;
+    var magnitude = Math.pow(10, Math.floor(Math.log(value) / Math.LN10));
+    var steps = [1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10];
+    for (var i = 0; i < steps.length; i += 1) {
+      if (value <= steps[i] * magnitude) return steps[i] * magnitude;
+    }
+    return 10 * magnitude;
+  }
+
+  function formatTick(value) {
+    var size = Math.abs(value);
+    if (size >= 1000000) {
+      return (value / 1000000).toFixed(size % 1000000 ? 1 : 0) + "M";
+    }
+    if (size >= 1000) return (value / 1000).toFixed(size % 1000 ? 1 : 0) + "k";
+    return String(Math.round(value * 100) / 100);
+  }
+
+  /* Per-figure render state so a chart can be drawn more than once: the
+     nodes from the previous pass are thrown away and rebuilt from whatever
+     the table says now. */
+  var chartState = new WeakMap();
+
+  function chartTable(figure) {
+    var details = figure.querySelector(".a-chart__data");
+    return (details || figure).querySelector("table");
+  }
+
+  /* The table is the source of truth, so any change to it — a filter hiding
+     rows, new rows, an edited cell — redraws the chart on its own. */
+  function watchChartTable(figure, state) {
+    if (state.observer) return;
+    var queued = false;
+    state.observer = new MutationObserver(function () {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        renderChart(figure);
+      });
+    });
+    /* Watching the disclosure rather than the table keeps the chart live even
+       when a script replaces the whole <table>. */
+    state.observer.observe(state.details, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["hidden", "data-a-excluded", "data-value"]
+    });
+  }
+
+  function renderChart(figure) {
+    var type = figure.getAttribute("data-a-chart");
+    var table = chartTable(figure);
+    if (!CHART_TYPES[type] || !table) return;
+
+    var state = chartState.get(figure);
+    if (!state) {
+      state = { nodes: [], details: null, observer: null, focused: null };
+      chartState.set(figure, state);
+    }
+
+    /* Keeping the reader's place: a re-render restores keyboard focus to the
+       same category when it survives. */
+    var hadFocus = state.nodes.some(function (node) {
+      return node.contains(document.activeElement);
+    });
+    var refocus = hadFocus ? state.focused : null;
+    if (tipHost && figure.contains(tipHost)) hideTip();
+    state.nodes.forEach(function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+    state.nodes = [];
+
+    if (!state.details) {
+      var source = table.closest(".a-table-scroll") || table;
+      var details = document.createElement("details");
+      details.className = "a-disclosure a-chart__data";
+      var summary = document.createElement("summary");
+      summary.textContent = "Data table";
+      details.appendChild(summary);
+      source.parentNode.insertBefore(details, source);
+      details.appendChild(source);
+      state.details = details;
+    }
+    watchChartTable(figure, state);
+
+    var data = readChartTable(table);
+    if (!data) {
+      var empty = document.createElement("p");
+      empty.className = "a-chart__empty";
+      empty.textContent =
+        figure.getAttribute("data-a-chart-empty") ||
+        "No data for this selection.";
+      figure.insertBefore(empty, state.details);
+      state.nodes.push(empty);
+      state.focused = null;
+      return;
+    }
+
+    var stacked = type === "stacked-bar";
+    var isLine = type === "line";
+    var height = parseFloat(figure.getAttribute("data-a-chart-height")) || 220;
+    var unit = figure.getAttribute("data-a-chart-unit") || "";
+    var tickUnit = unit.length <= 2 ? unit : "";
+    var pad = { top: 14, right: 14, bottom: 30, left: 46 };
+    var plotWidth = CHART_WIDTH - pad.left - pad.right;
+    var plotHeight = height - pad.top - pad.bottom;
+    var bandWidth = plotWidth / data.categories.length;
+
+    var high = 0;
+    var low = 0;
+    data.categories.forEach(function (point) {
+      var sum = 0;
+      point.values.forEach(function (value) {
+        if (value === null) return;
+        sum += value > 0 ? value : 0;
+        low = Math.min(low, value);
+        if (!stacked) high = Math.max(high, value);
+      });
+      if (stacked) high = Math.max(high, sum);
+    });
+    var declaredMax = parseFloat(figure.getAttribute("data-a-chart-max"));
+    var maxY = isFinite(declaredMax) ? declaredMax : niceCeil(high);
+    var minY = low < 0 ? -niceCeil(-low) : 0;
+    var span = maxY - minY || 1;
+
+    var scaleY = function (value) {
+      return pad.top + ((maxY - value) / span) * plotHeight;
+    };
+    var centerX = function (index) {
+      return pad.left + bandWidth * (index + 0.5);
+    };
+    var describe = function (index) {
+      var point = data.categories[index];
+      return (
+        point.label +
+        ": " +
+        data.series
+          .map(function (name, position) {
+            return name + " " + (point.texts[position] || "no value");
+          })
+          .join(", ")
+      );
+    };
+
+    var caption = figure.querySelector("figcaption");
+    var svg = svgNode("svg", {
+      class: "a-chart",
+      viewBox: "0 0 " + CHART_WIDTH + " " + height,
+      role: "group",
+      "aria-label":
+        (figure.getAttribute("data-a-chart-label") ||
+          (caption ? caption.textContent.trim() : "Chart")) +
+        ". Use the arrow keys to read each value."
+    });
+
+    var grid = svgNode("g", { class: "a-chart__grid" });
+    var axis = svgNode("g", { class: "a-chart__axis" });
+    for (var tick = 0; tick <= 4; tick += 1) {
+      var value = minY + (span * tick) / 4;
+      var y = scaleY(value);
+      grid.appendChild(
+        svgNode("line", {
+          x1: pad.left,
+          y1: y,
+          x2: CHART_WIDTH - pad.right,
+          y2: y
+        })
+      );
+      var tickLabel = svgNode("text", {
+        x: pad.left - 8,
+        y: y + 3.5,
+        "text-anchor": "end"
+      });
+      tickLabel.textContent = formatTick(value) + tickUnit;
+      axis.appendChild(tickLabel);
+    }
+
+    var labelStep = Math.ceil(data.categories.length / 8);
+    data.categories.forEach(function (point, index) {
+      if (index % labelStep) return;
+      var text = svgNode("text", {
+        x: centerX(index),
+        y: height - 10,
+        "text-anchor": "middle"
+      });
+      text.textContent = point.label;
+      axis.appendChild(text);
+    });
+
+    var plot = svgNode("g", { class: "a-chart__plot" });
+    /* Past ~30 points a marker per category reads as a scatter plot instead
+       of a line, so dense series drop to a bare stroke and only the active
+       point is drawn (CSS gives it a radius again). */
+    var pointRadius = data.categories.length > 30 ? 0 : 2.75;
+    if (isLine) {
+      data.series.forEach(function (name, position) {
+        /* A missing value breaks the line rather than bridging the gap. */
+        var segments = [[]];
+        data.categories.forEach(function (point, index) {
+          var value = point.values[position];
+          if (value === null) {
+            if (segments[segments.length - 1].length) segments.push([]);
+            return;
+          }
+          segments[segments.length - 1].push(
+            centerX(index) + "," + scaleY(value)
+          );
+          plot.appendChild(
+            svgNode("circle", {
+              class: "a-chart__point a-series-" + (position + 1),
+              cx: centerX(index),
+              cy: scaleY(value),
+              r: pointRadius,
+              "data-a-index": index
+            })
+          );
+        });
+        segments.forEach(function (coordinates) {
+          if (!coordinates.length) return;
+          plot.insertBefore(
+            svgNode("polyline", {
+              class: "a-chart__series a-series-" + (position + 1),
+              points: coordinates.join(" ")
+            }),
+            plot.firstChild
+          );
+        });
+      });
+    } else {
+      var inset = bandWidth * 0.18;
+      var slot = (bandWidth - inset * 2) / (stacked ? 1 : data.series.length);
+      var baseline = scaleY(Math.max(minY, 0));
+      data.categories.forEach(function (point, index) {
+        var stackTop = 0;
+        data.series.forEach(function (name, position) {
+          var value = point.values[position];
+          if (value === null) return;
+          var from = baseline;
+          var to;
+          if (stacked) {
+            from = scaleY(stackTop);
+            stackTop += value;
+            to = scaleY(stackTop);
+          } else {
+            to = scaleY(value);
+          }
+          plot.appendChild(
+            svgNode("rect", {
+              class: "a-chart__bar a-series-" + (position + 1),
+              x:
+                pad.left +
+                bandWidth * index +
+                inset +
+                slot * (stacked ? 0 : position),
+              y: Math.min(from, to),
+              width: Math.max(1, slot - 2),
+              height: Math.max(1, Math.abs(to - from)),
+              rx: 2,
+              "data-a-index": index
+            })
+          );
+        });
+      });
+    }
+
+    var crosshair = svgNode("line", {
+      class: "a-chart__crosshair",
+      x1: pad.left,
+      x2: pad.left,
+      y1: pad.top,
+      y2: pad.top + plotHeight,
+      hidden: "hidden"
+    });
+
+    var overlay = svgNode("g", { class: "a-chart__bands" });
+    var bands = data.categories.map(function (point, index) {
+      var band = svgNode("rect", {
+        class: "a-chart__band",
+        x: pad.left + bandWidth * index,
+        y: pad.top,
+        width: bandWidth,
+        height: plotHeight,
+        tabindex: index === 0 ? 0 : -1,
+        role: "img",
+        "aria-label": describe(index)
+      });
+      overlay.appendChild(band);
+      return band;
+    });
+
+    svg.appendChild(grid);
+    svg.appendChild(axis);
+    svg.appendChild(plot);
+    svg.appendChild(crosshair);
+    svg.appendChild(overlay);
+
+    figure.insertBefore(svg, state.details);
+    state.nodes.push(svg);
+
+    if (data.series.length > 1) {
+      var legend = document.createElement("ul");
+      legend.className = "a-legend";
+      data.series.forEach(function (name, position) {
+        var item = document.createElement("li");
+        item.className = "a-series-" + (position + 1);
+        var swatch = document.createElement("span");
+        swatch.className = "a-legend__swatch";
+        item.appendChild(swatch);
+        item.appendChild(document.createTextNode(name));
+        legend.appendChild(item);
+      });
+      figure.insertBefore(legend, state.details);
+      state.nodes.push(legend);
+    }
+
+    var readout = document.createElement("p");
+    readout.className = "a-visually-hidden";
+    readout.setAttribute("aria-live", "polite");
+    figure.appendChild(readout);
+    state.nodes.push(readout);
+
+    var clear = function () {
+      bands.forEach(function (band) {
+        band.removeAttribute("data-a-active");
+      });
+      plot.querySelectorAll("[data-a-index]").forEach(function (mark) {
+        mark.removeAttribute("data-a-active");
+      });
+      crosshair.setAttribute("hidden", "hidden");
+      readout.textContent = "";
+    };
+
+    var activate = function (index, pointer) {
+      if (index < 0 || index >= bands.length) return;
+      clear();
+      bands[index].setAttribute("data-a-active", "true");
+      plot
+        .querySelectorAll('[data-a-index="' + index + '"]')
+        .forEach(function (mark) {
+          mark.setAttribute("data-a-active", "true");
+        });
+      if (isLine) {
+        crosshair.setAttribute("x1", centerX(index));
+        crosshair.setAttribute("x2", centerX(index));
+        crosshair.removeAttribute("hidden");
+      }
+      readout.textContent = describe(index);
+      showTip(
+        {
+          title: data.categories[index].label,
+          rows: data.series.map(function (name, position) {
+            return {
+              name: name,
+              value: data.categories[index].texts[position],
+              series: position + 1
+            };
+          })
+        },
+        bands[index],
+        bands[index].getBoundingClientRect(),
+        pointer,
+        clear
+      );
+    };
+
+    /* -1 outside the plot area, so the axis and margins read as no category. */
+    var indexAt = function (clientX) {
+      var box = svg.getBoundingClientRect();
+      if (!box.width) return -1;
+      var local = ((clientX - box.left) / box.width) * CHART_WIDTH;
+      if (local < pad.left || local > pad.left + plotWidth) return -1;
+      var index = Math.floor((local - pad.left) / bandWidth);
+      return Math.max(0, Math.min(data.categories.length - 1, index));
+    };
+
+    svg.addEventListener("pointermove", function (event) {
+      if (event.pointerType === "touch") return;
+      var index = indexAt(event.clientX);
+      if (index === -1) {
+        if (bands.indexOf(document.activeElement) === -1) hideTip();
+        return;
+      }
+      activate(index, { x: event.clientX, y: event.clientY });
+    });
+
+    svg.addEventListener("pointerdown", function (event) {
+      if (event.pointerType !== "touch") return;
+      activate(indexAt(event.clientX), null);
+    });
+
+    /* Touch leaves as soon as the finger lifts, so a tap keeps its readout. */
+    svg.addEventListener("pointerleave", function (event) {
+      if (event.pointerType === "touch") return;
+      if (bands.indexOf(document.activeElement) === -1) hideTip();
+    });
+
+    bands.forEach(function (band, index) {
+      band.addEventListener("focus", function () {
+        state.focused = {
+          index: index,
+          row: data.categories[index].row,
+          label: data.categories[index].label
+        };
+        activate(index, null);
+      });
+      band.addEventListener("blur", function () {
+        if (tipHost === band) hideTip();
+      });
+    });
+
+    svg.addEventListener("keydown", function (event) {
+      var current = bands.indexOf(document.activeElement);
+      if (current === -1) return;
+      var next = current;
+      if (event.key === "ArrowRight") next = current + 1;
+      else if (event.key === "ArrowLeft") next = current - 1;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = bands.length - 1;
+      else return;
+      event.preventDefault();
+      next = Math.max(0, Math.min(bands.length - 1, next));
+      bands.forEach(function (band, position) {
+        band.setAttribute("tabindex", position === next ? "0" : "-1");
+      });
+      bands[next].focus();
+    });
+
+    if (refocus) {
+      /* The same row, not the same slot: filtering rows above the reader's
+         position must not move them onto a different bar. */
+      var target = data.categories.findIndex(function (category) {
+        return category.row === refocus.row;
+      });
+      /* Rows rebuilt wholesale lose their identity, so fall back to the label
+         and then to the old slot. */
+      if (target === -1) {
+        target = data.categories.findIndex(function (category) {
+          return category.label === refocus.label;
+        });
+      }
+      if (target === -1) target = Math.min(refocus.index, bands.length - 1);
+      bands.forEach(function (band, position) {
+        band.setAttribute("tabindex", position === target ? "0" : "-1");
+      });
+      bands[target].focus();
+    }
+  }
+
+  function renderCharts(target) {
+    if (target === undefined || target === null) {
+      document.querySelectorAll("[data-a-chart]").forEach(renderChart);
+      return;
+    }
+    var scope =
+      typeof target === "string" ? document.querySelector(target) : target;
+    if (!scope) return;
+    if (scope.matches && scope.matches("[data-a-chart]")) renderChart(scope);
+    else scope.querySelectorAll("[data-a-chart]").forEach(renderChart);
+  }
+
+  renderCharts();
+
+  /* The only public surface of the kit: artifacts that swap or filter a
+     chart's rows themselves can force a redraw, though the table observer
+     above already covers ordinary DOM edits. */
+  window.artifactKit = window.artifactKit || {};
+  window.artifactKit.renderCharts = renderCharts;
+
+  /* Print carries the numbers, not the hover: expand every chart's data
+     table before the page is rendered. */
+  var printReopened = [];
+  window.addEventListener("beforeprint", function () {
+    hideTip();
+    document.querySelectorAll(".a-chart__data").forEach(function (details) {
+      if (details.open) return;
+      printReopened.push(details);
+      details.open = true;
+    });
+  });
+
+  window.addEventListener("afterprint", function () {
+    printReopened.forEach(function (details) {
+      details.open = false;
+    });
+    printReopened = [];
+  });
+
+  /* ---------- diagram: pan, zoom, select ----------
+     Pointer drag and wheel pan/zoom the viewport group; arrow keys and
+     +/-/0 do the same from the keyboard so the diagram is operable without
+     a pointing device. Node clicks (or Enter/Space) update the inspector. */
+  document.querySelectorAll("[data-a-diagram]").forEach(function (diagram) {
+    var svg = diagram.querySelector("[data-a-diagram-canvas]");
+    var viewport = diagram.querySelector("[data-a-diagram-viewport]");
+    if (!svg || !viewport) return;
+
+    var view = { x: 0, y: 0, scale: 1 };
+    var drag = null;
+
+    var render = function () {
+      viewport.setAttribute(
+        "transform",
+        "translate(" + view.x + " " + view.y + ") scale(" + view.scale + ")"
+      );
+    };
+
+    var zoomBy = function (factor) {
+      view.scale = Math.min(2.5, Math.max(0.5, view.scale * factor));
+      render();
+    };
+
+    svg.addEventListener("pointerdown", function (event) {
+      if (event.target.closest("[data-a-node]")) return;
+      drag = { x: event.clientX, y: event.clientY };
+      svg.setPointerCapture(event.pointerId);
+    });
+
+    svg.addEventListener("pointermove", function (event) {
+      if (!drag) return;
+      view.x += event.clientX - drag.x;
+      view.y += event.clientY - drag.y;
+      drag = { x: event.clientX, y: event.clientY };
+      render();
+    });
+
+    var endDrag = function () {
+      drag = null;
+    };
+    svg.addEventListener("pointerup", endDrag);
+    svg.addEventListener("pointercancel", endDrag);
+
+    svg.addEventListener(
+      "wheel",
+      function (event) {
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        zoomBy(event.deltaY < 0 ? 1.1 : 0.9);
+      },
+      { passive: false }
+    );
+
+    diagram.addEventListener("keydown", function (event) {
+      var pan = { ArrowUp: [0, 24], ArrowDown: [0, -24], ArrowLeft: [24, 0], ArrowRight: [-24, 0] }[
+        event.key
+      ];
+      if (pan && !event.target.closest("[data-a-node]")) {
+        event.preventDefault();
+        view.x += pan[0];
+        view.y += pan[1];
+        render();
+        return;
+      }
+      if (event.key === "+" || event.key === "=") zoomBy(1.1);
+      else if (event.key === "-") zoomBy(0.9);
+      else if (event.key === "0") {
+        view = { x: 0, y: 0, scale: 1 };
+        render();
+      }
+    });
+
+    diagram.querySelectorAll("[data-a-zoom]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var action = button.getAttribute("data-a-zoom");
+        if (action === "in") zoomBy(1.15);
+        else if (action === "out") zoomBy(0.87);
+        else {
+          view = { x: 0, y: 0, scale: 1 };
+          render();
+        }
+      });
+    });
+
+    var inspector = diagram.querySelector("[data-a-inspector]");
+    var select = function (node) {
+      diagram.querySelectorAll("[data-a-node]").forEach(function (other) {
+        other.setAttribute("aria-current", String(other === node));
+      });
+      if (!inspector) return;
+      var title = inspector.querySelector("[data-a-inspector-title]");
+      var body = inspector.querySelector("[data-a-inspector-body]");
+      if (title) title.textContent = node.getAttribute("data-a-title") || "";
+      if (body) body.textContent = node.getAttribute("data-a-detail") || "";
+    };
+
+    diagram.querySelectorAll("[data-a-node]").forEach(function (node) {
+      node.addEventListener("click", function () {
+        select(node);
+      });
+      node.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        select(node);
+      });
+    });
+
+    render();
+  });
+})();
+    </script>
+  </body>
+</html>
