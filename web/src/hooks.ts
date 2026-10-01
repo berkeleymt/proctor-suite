@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { api, ApiError, backoff, syncClock, type Snapshot } from "./api";
 
 /** Re-renders every 250 ms (protocol TIMER_TICK_MS). Time is derived, never decremented. */
@@ -27,7 +27,7 @@ export function useClock() {
 
 export interface Poll<T> {
   data: T | null;
-  setData: (d: T) => void;
+  setData: Dispatch<SetStateAction<T | null>>;
   online: boolean;
   unauthorized: boolean;
 }

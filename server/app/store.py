@@ -1,10 +1,12 @@
-"""Slice 1 in-memory store: rooms, sessions, commands.
+"""In-memory state (the only thing room devices read) plus write-through to Postgres.
 
-KNOWN GAP (docs/status/log/2026-10-01-claude-slice1.md): nothing is persisted yet.
-Invariant 5 (commit to Postgres before memory) is NOT met until slice 2.
-Do not use for a real event.
+With DATABASE_URL set (lifespan calls `load`), every write commits to Postgres first and only
+then changes memory (invariant 5), and state is rebuilt from Postgres at startup. Without it
+(unit tests, quick local dev) the Store is memory-only. Sessions (logins) are always memory-only:
+a restart logs everyone out.
 """
 
+import asyncio
 import hmac
 import os
 import re
@@ -13,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from app import db
 from app.fold import SessionSpec, TimerEvent, fold
 from app.protocol.models import (
     ActorKind,
@@ -71,6 +74,48 @@ class Store:
         self.event_name = os.environ.get("EVENT_NAME", "BMT (slice 1 demo)")
         self.rooms = {_slug(n): Room(_slug(n), n, minutes * 60_000, t) for n in names if n}
         self.sessions: dict[str, Session] = {}
+        self.pool = None  # asyncpg pool when persistence is on
+        self._locks: dict[str, asyncio.Lock] = {}
+        self._admin_lock = asyncio.Lock()
+
+    def lock(self, room_id: str) -> asyncio.Lock:
+        return self._locks.setdefault(room_id, asyncio.Lock())
+
+    # --- startup: rebuild memory from Postgres (seed on first run) ---
+    async def load(self, pool) -> None:
+        self.pool = pool
+        rooms, cmds = await db.load_rooms(pool)
+        if not rooms:
+            for r in self.rooms.values():
+                await db.insert_room(pool, r)
+            return
+        loaded: dict[str, Room] = {}
+        for r in rooms:
+            loaded[r["room_id"]] = Room(
+                r["room_id"], r["name"], r["duration_ms"], r["created_at_ms"],
+                test_name=r["test_name"], version=r["version"],
+            )  # fmt: skip
+        for c in cmds:
+            room = loaded.get(c["room_id"])
+            if not room:
+                continue
+            if c["is_event"]:
+                room.events.append(
+                    TimerEvent(
+                        command_id=str(c["command_id"]),
+                        type=EventType(c["type"].upper()),
+                        actor_kind=ActorKind(c["actor_kind"]),
+                        received_at_ms=c["received_at_ms"],
+                        claimed_at_ms=c["claimed_at_ms"],
+                        delta_ms=c["delta_ms"],
+                    )
+                )
+            room.seen[c["command_id"]] = (
+                (c["type"], c["session_id"], c["delta_ms"]),
+                CommandOutcome(c["outcome"]),
+                RejectionReason(c["reason"]) if c["reason"] else None,
+            )
+        self.rooms = loaded
 
     # --- auth ---
     @staticmethod
@@ -83,30 +128,41 @@ class Store:
         self.sessions[token] = s
         return token
 
-    # --- rooms ---
-    def create_room(self, name: str, duration_min: int, test_name: str | None = None) -> Room:
+    # --- rooms (commit first, then memory: invariant 5) ---
+    async def create_room(self, name: str, duration_min: int, test_name: str | None = None) -> Room:
         name = " ".join(name.split())
         slug = _slug(name)
         if not slug:
             raise ValueError("invalid_name")
-        if slug in self.rooms:
-            raise KeyError(slug)
-        room = Room(slug, name, duration_min * 60_000, now_ms())
-        if test_name and test_name.strip():
-            room.test_name = " ".join(test_name.split())
-        self.rooms[slug] = room
-        return room
+        async with self._admin_lock:
+            if slug in self.rooms:
+                raise KeyError(slug)
+            room = Room(slug, name, duration_min * 60_000, now_ms())
+            if test_name and test_name.strip():
+                room.test_name = " ".join(test_name.split())
+            if self.pool:
+                await db.insert_room(self.pool, room)
+            self.rooms[slug] = room
+            return room
 
-    def update_room(self, room: Room, duration_min: int | None, test_name: str | None) -> None:
+    async def update_room(
+        self, room: Room, duration_min: int | None, test_name: str | None
+    ) -> None:
         """Edit duration (only before start) and/or test label. Bumps version so pollers refetch."""
-        if duration_min is not None:
-            status = self.snapshot(room).timer.status
-            if status not in (TimerStatus.NOT_PERMITTED, TimerStatus.PERMITTED):
-                raise PermissionError("room_started")
-            room.duration_ms = duration_min * 60_000
-        if test_name is not None:
-            room.test_name = " ".join(test_name.split())
-        room.version += 1
+        async with self.lock(room.room_id):
+            duration_ms = room.duration_ms
+            if duration_min is not None:
+                status = self.snapshot(room).timer.status
+                if status not in (TimerStatus.NOT_PERMITTED, TimerStatus.PERMITTED):
+                    raise PermissionError("room_started")
+                duration_ms = duration_min * 60_000
+            label = " ".join(test_name.split()) if test_name is not None else room.test_name
+            if self.pool:
+                await db.save_room_settings(
+                    self.pool, room.room_id, label, duration_ms, room.version + 1
+                )
+            room.duration_ms, room.test_name = duration_ms, label
+            room.version += 1
 
     # --- snapshots ---
     def snapshot(self, room: Room) -> RoomSnapshot:
@@ -124,7 +180,11 @@ class Store:
         )
 
     # --- commands (idempotent on command_id; protocol §6.4) ---
-    def apply(self, room: Room, cmd, actor: ActorKind) -> CommandResponse:
+    async def apply(self, room: Room, cmd, actor: ActorKind) -> CommandResponse:
+        async with self.lock(room.room_id):
+            return await self._apply(room, cmd, actor)
+
+    async def _apply(self, room: Room, cmd, actor: ActorKind) -> CommandResponse:
         key = (cmd.type, cmd.session_id, getattr(cmd, "delta_ms", None))
         prior = room.seen.get(cmd.command_id)
         if prior:
@@ -137,6 +197,7 @@ class Store:
                 replayed=True,
                 snapshot=self.snapshot(room),
             )
+        ev = None
         if cmd.session_id != room.session_id:
             outcome, reason = CommandOutcome.REJECTED, RejectionReason.STALE_SESSION
         else:
@@ -148,16 +209,30 @@ class Store:
                 claimed_at_ms=cmd.claimed_at_ms,
                 delta_ms=getattr(cmd, "delta_ms", None),
             )
-            room.events.append(ev)
             spec = SessionSpec(room.session_id, room.duration_ms, room.created_at_ms)
             res = next(
                 r
-                for r in fold(spec, room.events, now_ms()).results
+                for r in fold(spec, [*room.events, ev], now_ms()).results
                 if r.command_id == ev.command_id
             )
             outcome = CommandOutcome.APPLIED if res.applied else CommandOutcome.REJECTED
             reason = res.reason
-            room.version += 1
+        version = room.version + (1 if ev else 0)
+        if self.pool:  # commit BEFORE memory (invariant 5)
+            await db.save_command(
+                self.pool,
+                {
+                    "command_id": cmd.command_id, "room_id": room.room_id, "type": cmd.type,
+                    "session_id": cmd.session_id, "actor_kind": actor.value if ev else None,
+                    "claimed_at_ms": cmd.claimed_at_ms, "received_at_ms": ev.received_at_ms if ev else None,
+                    "delta_ms": getattr(cmd, "delta_ms", None), "is_event": ev is not None,
+                    "outcome": outcome.value, "reason": reason.value if reason else None,
+                },
+                version,
+            )  # fmt: skip
+        if ev:
+            room.events.append(ev)
+        room.version = version
         room.seen[cmd.command_id] = (key, outcome, reason)
         return CommandResponse(
             command_id=cmd.command_id,

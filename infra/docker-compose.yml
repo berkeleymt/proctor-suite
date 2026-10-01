@@ -19,6 +19,18 @@ services:
     depends_on:
       - app
 
+  # One-shot: applies Alembic migrations, then exits. The app waits for it (invariant 10: the app
+  # process itself never migrates). deploy.sh also runs it explicitly before restarting anything.
+  migrate:
+    build: ../server
+    command: ["/app/.venv/bin/alembic", "upgrade", "head"]
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://proctor:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}@postgres:5432/proctor
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   app:
     build: ../server
     restart: unless-stopped
@@ -31,6 +43,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)"]
       interval: 10s

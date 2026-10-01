@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-01 (slice 3) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-01 (slice 4) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -10,16 +10,16 @@
 - The contract exists: [`docs/protocol.md`](../protocol.md) v0.1.0, `contracts/openapi.json`, 23 timer fixtures, Pydantic models, and a reference fold that passes all fixtures.
 - Decisions made today: D1–D12 approved; proctors cannot end early; staff can start on behalf; login is a room-name dropdown; no approval gate on contract changes (ADRs 0001–0003).
 
-**Phase 1 (Prototype): in progress, slices 1-2 pushed; slice 3 (admin Edit, protocol 0.3.0, ADR 0006) written, not pushed. Nothing verified in a browser or deployed yet.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
+**Phase 1 (Prototype): in progress, slices 1-3 pushed; slice 4 (Postgres persistence, bulk select, ADR 0007) written, not pushed. Nothing verified in a browser or deployed yet.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
 
-- Slice 1 = login → proctor Start/Pause/Resume → display timer → admin Allow/Start/+5. Server tests pass (71). UI not yet tried in a browser. In-memory only (no Postgres), polling not SSE. See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
+- Slice 1 = login → proctor Start/Pause/Resume → display timer → admin Allow/Start/+5. Server tests pass (71). UI not yet tried in a browser. Slice 4 added Postgres persistence (rooms and commands; sessions still in memory); still polling, not SSE. See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
 - Scope ceiling is `docs/wireframe.html`. Chat, clarifications, bathroom log, roster, deletion, super-admin need protocol additions first.
 
 ## Next actions, in order
 
-1. Push slice 1. On the server add `ROOM_PASSWORD` and `ADMIN_PASSWORD` to `infra/.env`, run `deploy.sh` (README). Try it on 2 devices.
-2. Slice 2: Postgres + first Alembic migration in `deploy.sh`; commit before memory (closes the invariant 5 gap).
-3. Slice 3: SSE + heartbeat. Then admin "Add room".
+1. Push slice 4 and run `deploy.sh` (README). It now runs the first Alembic migration. Try login, Add room, Edit, bulk Start on 2 devices.
+2. After deploy: `/readyz` says `ready`; restart the app container and confirm rooms and running timers survive.
+3. Slice 5: SSE + heartbeat (replaces polling). Then Reset / Hide.
 
 ## Open, non-blocking
 

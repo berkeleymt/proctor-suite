@@ -7,14 +7,41 @@ Room devices must never call it.
 
 import asyncio
 import os
+from contextlib import asynccontextmanager
 
 import asyncpg
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 
-from app.api import router
+from app import db
+from app.api import router, store
 
-app = FastAPI(title="Proctor Suite", docs_url=None, redoc_url=None)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Load state from Postgres before serving. If the database is down, fail to start loudly."""
+    url = os.environ.get("DATABASE_URL")
+    pool = None
+    if url:
+        pool = await db.connect(url)
+        await store.load(pool)
+    yield
+    if pool:
+        await pool.close()
+
+
+app = FastAPI(title="Proctor Suite", docs_url=None, redoc_url=None, lifespan=lifespan)
+
+
+@app.exception_handler(asyncpg.PostgresError)
+@app.exception_handler(OSError)
+@app.exception_handler(TimeoutError)
+async def db_down(_: Request, __: Exception) -> JSONResponse:
+    """A failed commit changed nothing (invariant 5). Clients retry with the same command_id."""
+    detail = {"error": "unavailable", "message": "Server couldn't save that. Try again."}
+    return JSONResponse({"detail": detail}, status_code=503)
+
+
 app.include_router(router)
 
 

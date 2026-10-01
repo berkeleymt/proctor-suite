@@ -2,8 +2,7 @@
 # Usage: infra/deploy.sh [--rollback | --restart]
 # Pulls main, builds on this machine, restarts, checks health.
 # Nothing deploys automatically; a human runs this.
-# Schema changes (invariant 10): when Alembic exists, the migration step goes
-# where marked below, run here by deploy.sh and never on app startup.
+# Schema changes (invariant 10): Alembic runs below, from here and never on app startup.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -40,7 +39,10 @@ esac
 COMMIT="$(git rev-parse HEAD)"
 echo "Deploying commit $COMMIT"
 
-# MIGRATIONS GO HERE (later): dc run --rm app alembic upgrade head
+# Invariant 10: schema changes run here, once, before the new app starts. Never on app startup.
+# Migrations are additive and forward-only, so --rollback to older code is safe.
+dc build app
+dc run --rm migrate
 
 dc up -d --build --remove-orphans
 wait_healthy

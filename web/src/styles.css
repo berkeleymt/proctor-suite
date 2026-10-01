@@ -58,13 +58,17 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .admin .bar .muted { flex: 1; font-size: 14px; }
 .admin .error { margin: 12px 20px; }
 .table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; }
-.tr { display: grid; grid-template-columns: 1.3fr 1fr 0.9fr 0.7fr 2fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 760px; }
+.tr { display: grid; grid-template-columns: 28px 1.3fr 1fr 0.9fr 0.7fr 2fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 800px; }
 .tr:first-child { border-top: 0; }
 .th { color: var(--muted); font-size: 13px; }
 .tr button { min-height: 40px; padding: 0 14px; }
 
 .scrim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); display: grid; place-items: end center; padding: 16px; animation: fade 180ms var(--ease); }
 .sheet { background: var(--card); border-radius: 20px; padding: 24px; width: min(440px, 100%); animation: rise 240ms var(--ease); }
+input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; padding: 0; accent-color: var(--accent); }
+.bulk { position: sticky; top: 61px; z-index: 1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 20px 0; padding: 10px 14px; border-radius: 16px; background: var(--card); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 30px rgb(0 0 0 / 0.08); animation: row-in 200ms var(--ease); }
+.bulk strong { margin-right: auto; }
+.bulk button { min-height: 40px; padding: 0 14px; }
 @keyframes row-in { from { opacity: 0; transform: translateY(-6px); } }
 .tr.fresh { animation: row-in 240ms var(--ease); }
 @keyframes fade { from { opacity: 0; } }

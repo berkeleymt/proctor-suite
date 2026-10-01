@@ -172,7 +172,7 @@ async def create_room(body: CreateRoomRequest, request: Request, _: Post) -> Roo
     if len(store.rooms) >= MAX_STAFF_ROOMS:
         raise err(409, "too_many_rooms", "Room limit reached.")
     try:
-        room = store.create_room(body.name, body.duration_min, body.test_name)
+        room = await store.create_room(body.name, body.duration_min, body.test_name)
     except ValueError:
         raise err(422, "invalid_request", "Room name needs letters or numbers.") from None
     except KeyError:
@@ -193,7 +193,7 @@ async def update_room(
     if not room:
         raise err(404, "unknown_room", "No such room.")
     try:
-        store.update_room(room, body.duration_min, body.test_name)
+        await store.update_room(room, body.duration_min, body.test_name)
     except PermissionError:
         raise err(
             409, "room_started", "The timer already started. Use +5 min to change the time."
@@ -217,6 +217,6 @@ async def commands(cmd: Command, request: Request, _: Post) -> CommandResponse:
     if cmd.type not in allowed:
         raise err(403, "forbidden", f"'{cmd.type}' is not allowed for this login.")
     try:
-        return store.apply(room, cmd, actor)
+        return await store.apply(room, cmd, actor)
     except ValueError:
         raise err(409, "command_id_conflict", "command_id reused with different content") from None
