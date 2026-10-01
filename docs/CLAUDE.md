@@ -6,6 +6,8 @@ Real-time, offline-tolerant timer and proctoring app for Berkeley Math Tournamen
 
 - Read `specs.md` for *what* we're building.
 - Read `development-plan.md` for *how*: architecture §3, invariants §4.1, schedule §6.
+- Read `docs/protocol.md` for the contract (commands, snapshot, merge rules, constants) and `contracts/timer-fixtures/` for the timer behavior it pins down.
+- Read `docs/status/STATUS.md` for *where we are right now*.
 
 ## Invariants (never violate; reviewers reject PRs that do)
 
@@ -23,7 +25,7 @@ Real-time, offline-tolerant timer and proctoring app for Berkeley Math Tournamen
 ## Working rules
 
 - Keep PRs small (≤ ~400 changed lines) and include tests. Stay inside the directories your ticket names.
-- `docs/protocol.md` and `contracts/` change only with approval from **both** Ian and Forrest.
+- `docs/protocol.md` and `contracts/` are the contract. No approval gate (PM decision, ADR 0003), but every change must bump `PROTOCOL_VERSION`, add a changelog line in `docs/protocol.md` §14, re-export `contracts/openapi.json`, and say in the PR that it touches the contract.
 - Don't write "optimization" changes without a benchmark that shows the problem first.
 - **Feature freeze Nov 1, total freeze Nov 11.** After Nov 1, only bug fixes with a regression test.
 - Record decisions as short ADRs in `docs/adr/`.
@@ -35,7 +37,8 @@ Real-time, offline-tolerant timer and proctoring app for Berkeley Math Tournamen
 | `server/` | FastAPI app (Python 3.13, managed with `uv`) | Ian |
 | `web/` | Frontend: display, control, staff (TS/React/Vite), from Phase 1 | Forrest |
 | `infra/` | Docker Compose, Caddy, server scripts, AWS runbook | Forrest |
-| `contracts/`, `docs/protocol.md` | Shared contract (from Phase 0 contract sprint) | Both |
+| `contracts/`, `docs/protocol.md` | Shared contract: protocol v0.1.0, `openapi.json`, timer fixtures | Both |
+| `server/app/protocol/` | Pydantic wire models and constants (source of the OpenAPI file) | Both |
 
 ## Commands
 
@@ -44,6 +47,7 @@ Server, from `server/`:
 - `uv sync`: install deps. uv picks Python 3.13 by itself; don't use the system `python`.
 - `uv run pytest`: tests
 - `uv run ruff check . && uv run ruff format --check .`: lint and format check
+- `uv run python -m scripts.export_openapi`: regenerate `contracts/openapi.json` after editing `app/protocol/models.py` (a test fails if it's stale)
 - `uv run uvicorn app.main:app --reload`: local dev server on :8000; needs Postgres for `/readyz`
 
 Full stack locally, from `infra/`:
@@ -56,3 +60,7 @@ Full stack locally, from `infra/`:
 - Shell scripts use LF line endings (enforced by `.gitattributes`) and must pass `shellcheck`.
 - Python: async all the way down. No sync DB calls in request handlers.
 - Pin versions: `uv.lock` and `package-lock.json` are committed. Docker images are pinned to a minor version.
+
+## Progress tracking
+
+Before you start, read `docs/status/README.md`, `docs/status/STATUS.md`, and the current `docs/status/phase-N.md`. When you finish, add a note to `docs/status/log/` (use `_TEMPLATE.md`) and update the checklist. Tick a box only with evidence; use `[?]` for anything you couldn't verify. Humans alone record approvals.

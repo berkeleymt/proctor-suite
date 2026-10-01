@@ -1,0 +1,76 @@
+{
+  "name": "claimed-at-out-of-bounds",
+  "description": "claimed_at must lie between session creation and receipt.",
+  "session": {
+    "session_id": "sess-1",
+    "duration_ms": 600000,
+    "created_at_ms": 0
+  },
+  "events": [
+    {
+      "command_id": "c1",
+      "type": "PERMIT",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 1000
+    },
+    {
+      "command_id": "c2",
+      "type": "START",
+      "actor_kind": "room",
+      "claimed_at_ms": 5000,
+      "received_at_ms": 5000
+    },
+    {
+      "command_id": "c3",
+      "type": "PAUSE",
+      "actor_kind": "room",
+      "claimed_at_ms": 99999,
+      "received_at_ms": 50000
+    },
+    {
+      "command_id": "c4",
+      "type": "PAUSE",
+      "actor_kind": "room",
+      "claimed_at_ms": -5000,
+      "received_at_ms": 60000
+    }
+  ],
+  "expected": {
+    "event_results": [
+      {
+        "command_id": "c1",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c2",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c3",
+        "result": "rejected",
+        "reason": "claimed_at_out_of_bounds"
+      },
+      {
+        "command_id": "c4",
+        "result": "rejected",
+        "reason": "claimed_at_out_of_bounds"
+      }
+    ],
+    "at": [
+      {
+        "now_ms": 70000,
+        "snapshot": {
+          "status": "RUNNING",
+          "duration_ms": 600000,
+          "adjust_total_ms": 0,
+          "elapsed_banked_ms": 0,
+          "running_since_ms": 5000
+        },
+        "remaining_ms": 535000
+      }
+    ]
+  }
+}

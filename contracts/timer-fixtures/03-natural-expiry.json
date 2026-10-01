@@ -1,0 +1,74 @@
+{
+  "name": "natural-expiry",
+  "description": "Reaching zero ends the session without any END event. Zero is inclusive.",
+  "session": {
+    "session_id": "sess-1",
+    "duration_ms": 600000,
+    "created_at_ms": 0
+  },
+  "events": [
+    {
+      "command_id": "c1",
+      "type": "PERMIT",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 1000
+    },
+    {
+      "command_id": "c2",
+      "type": "START",
+      "actor_kind": "room",
+      "claimed_at_ms": 5000,
+      "received_at_ms": 5000
+    }
+  ],
+  "expected": {
+    "event_results": [
+      {
+        "command_id": "c1",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c2",
+        "result": "applied",
+        "reason": null
+      }
+    ],
+    "at": [
+      {
+        "now_ms": 604999,
+        "snapshot": {
+          "status": "RUNNING",
+          "duration_ms": 600000,
+          "adjust_total_ms": 0,
+          "elapsed_banked_ms": 0,
+          "running_since_ms": 5000
+        },
+        "remaining_ms": 1
+      },
+      {
+        "now_ms": 605000,
+        "snapshot": {
+          "status": "ENDED",
+          "duration_ms": 600000,
+          "adjust_total_ms": 0,
+          "elapsed_banked_ms": 600000,
+          "running_since_ms": null
+        },
+        "remaining_ms": 0
+      },
+      {
+        "now_ms": 700000,
+        "snapshot": {
+          "status": "ENDED",
+          "duration_ms": 600000,
+          "adjust_total_ms": 0,
+          "elapsed_banked_ms": 600000,
+          "running_since_ms": null
+        },
+        "remaining_ms": 0
+      }
+    ]
+  }
+}

@@ -24,7 +24,7 @@ The decisions below need your sign-off before the contract sprint (§7.4). Reply
 | D6 | Opaque session cookies that last the whole event (no JWTs, no email OTP) | §3.7 | No |
 | D7 | Hosting: one EC2 instance + Docker Compose + Postgres on the same box (no ECS/RDS) | §5 | No |
 | D8 | Answers to the spec's 10 open questions | §2.1 | Fills gaps |
-| D9 | Spec changes: room-code login, staff "start on behalf", PMs export all, only staff end a test early, guarded test switch | §2.2 | **Yes**: small additions |
+| D9 | Spec changes: ~~room-code login~~ (**overridden 2026-10-01: keep the room-name dropdown**), staff "start on behalf", PMs export all, only staff end a test early, guarded test switch | §2.2 | **Yes**: small additions |
 | D10 | Scope tiers: what must ship for Nov 14 vs. what can be cut | §2.3 | Yes: defers some spec features |
 | D11 | Schedule, gates, and freeze dates | §6 | — |
 | D12 | Work split and agent rules | §7 | — |
@@ -83,25 +83,25 @@ I read `Desktop/Coding/contestproctor` (the swire2 repo, ~12k lines, last commit
 | 4. Offline conflicts | **An event log with a deterministic merge (§3.4), not last-write-wins.** Offline room actions are kept with their real timestamps. Admin actions are never overwritten. | Last-write-wins would throw away a real pause the room actually took. The event log keeps what happened in the room *and* guarantees admin actions land. It turns out to be simpler than it sounds (§3.4). |
 | 5. Clock trust | **Never trust device wall clocks.** Measure offset from the server and count with the monotonic clock (§3.5). | School and volunteer laptops are often minutes off. This removes the question entirely. |
 | 6. Message persistence | Messages **stay until cleared**, with an optional auto-expire set by the sender. They're cleared automatically when the room moves to the next test. | Predictable, and students never miss one. |
-| 7. Room password | **Decided:** the **room code is the username**, and there's one password per event. Rotate it each event; only Admins can view or reset it. See 2.2(a). | No dropdown, so no misclicks. |
+| 7. Room password | **Decided:** the **room (picked from a dropdown) is the username**, and there's one password per event. Rotate it each event; only Admins can view or reset it. See 2.2(a). | Matches the spec; the post-login "Is this your room?" screen guards against misclicks. |
 | 8. Pause guard | **A two-step modal:** tap Pause, then a full-screen "Pause Room 204's timer?" with a big Confirm button and an optional reason. **No hold-to-confirm.** | Hold-to-confirm behaves inconsistently on touchscreens and trackpads and is hard to explain to 400 volunteers. |
 | 9. Per-room override | Yes. An adjustment affects **only the current TimerSession**, and the sequence's default durations never change. | Keeps the audit trail clean and avoids surprises in the next test. |
 | 10. Batch selection | **Free-form multi-select** with filters (building, current test, state, "offline now") and a "select all filtered" button. Saved groups are an extra. | Covers every case in the spec without a new entity. |
 
 ### 2.2 Things I think are wrong or missing in the spec
 
-**(a) Login: DECIDED.** The **room code is the username** (e.g. `EVANS60`), printed on the room packet, plus the event password. There's no dropdown. After login, the page shows the room name in huge text with "Is this your room?" to confirm. The staff dashboard shows how many devices are connected to each room, so a mistaken login is visible. *Action: update `specs.md` §5, which still says "room-name dropdown".*
+**(a) Login: DECIDED (revised 2026-10-01 by the PM).** The login screen has a **room-name dropdown** (the room is the "username") plus the one event password, as `specs.md` §5 says. *(An earlier draft proposed typing a printed room code instead; that was dropped.)* After login, the page shows the room name in huge text with "Is this your room?" to confirm, which matters more with a dropdown. The staff dashboard shows how many devices are connected to each room, so a mistaken login is visible. The dropdown list comes from a public, bounded endpoint (`docs/protocol.md` §3, §13 Q3). *No spec change needed.*
 
 **(b) Permissions can't reach an offline room. Fixed without adding anything to the proctor's screen.** Proctors get **no emergency button**, which keeps their screen as simple as possible. (This was only my earlier suggestion and was never in the spec, so the spec needs no change.) The gap is handled on the staff side and by procedure:
 1. **Grant permission early.** The runbook has PMs grant permission to all rooms about 10 minutes before the "go". The permission is saved on each device, so a WiFi drop *after* that doesn't matter: the proctor can still press Start.
 2. **Staff can start a room remotely** from the dashboard (Admin/PM only). If the room's devices are offline, they show the correct remaining time as soon as they reconnect, because the start was recorded on the server at the real moment.
 3. **Last resort:** the paper and wall-clock fallback in §8.
 
-**Spec addition:** add "Start timer on behalf of a room" to the Admin/PM row of the permission matrix.
+**Spec addition (DECIDED yes, 2026-10-01, applied in `specs.md` §2):** "Start timer on behalf of a room" for Admin/PM.
 
 **(c) "PM can export own rooms"** assumes rooms are assigned to PMs, which isn't in the data model. **Proposal:** for v1, PMs export everything. Only add PM-to-room assignment if you really want scoped views.
 
-**(d) Can a proctor end a test early**, e.g. a room where every student finished? The spec says "stop" in places and "pause" in others. **Proposal:** proctors can only pause and resume, and ending early is a PM/Admin action. *(Decision needed.)*
+**(d) Can a proctor end a test early**, e.g. a room where every student finished? The spec says "stop" in places and "pause" in others. **DECIDED (2026-10-01): no.** Proctors can only start, pause and resume; ending early is an Admin/PM action.
 
 **(e) What happens when "switch test" is used on a room that's still RUNNING?** **Proposal:** it's blocked unless the room is ENDED or NOT_PERMITTED, with a separate "force switch" that asks for confirmation and is logged.
 
@@ -249,7 +249,7 @@ The fold is written **twice**, in Python (server) and TypeScript (client). Both 
 
 ### 3.8 Data model (v1 tables)
 
-`events_meta` (Event: id, name, is_practice, status, room_password_hash) · `rooms` (event_id, name, code, building, sequence_id, seq_pos) · `tests` · `test_sequences` + `sequence_items` · `timer_sessions` (room_id, test_id, duration_ms, created_at) · **`events`** (append-only: id, event_id, room_id, session_id, type, payload jsonb, actor_kind, actor_id, device_id, proctor_name, command_id UNIQUE, claimed_at, received_at, status applied|rejected) · `room_current` (the materialized fold for each room, updated in the same transaction) · `clarifications` + `clarification_versions` · `messages` · `bathroom_breaks` · `accounts` · `sessions` · `device_presence` (last heartbeat, clock offset, and outbox length reported by each device).
+`events_meta` (Event: id, name, is_practice, status, room_password_hash) · `rooms` (event_id, name, building, sequence_id, seq_pos) · `tests` · `test_sequences` + `sequence_items` · `timer_sessions` (room_id, test_id, duration_ms, created_at) · **`events`** (append-only: id, event_id, room_id, session_id, type, payload jsonb, actor_kind, actor_id, device_id, proctor_name, command_id UNIQUE, claimed_at, received_at, status applied|rejected) · `room_current` (the materialized fold for each room, updated in the same transaction) · `clarifications` + `clarification_versions` · `messages` · `bathroom_breaks` · `accounts` · `sessions` · `device_presence` (last heartbeat, clock offset, and outbox length reported by each device).
 
 **The spec's AuditLog *is* the `events` table.** Clarifications, messages, and account changes also write rows there. Every CSV export is a query over it.
 
@@ -484,7 +484,7 @@ Each phase ends with a **gate**. We don't start the next phase's feature work un
 | Phase | Dates | Deliverables | Gate |
 |---|---|---|---|
 | **0: Foundations** | Sat Sep 26 – Tue Sep 29 | Contract sprint (§7.4): protocol doc, Pydantic models, generated TS types, first 20 timer fixtures, `CLAUDE.md` + invariants. Repo skeleton + CI. **AWS account + prod server live with HTTPS** (§5; `sslip.io` is fine until DNS exists). Deploy/rollback scripts. | `healthz` is green on AWS; CI is green; both devs have approved the contract |
-| **1: Prototype** ⭐ | Wed Sep 30 – **Mon Oct 5** | Room-code login; permit → start → pause/resume → end; admin ± adjust; display and control screens syncing over SSE **on the real AWS server**; clock sync; bare staff dashboard (room list, grant permission, adjust). *Not in the prototype:* offline outbox, Service Worker, clarifications, bathroom log, exports. | **Oct 5 demo:** 3+ phones and laptops on one room plus the staff dashboard, all in sync on AWS. C1, C6, C11 pass |
+| **1: Prototype** ⭐ | Wed Sep 30 – **Mon Oct 5** | Room login (room dropdown + password); permit → start → pause/resume → end; admin ± adjust; display and control screens syncing over SSE **on the real AWS server**; clock sync; bare staff dashboard (room list, grant permission, adjust). *Not in the prototype:* offline outbox, Service Worker, clarifications, bathroom log, exports. | **Oct 5 demo:** 3+ phones and laptops on one room plus the staff dashboard, all in sync on AWS. C1, C6, C11 pass |
 | **2: Offline core** (Ian) | Oct 6 – Oct 18 | Outbox, merge rules, Service Worker, wake lock, fallback polling, presence/system page, staff "start on behalf" | **Must-pass chaos set green in CI:** C1, C2, C3, C4, C6, C7, C8, C11, C12, C13. The rest are should-pass. Fold property tests pass 10k cases. *(Forrest writes the Playwright chaos tests in parallel, from Oct 6.)* |
 | **3: Surfaces** (Forrest, in parallel) | Oct 6 – Oct 24 | Clarifications (issue/edit/retract), bathroom log, full staff dashboard with batch select, "set current test", audit + CSV export, a proctor-facing one-page guide | Every Tier 1 item works end-to-end on staging |
 | **3b: Hardening** | Oct 19 – Oct 30 | Fleet simulator; **load gate (§4.4) on c7i.xlarge**; 8 h soak; backup restore drill; rebuild drill; event-day runbook draft | Load gate passes; rebuild in under 20 min, done by **Forrest** following the runbook |
@@ -536,7 +536,7 @@ proctor-suite/
 
 1. **Tickets are ready for an agent.** Each GitHub issue lists: goal, the directories in scope, **acceptance tests**, the invariants involved, and what's out of scope. An agent never gets a vague "make it faster".
 2. **One ticket = one PR ≤ ~400 changed lines, tests included.** Run parallel agents in separate git worktrees, one per ticket.
-3. **`contracts/` and `docs/protocol.md` need both humans to approve** (CODEOWNERS plus branch protection). The contract is how you work in parallel without talking every hour, so agents can't quietly change it.
+3. **`contracts/` and `docs/protocol.md` need both humans to approve** (CODEOWNERS plus branch protection). *(Superseded 2026-10-01 by the PM: no approval gate; changes need a version bump and changelog line instead. See `docs/adr/0003`.)* The contract is how you work in parallel without talking every hour, so agents can't quietly change it.
 4. **CI must be green to merge:** lint, typecheck, pytest, Vitest, fixtures (both languages), OpenAPI types up to date, Playwright smoke tests. Chaos e2e runs on `main` nightly, and a failure blocks new feature merges the next day.
 5. **Review:** every PR is reviewed by the *other* human plus an automated `/code-review`. Engine PRs get a line-by-line read by Ian, whoever's agent wrote them.
 6. **No "optimization" PRs without a failing benchmark** showing the problem first.
@@ -563,7 +563,7 @@ proctor-suite/
   - Resize to c7i.xlarge.
   - Load test, then reset data.
   - `event-mode on` (5-minute backups).
-  - Print room codes for the room packets.
+  - Print the event password and the exact room name (as it appears in the login dropdown) on the room packets.
   - Verify UptimeRobot alerts reach two phones.
 - **T−2 h:** every display and control device logs in; the staff system page shows all rooms green.
 - **Roles during the event:**
@@ -586,17 +586,20 @@ proctor-suite/
 - An ambitious timeline is OK.
 - No BMT AWS account, so Forrest creates one (§5).
 - Temporary `sslip.io` address; `berkeley.mt` later.
-- Room code = username.
+- Room (chosen from a dropdown) = username. *(Revised 2026-10-01; earlier "room code" idea dropped.)*
+- D1–D12 approved by the PM (2026-10-01).
+- Proctors cannot end a test early; staff can start a room on behalf of it (2026-10-01).
+- Contract changes need no developer approval gate (PM decision, `docs/adr/0003`).
 - No emergency start on the proctor screen (§2.2b).
 - Display = computers; control = computers and phones (§2.2f).
 - Ian = engine; Forrest = UI/UX, AWS, testing.
 - No features or code from swire2.
 
 **Still open:**
-1. **Ian's sign-off on D1–D12** (top of this document).
+1. ~~Ian's sign-off on D1–D12~~ — approved by the PM on 2026-10-01 (Ian's own agreement is not separately recorded).
 2. **Venue network for Nov 14:** campus WiFi (eduroam/CalVisitor with a captive portal?), and can we get into the venue for the Oct 31 rehearsal?
-3. **Can proctors end a test early (§2.2d)?** The proposal is no: staff only.
-4. **OK to add staff-side "start on behalf of room" (§2.2b)?**
+3. ~~Can proctors end a test early?~~ **No: staff only (decided 2026-10-01).**
+4. ~~Staff-side "start on behalf of room"?~~ **Yes (decided 2026-10-01).**
 5. **Who controls `berkeley.mt` DNS?** This isn't urgent, but it must be sorted by Oct 31.
 6. **What did you see when the spring system died?** Optional; it would confirm which of F1–F7 mattered.
 
@@ -612,7 +615,7 @@ proctor-suite/
 | Venue WiFi blocks or buffers SSE | Medium | Medium | Automatic fallback to polling; test on the venue network at the Oct 31 rehearsal |
 | Offline merge bug corrupts a timer | Medium | High | Shared fixtures, property tests, and C2–C5; rejected events are shown, never silently dropped |
 | Agent-written code nobody understands | High | High | §7.3 rules; engine read line by line by Ian; small PRs |
-| Proctor logs into the wrong room | Medium | High | Room codes, a big confirmation screen, device counts on the dashboard |
+| Proctor logs into the wrong room | Medium | High | Big "Is this your room?" confirmation screen, device counts on the dashboard |
 | Single EC2 instance fails | Very low | Medium | Clients tolerate server death; CloudWatch auto-recover; practiced rebuild in under 20 min; backups every 5 min |
 | Phones lock mid-test and the control page loses connection | High | Low | Outbox in IndexedDB; instant re-sync on visibility; the display (a laptop) is what students watch, so the timer itself is unaffected |
 | Rehearsal finds late bugs | Medium | High | Rehearsal Oct 31 leaves 10 days to fix; Nov 7 staff mini-rehearsal re-checks fixes |
