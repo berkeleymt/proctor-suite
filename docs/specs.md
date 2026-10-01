@@ -1,5 +1,7 @@
 # Proctor Suite — Technical Specification (Draft v1)
 
+> **Implementation progress (2026-10-01).** This spec says *what*; it is not edited as we build. Live status is in [`status/STATUS.md`](status/STATUS.md). Built so far (prototype, not browser-verified): room-name login (§5), projector display and proctor control screens (§5), timer permit/start/pause/resume and admin start-on-behalf and +5 min (§4), admin timers table with add/edit/filter/bulk actions, Postgres persistence of rooms and commands. Not started: bathroom log (§6), offline tolerance (§7), clarifications and messaging (§8), export (§9), practice mode (§10), super-admin. Scope ceiling for UI is `docs/wireframe.html` (ADR 0004).
+
 ## 1. Overview
 
 Proctor Suite is a real-time, offline-tolerant event-day tool for running standardized testing across many simultaneous rooms. It coordinates timers, bathroom-break logging, clarifications, and admin/proctor-manager messaging across roughly 200 rooms and 400 volunteer proctors, run by a small number of Admins, Proctor Managers (PMs), and Test Organizers (TOs).

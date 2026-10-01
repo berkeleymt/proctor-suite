@@ -3,6 +3,7 @@ import { api, ApiError, fmt, post, remainingMs, sendCommand, serverNow, type Sna
 import { useClock, usePoll, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
+import { FitText, useZoom, ZoomButtons } from "../components/FitText";
 
 type Me = { room_id: string; room_name: string };
 
@@ -25,6 +26,7 @@ export function Proctor() {
         <div className="card stack center-text">
           <p className="muted">Is this your room?</p>
           <h1 className="huge">{me.room_name}</h1>
+          <br></br>
           <button className="primary" onClick={() => setConfirmed(true)}>
             Yes, this is my room
           </button>
@@ -40,6 +42,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
   const { data: s, setData, online, unauthorized } = usePoll<Snapshot>(`/api/rooms/${roomId}/snapshot`);
   const [err, setErr] = useState("");
   const [asking, setAsking] = useState(false);
+  const z = useZoom("proctor");
   useEffect(() => {
     if (unauthorized) go("/login");
   }, [unauthorized]);
@@ -65,28 +68,31 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
           <strong>{s.room_name}</strong> <span className="pill" data-s={st}>{label(s)}</span>
         </div>
         <span className={`dot ${online ? "ok" : "bad"}`} title={online ? "Connected" : "Offline"} />
+        <button onClick={logout}>Log out</button>
       </header>
-      <div className="clock small">{fmt(ms)}</div>
-      <div className="row">
-        {st === "NOT_PERMITTED" && <button disabled>Waiting for admin to allow start</button>}
-        {st === "PERMITTED" && (
-          <button className="primary" onClick={() => act("start")}>
-            Start
-          </button>
-        )}
-        {st === "RUNNING" && <button onClick={() => setAsking(true)}>Pause</button>}
-        {st === "PAUSED" && (
-          <button className="primary" onClick={() => act("resume")}>
-            Resume
-          </button>
-        )}
+      <div className="clock-wrap">
+        <FitText className="clock" text={fmt(ms)} zoom={z.zoom} />
+        {/* <ZoomButtons z={z} /> */}
       </div>
       <p className="error" role="alert" hidden={!err}>
         {err}
       </p>
-      <div className="row">
-        <button onClick={() => window.open("/display", "proctor-display", "popup")}>Open display window ↗</button>
-        <button onClick={logout}>Log out</button>
+      <div className="row actions">
+        {st === "RUNNING" ? (
+          <button onClick={() => setAsking(true)}>Pause</button>
+        ) : st === "PAUSED" ? (
+          <button className="primary" onClick={() => act("resume")}>
+            Resume
+          </button>
+        ) : (
+          <button className="primary" disabled={st !== "PERMITTED"} onClick={() => act("start")} title={st === "NOT_PERMITTED" ? "Waiting for an admin to allow start" : undefined}>
+            Start
+          </button>
+        )}
+        <button onClick={() => window.open("/display", "proctor-display", "popup")}>
+          <span className="long">Open display window ↗</span>
+          <span className="short">Display ↗</span>
+        </button>
       </div>
       {asking && (
         <div className="scrim" onClick={() => setAsking(false)}>

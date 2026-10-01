@@ -48,17 +48,29 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .panel > :not(.bar) { margin-inline: 20px; }
 .clock.small { font-size: clamp(56px, 18vw, 96px); text-align: center; padding: 16px 0; }
 
-.display { min-height: 100%; display: grid; grid-template-rows: auto 1fr auto; padding: 24px 32px; }
-.display header, .display footer { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: clamp(16px, 2.4vw, 28px); }
-.display .clock { align-self: center; justify-self: center; font-size: min(26vw, 42vh); line-height: 1; transition: color 300ms var(--ease); }
-.clock.warn { color: var(--warn); } .clock.done { color: var(--bad); }
+/* Projector: always light, one screen, timer fitted to the space (FitText). */
+.display { --bg: #fff; --card: #fff; --text: #111; --muted: #555; --line: #ddd; --ok: #1f9d55; --warn: #b45f00; --bad: #c4001a; color-scheme: light; background: var(--bg); color: var(--text); height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; padding: 16px 28px; overflow: hidden; }
+.display header, .display footer { display: flex; align-items: center; gap: 16px; color: var(--muted); font-size: clamp(14px, 2vw, 26px); }
+.display header .where { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.display footer { justify-content: center; }
+.ctl { transition: opacity 300ms var(--ease); } .ctl.hide { opacity: 0; } .ctl:focus-within { opacity: 1; }
+.zoom { display: inline-flex; gap: 6px; }
+.zoom button { min-height: 40px; min-width: 48px; padding: 0 12px; }
+.fit { min-width: 0; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+.fit > span { font-family: var(--mono); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; transition: color 300ms var(--ease); }
+.clock-wrap { display: grid; gap: 8px; justify-items: center; }
+.clock-wrap .fit { width: 100%; height: clamp(120px, 26vh, 240px); }
+.actions { flex-wrap: nowrap; } .actions button { flex: 1 1 0; min-width: 0; padding: 0 10px; white-space: nowrap; }
+.actions .short { display: none; }
+@media (max-width: 480px) { .actions .long { display: none; } .actions .short { display: inline; } }
+.clock.warn > span { color: var(--warn); } .clock.done > span { color: var(--bad); }
 
 .admin { max-width: 980px; margin: 0 auto; }
 .admin .bar h1 { font-size: 22px; }
 .admin .bar .muted { flex: 1; font-size: 14px; }
 .admin .error { margin: 12px 20px; }
 .table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; }
-.tr { display: grid; grid-template-columns: 28px 1.3fr 1fr 0.9fr 0.7fr 2fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 800px; }
+.tr { display: grid; grid-template-columns: 28px 1.2fr 1fr 1fr 0.9fr 0.8fr 2.2fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 980px; }
 .tr:first-child { border-top: 0; }
 .th { color: var(--muted); font-size: 13px; }
 .tr button { min-height: 40px; padding: 0 14px; }
@@ -69,6 +81,10 @@ input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; padding: 0; a
 .bulk { position: sticky; top: 61px; z-index: 1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 20px 0; padding: 10px 14px; border-radius: 16px; background: var(--card); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 30px rgb(0 0 0 / 0.08); animation: row-in 200ms var(--ease); }
 .bulk strong { margin-right: auto; }
 .bulk button { min-height: 40px; padding: 0 14px; }
+.tr.filters { background: color-mix(in srgb, var(--muted) 7%, transparent); }
+.tr.filters input, .tr.filters select { min-height: 36px; padding: 4px 10px; font-size: 14px; width: 100%; }
+.tr.filters button { min-height: 36px; font-size: 13px; padding: 0 10px; }
+.empty { padding: 20px 16px; text-align: center; }
 @keyframes row-in { from { opacity: 0; transform: translateY(-6px); } }
 .tr.fresh { animation: row-in 240ms var(--ease); }
 @keyframes fade { from { opacity: 0; } }

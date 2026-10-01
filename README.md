@@ -14,7 +14,7 @@ Open <https://localhost> (accept the local certificate warning once).
 Sign in as room `Evans 10` / `dev-room-pw`, or `Admin` / `dev-admin-pw`.
 
 Try it: open `/admin` in one window, `/proctor` in another (different browser profile
-or private window, since each surface has its own cookie). Admin: **Allow start**; proctor: **Start**. Admin: **Add room** (name + duration) adds a room that shows up in the login dropdown. **Edit…** changes a room's duration (only before it starts) and test label. Tick rooms (or the header box) for **Start selected** / **+5 min selected**; hold Shift to skip the confirmation.
+or private window, since each surface has its own cookie). Admin: **Allow start**; proctor: **Start**. Admin: **Add room** (name + duration) adds a room that shows up in the login dropdown. **Edit…** changes a room's duration (only before it starts) and test label. Use the filter row (room text, test, status, duration) to narrow the list, tick rooms (or the header box, which selects only the rooms shown) and use **Allow start / Start / +5 min / Edit…** on them; hold Shift to skip the confirmation. `/display` is the projector view (always light; **A−/A+** resize the timer, which always fits the window; controls fade when idle).
 
 Rooms and timers are saved in Postgres: `docker compose restart app` keeps everything (people just have to sign in again). To start fresh: `docker compose down -v`.
 

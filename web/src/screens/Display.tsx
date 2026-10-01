@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, fmt, remainingMs, serverNow, type Snapshot } from "../api";
 import { useClock, usePoll, useTick } from "../hooks";
 import { go } from "../main";
+import { FitText, useActive, useZoom, ZoomButtons } from "../components/FitText";
 
 export function Display() {
   useClock();
@@ -31,19 +32,27 @@ function Screen({ roomId }: { roomId: string }) {
   }, [unauthorized, roomId]);
   if (!s) return <main className="center" />;
 
+  return <View s={s} online={online} />;
+}
+
+/** Projector view (wireframe: Proctor · Display). Light theme, timer always fits the screen. */
+function View({ s, online }: { s: Snapshot; online: boolean }) {
+  const z = useZoom("display");
+  const active = useActive();
   const ms = s.timer.status === "ENDED" ? 0 : remainingMs(s, serverNow());
   const tone = s.timer.status === "RUNNING" && ms <= 300_000 ? (ms === 0 ? "done" : "warn") : "";
   return (
     <main className="display">
       <header>
-        <span>
+        <span className="where">
           {s.room_name} · {s.test_name}
+        </span>
+        <span className={`ctl ${active ? "" : "hide"}`}>
+          <ZoomButtons z={z} />
         </span>
         <span className={`dot ${online ? "ok" : "bad"}`} title={online ? "Connected" : "Offline"} />
       </header>
-      <div className={`clock ${tone}`} aria-live="off">
-        {fmt(ms)}
-      </div>
+      <FitText className={`clock ${tone}`} text={fmt(ms)} zoom={z.zoom} />
       <footer>{label(s)}</footer>
     </main>
   );
