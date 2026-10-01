@@ -244,6 +244,18 @@ class CreateRoomRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=60)
     duration_min: int = Field(default=180, ge=1, le=720)
+    test_name: str | None = Field(default=None, max_length=60)
+
+
+class UpdateRoomRequest(BaseModel):
+    """Admin edits a room that has not started (wireframe: Edit…). Omitted fields are unchanged.
+
+    Duration can only change before the timer starts; use `adjust` (+/- time) once running.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    duration_min: int | None = Field(default=None, ge=1, le=720)
+    test_name: str | None = Field(default=None, min_length=1, max_length=60)
 
 
 # ---------------------------------------------------------------- SSE messages

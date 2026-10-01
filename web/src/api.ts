@@ -19,7 +19,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T | null> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  const post = init.method === "POST";
+  const post = init.method === "POST" || init.method === "PATCH";
   try {
     const r = await fetch(path, {
       ...init,
@@ -40,6 +40,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T | 
 
 export const post = <T>(path: string, body?: unknown) =>
   api<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+
+export const patch = <T>(path: string, body: unknown) => api<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 
 export const backoff = (attempt: number) => Math.random() * Math.min(BACKOFF_CAP_S, BACKOFF_BASE_S * 2 ** attempt) * 1000;
 

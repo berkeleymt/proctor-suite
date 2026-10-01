@@ -26,6 +26,7 @@ h1 { font-size: 28px; } h2 { font-size: 20px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .huge { font-size: clamp(36px, 10vw, 56px); line-height: 1.05; }
 
+label small { color: var(--muted); }
 label { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
 input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-height: 48px; }
 input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 2px; }
@@ -57,7 +58,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .admin .bar .muted { flex: 1; font-size: 14px; }
 .admin .error { margin: 12px 20px; }
 .table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; }
-.tr { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.6fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 640px; }
+.tr { display: grid; grid-template-columns: 1.3fr 1fr 0.9fr 0.7fr 2fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 760px; }
 .tr:first-child { border-top: 0; }
 .th { color: var(--muted); font-size: 13px; }
 .tr button { min-height: 40px; padding: 0 14px; }

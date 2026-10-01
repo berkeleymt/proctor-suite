@@ -246,6 +246,7 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `POST /api/commands` | room or staff | `Command` | `CommandResponse` |
 | `GET /api/staff/rooms` | staff | — | `StaffRoomsResponse` |
 | `POST /api/staff/rooms` | admin/PM | `CreateRoomRequest` | `RoomSnapshot` (201); 409 `room_exists` |
+| `PATCH /api/staff/rooms/{room_id}` | admin/PM | `UpdateRoomRequest` | `RoomSnapshot`; 409 `room_started` if changing duration after start |
 | `GET /api/staff/stream` | staff | — | SSE |
 
 `/readyz` touches Postgres and is for monitoring only. Room devices never call it (invariant 1).
@@ -289,3 +290,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 |---|---|---|
 | 0.1.0 | 2026-10-01 | First version: auth with room dropdown, time, timer fold and merge rules, commands (permit, start, pause, resume, end, adjust), SSE, polling fallback, constants. Proctors cannot end early; staff can start on behalf of a room. |
 | 0.2.0 | 2026-10-01 | Added `POST /api/staff/rooms` (admin creates a room: name, `duration_min` default 180, 1-720). New in-memory rooms get one current session. No change to existing endpoints. |
+| 0.3.0 | 2026-10-01 | Added `PATCH /api/staff/rooms/{room_id}` (edit duration before start, edit test label) and optional `test_name` on `CreateRoomRequest`. |

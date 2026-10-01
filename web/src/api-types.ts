@@ -188,6 +188,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/rooms/{room_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Room
+         * @description Admin edits duration (before start only) and/or test label. Added in 0.3.0.
+         */
+        patch: operations["update_room_api_staff_rooms__room_id__patch"];
+        trace?: never;
+    };
     "/api/staff/stream": {
         parameters: {
             query?: never;
@@ -292,6 +312,8 @@ export interface components {
             duration_min: number;
             /** Name */
             name: string;
+            /** Test Name */
+            test_name?: string | null;
         };
         /** EndCommand */
         EndCommand: {
@@ -609,6 +631,18 @@ export interface components {
          * @enum {string}
          */
         TimerStatus: "NOT_PERMITTED" | "PERMITTED" | "RUNNING" | "PAUSED" | "ENDED";
+        /**
+         * UpdateRoomRequest
+         * @description Admin edits a room that has not started (wireframe: Edit…). Omitted fields are unchanged.
+         *
+         *     Duration can only change before the timer starts; use `adjust` (+/- time) once running.
+         */
+        UpdateRoomRequest: {
+            /** Duration Min */
+            duration_min?: number | null;
+            /** Test Name */
+            test_name?: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -1283,6 +1317,86 @@ export interface operations {
                 };
             };
             /** @description room_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_room_api_staff_rooms__room_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description room_started */
             409: {
                 headers: {
                     [name: string]: unknown;

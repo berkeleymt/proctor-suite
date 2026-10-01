@@ -22,6 +22,7 @@ from app.protocol.models import (
     RejectionReason,
     RoomSnapshot,
     StaffRole,
+    TimerStatus,
 )
 
 DEFAULT_ROOMS = "Dwinelle 145,Evans 10,Soda 306,Wheeler 150"
@@ -83,7 +84,7 @@ class Store:
         return token
 
     # --- rooms ---
-    def create_room(self, name: str, duration_min: int) -> Room:
+    def create_room(self, name: str, duration_min: int, test_name: str | None = None) -> Room:
         name = " ".join(name.split())
         slug = _slug(name)
         if not slug:
@@ -91,8 +92,21 @@ class Store:
         if slug in self.rooms:
             raise KeyError(slug)
         room = Room(slug, name, duration_min * 60_000, now_ms())
+        if test_name and test_name.strip():
+            room.test_name = " ".join(test_name.split())
         self.rooms[slug] = room
         return room
+
+    def update_room(self, room: Room, duration_min: int | None, test_name: str | None) -> None:
+        """Edit duration (only before start) and/or test label. Bumps version so pollers refetch."""
+        if duration_min is not None:
+            status = self.snapshot(room).timer.status
+            if status not in (TimerStatus.NOT_PERMITTED, TimerStatus.PERMITTED):
+                raise PermissionError("room_started")
+            room.duration_ms = duration_min * 60_000
+        if test_name is not None:
+            room.test_name = " ".join(test_name.split())
+        room.version += 1
 
     # --- snapshots ---
     def snapshot(self, room: Room) -> RoomSnapshot:

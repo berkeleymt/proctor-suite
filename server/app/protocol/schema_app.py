@@ -27,6 +27,7 @@ from app.protocol.models import (
     StaffRoomsResponse,
     Surface,
     TimeResponse,
+    UpdateRoomRequest,
 )
 
 _ERRORS: dict[int | str, dict[str, Any]] = {
@@ -142,6 +143,16 @@ def build_schema_app() -> FastAPI:
     )
     async def create_room(body: CreateRoomRequest):
         """Admin adds a room (name, duration_min default 180). Added in 0.2.0."""
+        _stub()
+
+    @app.patch(
+        "/api/staff/rooms/{room_id}",
+        response_model=RoomSnapshot,
+        tags=["staff"],
+        responses={**_ERRORS, 409: {"model": ErrorResponse, "description": "room_started"}},
+    )
+    async def update_room(room_id: str, body: UpdateRoomRequest):
+        """Admin edits duration (before start only) and/or test label. Added in 0.3.0."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)

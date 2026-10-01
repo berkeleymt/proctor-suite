@@ -14,7 +14,7 @@ Open <https://localhost> (accept the local certificate warning once).
 Sign in as room `Evans 10` / `dev-room-pw`, or `Admin` / `dev-admin-pw`.
 
 Try it: open `/admin` in one window, `/proctor` in another (different browser profile
-or private window, since each surface has its own cookie). Admin: **Allow start**; proctor: **Start**. Admin: **Add room** (name + duration) adds a room that shows up in the login dropdown.
+or private window, since each surface has its own cookie). Admin: **Allow start**; proctor: **Start**. Admin: **Add room** (name + duration) adds a room that shows up in the login dropdown. **Edit…** changes a room's duration (only before it starts) and test label.
 
 ## Deploy to prod (AWS)
 

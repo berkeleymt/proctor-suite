@@ -89,3 +89,26 @@ def test_admin_creates_room(monkeypatch):
     login = {"room_id": "test-hall-1", "password": "room-pw", "surface": "control"}
     assert room.post("/api/auth/room-login", json=login, headers=H).status_code == 200
     assert room.post("/api/staff/rooms", json=body, headers=H).status_code == 401
+
+
+def test_admin_edits_room_before_start_only(monkeypatch):
+    admin = mk(monkeypatch)
+    creds = {"username": "admin", "password": "admin-pw"}
+    url = "/api/staff/rooms/edit-hall"
+    assert admin.patch(url, json={"duration_min": 5}, headers=H).status_code == 401
+    admin.post("/api/auth/staff-login", json=creds, headers=H)
+    body = {"name": "Edit Hall", "duration_min": 60, "test_name": "Team Round"}
+    made = admin.post("/api/staff/rooms", json=body, headers=H).json()
+    assert made["test_name"] == "Team Round"
+    v0 = made["version"]
+    edited = admin.patch(url, json={"duration_min": 45, "test_name": "Guts"}, headers=H).json()
+    assert edited["timer"]["duration_ms"] == 45 * 60_000 and edited["test_name"] == "Guts"
+    assert edited["version"] > v0
+    assert admin.patch(url, json={"duration_min": 0}, headers=H).status_code == 422
+    assert admin.patch("/api/staff/rooms/nope", json={}, headers=H).status_code == 404
+    sid = edited["session_id"]
+    for kind in ("permit", "start"):
+        r = admin.post("/api/commands", json=cmd(kind, "edit-hall", sid), headers=H)
+        assert r.json()["outcome"] == "applied"
+    assert admin.patch(url, json={"duration_min": 10}, headers=H).status_code == 409
+    assert admin.patch(url, json={"test_name": "Relay"}, headers=H).json()["test_name"] == "Relay"

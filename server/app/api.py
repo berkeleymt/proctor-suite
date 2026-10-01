@@ -26,6 +26,7 @@ from app.protocol.models import (
     StaffRole,
     StaffRoomsResponse,
     TimeResponse,
+    UpdateRoomRequest,
 )
 from app.store import Session, Store, now_ms
 
@@ -171,11 +172,32 @@ async def create_room(body: CreateRoomRequest, request: Request, _: Post) -> Roo
     if len(store.rooms) >= MAX_STAFF_ROOMS:
         raise err(409, "too_many_rooms", "Room limit reached.")
     try:
-        room = store.create_room(body.name, body.duration_min)
+        room = store.create_room(body.name, body.duration_min, body.test_name)
     except ValueError:
         raise err(422, "invalid_request", "Room name needs letters or numbers.") from None
     except KeyError:
         raise err(409, "room_exists", "A room with that name already exists.") from None
+    return store.snapshot(room)
+
+
+@router.patch("/staff/rooms/{room_id}", response_model=RoomSnapshot)
+async def update_room(
+    room_id: str, body: UpdateRoomRequest, request: Request, _: Post
+) -> RoomSnapshot:
+    staff = session_for(request, "staff")
+    if not staff:
+        raise err(401, "unauthenticated", "Staff login required.")
+    if staff.role not in (StaffRole.ADMIN, StaffRole.PM):
+        raise err(403, "forbidden", "Not allowed.")
+    room = store.rooms.get(room_id)
+    if not room:
+        raise err(404, "unknown_room", "No such room.")
+    try:
+        store.update_room(room, body.duration_min, body.test_name)
+    except PermissionError:
+        raise err(
+            409, "room_started", "The timer already started. Use +5 min to change the time."
+        ) from None
     return store.snapshot(room)
 
 

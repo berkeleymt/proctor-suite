@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { fmt, post, remainingMs, sendCommand, serverNow, type Snapshot } from "../api";
+import { fmt, patch, post, remainingMs, sendCommand, serverNow, type Snapshot } from "../api";
 import { useClock, usePoll, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
 
 type Rooms = { rooms: Snapshot[]; version?: number };
 
-function AddRoom({ onDone, onClose }: { onDone: (s: Snapshot) => void; onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [mins, setMins] = useState("180");
+function RoomSheet({ room, onDone, onClose }: { room?: Snapshot; onDone: (s: Snapshot) => void; onClose: () => void }) {
+  const editing = !!room;
+  const started = !!room && !["NOT_PERMITTED", "PERMITTED"].includes(room.timer.status);
+  const [name, setName] = useState(room?.room_name ?? "");
+  const [mins, setMins] = useState(String(room ? Math.round(room.timer.duration_ms / 60_000) : 180));
+  const [test, setTest] = useState(room ? room.test_name : "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
@@ -24,7 +27,15 @@ function AddRoom({ onDone, onClose }: { onDone: (s: Snapshot) => void; onClose: 
     setBusy(true);
     setErr("");
     try {
-      onDone((await post<Snapshot>("/api/staff/rooms", { name, duration_min: Number(mins) }))!);
+      const dur = Number(mins);
+      onDone(
+        editing
+          ? (await patch<Snapshot>(`/api/staff/rooms/${room!.room_id}`, {
+              test_name: test.trim() || undefined,
+              ...(started ? {} : { duration_min: dur }),
+            }))!
+          : (await post<Snapshot>("/api/staff/rooms", { name, duration_min: dur, test_name: test.trim() || undefined }))!,
+      );
     } catch (x) {
       setErr(x instanceof Error ? x.message : "Couldn't reach the server.");
       setBusy(false);
@@ -34,19 +45,26 @@ function AddRoom({ onDone, onClose }: { onDone: (s: Snapshot) => void; onClose: 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <form className="sheet stack" onSubmit={submit}>
-        <h2>Add room</h2>
-        <label>
-          Room
-          <input ref={ref} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Evans 10" />
-        </label>
+        <h2>{editing ? `Edit ${room!.room_name}` : "Add room"}</h2>
+        {!editing && (
+          <label>
+            Room
+            <input ref={ref} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Evans 10" />
+          </label>
+        )}
         <label>
           Duration (minutes)
-          <input type="number" inputMode="numeric" min={1} max={720} value={mins} onChange={(e) => setMins(e.target.value)} />
+          <input type="number" inputMode="numeric" min={1} max={720} value={mins} disabled={started} onChange={(e) => setMins(e.target.value)} />
+          {started && <small>Already started. Use +5 min to change the time.</small>}
+        </label>
+        <label>
+          Test label (optional)
+          <input value={test} maxLength={60} onChange={(e) => setTest(e.target.value)} placeholder="Individual Round" />
         </label>
         <p className="error" role="alert" hidden={!err}>{err}</p>
         <div className="row">
           <button type="button" onClick={onClose}>Cancel</button>
-          <button className="primary" disabled={busy || !name.trim() || !(Number(mins) >= 1)}>Add room</button>
+          <button className="primary" disabled={busy || !name.trim() || !(Number(mins) >= 1)}>{editing ? "Save" : "Add room"}</button>
         </div>
       </form>
     </div>
@@ -59,6 +77,7 @@ export function Admin() {
   const { data, setData, online, unauthorized } = usePoll<Rooms>("/api/staff/rooms");
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Snapshot | null>(null);
   const [fresh, setFresh] = useState("");
   useEffect(() => {
     if (unauthorized) go("/login");
@@ -108,6 +127,7 @@ export function Admin() {
           <span>Room</span>
           <span>Status</span>
           <span>Remaining</span>
+          <span>Duration</span>
           <span>Actions</span>
         </div>
         {rooms.map((s) => {
@@ -119,6 +139,7 @@ export function Admin() {
                 {label(s)}
               </span>
               <span className="mono">{fmt(st === "ENDED" ? 0 : remainingMs(s, serverNow()))}</span>
+              <span className="mono">{Math.round(s.timer.duration_ms / 60_000)}m</span>
               <span className="row">
                 {st === "NOT_PERMITTED" && <button onClick={() => act(s, "permit")}>Allow start</button>}
                 {st === "PERMITTED" && (
@@ -127,19 +148,26 @@ export function Admin() {
                   </button>
                 )}
                 {st !== "ENDED" && <button onClick={() => act(s, "adjust")}>+5 min</button>}
+                <button onClick={() => setEditing(s)}>Edit…</button>
               </span>
             </div>
           );
         })}
       </div>
-      {adding && (
-        <AddRoom
-          onClose={() => setAdding(false)}
+      {(adding || editing) && (
+        <RoomSheet
+          key={editing?.room_id ?? "new"}
+          room={editing ?? undefined}
+          onClose={() => {
+            setAdding(false);
+            setEditing(null);
+          }}
           onDone={(snap) => {
             const rooms = [...data!.rooms.filter((x) => x.room_id !== snap.room_id), snap];
             setData({ ...data!, rooms: rooms.sort((a, b) => a.room_name.localeCompare(b.room_name)) });
-            setFresh(snap.room_id);
+            if (adding) setFresh(snap.room_id);
             setAdding(false);
+            setEditing(null);
           }}
         />
       )}
