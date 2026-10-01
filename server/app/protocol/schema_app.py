@@ -15,6 +15,7 @@ from app.protocol.models import (
     EXTRA_SCHEMA_MODELS,
     Command,
     CommandResponse,
+    CreateRoomRequest,
     ErrorResponse,
     Identity,
     LoginOptionsResponse,
@@ -130,6 +131,17 @@ def build_schema_app() -> FastAPI:
     )
     async def staff_rooms():
         """All rooms' snapshots (staff dashboard first load)."""
+        _stub()
+
+    @app.post(
+        "/api/staff/rooms",
+        response_model=RoomSnapshot,
+        status_code=201,
+        tags=["staff"],
+        responses={**_ERRORS, 409: {"model": ErrorResponse, "description": "room_exists"}},
+    )
+    async def create_room(body: CreateRoomRequest):
+        """Admin adds a room (name, duration_min default 180). Added in 0.2.0."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)

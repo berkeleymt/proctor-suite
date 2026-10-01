@@ -238,6 +238,14 @@ class StaffRoomsResponse(BaseModel):
     rooms: list[RoomSnapshot] = Field(max_length=MAX_STAFF_ROOMS)
 
 
+class CreateRoomRequest(BaseModel):
+    """Admin adds a room (wireframe: Admin · Timers). Duration defaults to 180 minutes."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=60)
+    duration_min: int = Field(default=180, ge=1, le=720)
+
+
 # ---------------------------------------------------------------- SSE messages
 
 

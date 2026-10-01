@@ -21,7 +21,7 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - [?] Login + "Is this your room?" built; not tried in a browser
 - [?] Built; not tried in a browser
 - [?] Built; not tried in a browser
-- [~] Built: list, allow start, start on behalf, +5 min. Missing: end, add room. Not tried in a browser
+- [~] Built: list, allow start, start on behalf, +5 min. Add room done in slice 2 (`log/2026-10-01-claude-slice2-add-room.md`). Missing: end, change duration, reset. Not tried in a browser
 
 ## Deploy and demo
 - [ ] Deployed to AWS via `deploy.sh`
@@ -32,4 +32,5 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 2 (2026-10-01): admin Add room, protocol 0.2.0, ADR 0005, `log/2026-10-01-claude-slice2-add-room.md`.
 - Slice 1 (2026-10-01): see `log/2026-10-01-claude-slice1.md` and ADR 0004.

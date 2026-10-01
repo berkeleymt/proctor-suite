@@ -67,3 +67,25 @@ def test_room_cannot_read_other_room(monkeypatch):
     c = mk(monkeypatch)
     c.post("/api/auth/room-login", json={"room_id": "evans-10", "password": "room-pw", "surface": "control"}, headers=H)  # fmt: skip
     assert c.get("/api/rooms/soda-306/snapshot").status_code == 401
+
+
+def test_admin_creates_room(monkeypatch):
+    admin, room = mk(monkeypatch), mk(monkeypatch)
+    body = {"name": "  Test   Hall 1 ", "duration_min": 90}
+    assert admin.post("/api/staff/rooms", json=body, headers=H).status_code == 401
+    creds = {"username": "admin", "password": "admin-pw"}
+    assert admin.post("/api/auth/staff-login", json=creds, headers=H).status_code == 200
+    made = admin.post("/api/staff/rooms", json=body, headers=H)
+    assert made.status_code == 201
+    snap = made.json()
+    assert snap["room_id"] == "test-hall-1" and snap["room_name"] == "Test Hall 1"
+    assert snap["timer"]["duration_ms"] == 90 * 60_000
+    assert admin.post("/api/staff/rooms", json=body, headers=H).status_code == 409
+    assert admin.post("/api/staff/rooms", json={"name": "!!!"}, headers=H).status_code == 422
+    default = admin.post("/api/staff/rooms", json={"name": "Default Hall"}, headers=H).json()
+    assert default["timer"]["duration_ms"] == 180 * 60_000
+    names = [r["name"] for r in room.get("/api/auth/rooms").json()["rooms"]]
+    assert "Test Hall 1" in names
+    login = {"room_id": "test-hall-1", "password": "room-pw", "surface": "control"}
+    assert room.post("/api/auth/room-login", json=login, headers=H).status_code == 200
+    assert room.post("/api/staff/rooms", json=body, headers=H).status_code == 401

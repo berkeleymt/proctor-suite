@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-01 (slice 1) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-01 (slice 2) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -10,7 +10,7 @@
 - The contract exists: [`docs/protocol.md`](../protocol.md) v0.1.0, `contracts/openapi.json`, 23 timer fixtures, Pydantic models, and a reference fold that passes all fixtures.
 - Decisions made today: D1–D12 approved; proctors cannot end early; staff can start on behalf; login is a room-name dropdown; no approval gate on contract changes (ADRs 0001–0003).
 
-**Phase 1 (Prototype): in progress, slice 1 written, not yet deployed or pushed.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
+**Phase 1 (Prototype): in progress, slices 1-2 written, not yet deployed or pushed. Slice 2 = admin "Add room" (protocol 0.2.0, ADR 0005).** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
 
 - Slice 1 = login → proctor Start/Pause/Resume → display timer → admin Allow/Start/+5. Server tests pass (71). UI not yet tried in a browser. In-memory only (no Postgres), polling not SSE. See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
 - Scope ceiling is `docs/wireframe.html`. Chat, clarifications, bathroom log, roster, deletion, super-admin need protocol additions first.

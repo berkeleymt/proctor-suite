@@ -177,7 +177,11 @@ export interface paths {
          */
         get: operations["staff_rooms_api_staff_rooms_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Room
+         * @description Admin adds a room (name, duration_min default 180). Added in 0.2.0.
+         */
+        post: operations["create_room_api_staff_rooms_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -275,6 +279,19 @@ export interface components {
             /** Replayed */
             replayed: boolean;
             snapshot: components["schemas"]["RoomSnapshot"];
+        };
+        /**
+         * CreateRoomRequest
+         * @description Admin adds a room (wireframe: Admin · Timers). Duration defaults to 180 minutes.
+         */
+        CreateRoomRequest: {
+            /**
+             * Duration Min
+             * @default 180
+             */
+            duration_min: number;
+            /** Name */
+            name: string;
         };
         /** EndCommand */
         EndCommand: {
@@ -1189,6 +1206,84 @@ export interface operations {
             };
             /** @description unknown_room / unknown_session */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_room_api_staff_rooms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description room_exists */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

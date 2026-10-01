@@ -6,4 +6,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 node_modules/
-.DS_Storeweb/dist/
+.DS_Store
+web/dist/

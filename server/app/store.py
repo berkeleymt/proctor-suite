@@ -82,6 +82,18 @@ class Store:
         self.sessions[token] = s
         return token
 
+    # --- rooms ---
+    def create_room(self, name: str, duration_min: int) -> Room:
+        name = " ".join(name.split())
+        slug = _slug(name)
+        if not slug:
+            raise ValueError("invalid_name")
+        if slug in self.rooms:
+            raise KeyError(slug)
+        room = Room(slug, name, duration_min * 60_000, now_ms())
+        self.rooms[slug] = room
+        return room
+
     # --- snapshots ---
     def snapshot(self, room: Room) -> RoomSnapshot:
         t = now_ms()

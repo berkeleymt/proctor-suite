@@ -5,11 +5,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
-from app.protocol.constants import CLIENT_HEADER, COOKIE_NAMES, STAFF_SESSION_TTL_H
+from app.protocol.constants import (
+    CLIENT_HEADER,
+    COOKIE_NAMES,
+    MAX_STAFF_ROOMS,
+    STAFF_SESSION_TTL_H,
+)
 from app.protocol.models import (
     ActorKind,
     Command,
     CommandResponse,
+    CreateRoomRequest,
     LoginOptionsResponse,
     LoginRoomOption,
     RoomIdentity,
@@ -153,6 +159,24 @@ async def staff_rooms(request: Request) -> StaffRoomsResponse:
         raise err(401, "unauthenticated", "Staff login required.")
     rooms = sorted(store.rooms.values(), key=lambda r: r.name)
     return StaffRoomsResponse(rooms=[store.snapshot(r) for r in rooms])
+
+
+@router.post("/staff/rooms", response_model=RoomSnapshot, status_code=201)
+async def create_room(body: CreateRoomRequest, request: Request, _: Post) -> RoomSnapshot:
+    staff = session_for(request, "staff")
+    if not staff:
+        raise err(401, "unauthenticated", "Staff login required.")
+    if staff.role not in (StaffRole.ADMIN, StaffRole.PM):
+        raise err(403, "forbidden", "Not allowed.")
+    if len(store.rooms) >= MAX_STAFF_ROOMS:
+        raise err(409, "too_many_rooms", "Room limit reached.")
+    try:
+        room = store.create_room(body.name, body.duration_min)
+    except ValueError:
+        raise err(422, "invalid_request", "Room name needs letters or numbers.") from None
+    except KeyError:
+        raise err(409, "room_exists", "A room with that name already exists.") from None
+    return store.snapshot(room)
 
 
 @router.post("/commands", response_model=CommandResponse)

@@ -122,6 +122,30 @@
         "title": "CommandResponse",
         "type": "object"
       },
+      "CreateRoomRequest": {
+        "additionalProperties": false,
+        "description": "Admin adds a room (wireframe: Admin \u00b7 Timers). Duration defaults to 180 minutes.",
+        "properties": {
+          "duration_min": {
+            "default": 180,
+            "maximum": 720.0,
+            "minimum": 1.0,
+            "title": "Duration Min",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateRoomRequest",
+        "type": "object"
+      },
       "EndCommand": {
         "additionalProperties": false,
         "properties": {
@@ -904,7 +928,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1704,6 +1728,96 @@
           }
         },
         "summary": "Staff Rooms",
+        "tags": [
+          "staff"
+        ]
+      },
+      "post": {
+        "description": "Admin adds a room (name, duration_min default 180). Added in 0.2.0.",
+        "operationId": "create_room_api_staff_rooms_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "room_exists"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Create Room",
         "tags": [
           "staff"
         ]
