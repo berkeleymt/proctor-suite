@@ -1,0 +1,78 @@
+{
+  "name": "events-listed-out-of-order",
+  "description": "The fold sorts by effective time; list order is irrelevant. ADJUSTs add up.",
+  "session": {
+    "session_id": "sess-1",
+    "duration_ms": 600000,
+    "created_at_ms": 0
+  },
+  "events": [
+    {
+      "command_id": "c2",
+      "type": "START",
+      "actor_kind": "room",
+      "claimed_at_ms": 10000,
+      "received_at_ms": 10000
+    },
+    {
+      "command_id": "c1",
+      "type": "PERMIT",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 1000
+    },
+    {
+      "command_id": "c4",
+      "type": "ADJUST",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 50000,
+      "delta_ms": 60000
+    },
+    {
+      "command_id": "c3",
+      "type": "ADJUST",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 30000,
+      "delta_ms": -20000
+    }
+  ],
+  "expected": {
+    "event_results": [
+      {
+        "command_id": "c2",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c1",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c4",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c3",
+        "result": "applied",
+        "reason": null
+      }
+    ],
+    "at": [
+      {
+        "now_ms": 70000,
+        "snapshot": {
+          "status": "RUNNING",
+          "duration_ms": 600000,
+          "adjust_total_ms": 40000,
+          "elapsed_banked_ms": 0,
+          "running_since_ms": 10000
+        },
+        "remaining_ms": 580000
+      }
+    ]
+  }
+}

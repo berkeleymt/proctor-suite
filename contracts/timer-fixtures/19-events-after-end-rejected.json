@@ -1,0 +1,89 @@
+{
+  "name": "events-after-end-rejected",
+  "description": "After END, room and staff events are rejected (END is final).",
+  "session": {
+    "session_id": "sess-1",
+    "duration_ms": 600000,
+    "created_at_ms": 0
+  },
+  "events": [
+    {
+      "command_id": "c1",
+      "type": "PERMIT",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 1000
+    },
+    {
+      "command_id": "c2",
+      "type": "START",
+      "actor_kind": "room",
+      "claimed_at_ms": 10000,
+      "received_at_ms": 10000
+    },
+    {
+      "command_id": "c3",
+      "type": "END",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 100000
+    },
+    {
+      "command_id": "c4",
+      "type": "PAUSE",
+      "actor_kind": "room",
+      "claimed_at_ms": 110000,
+      "received_at_ms": 120000
+    },
+    {
+      "command_id": "c5",
+      "type": "ADJUST",
+      "actor_kind": "staff",
+      "claimed_at_ms": null,
+      "received_at_ms": 130000,
+      "delta_ms": 60000
+    }
+  ],
+  "expected": {
+    "event_results": [
+      {
+        "command_id": "c1",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c2",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c3",
+        "result": "applied",
+        "reason": null
+      },
+      {
+        "command_id": "c4",
+        "result": "rejected",
+        "reason": "session_ended"
+      },
+      {
+        "command_id": "c5",
+        "result": "rejected",
+        "reason": "session_ended"
+      }
+    ],
+    "at": [
+      {
+        "now_ms": 200000,
+        "snapshot": {
+          "status": "ENDED",
+          "duration_ms": 600000,
+          "adjust_total_ms": 0,
+          "elapsed_banked_ms": 90000,
+          "running_since_ms": null
+        },
+        "remaining_ms": 510000
+      }
+    ]
+  }
+}

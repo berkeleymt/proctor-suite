@@ -20,12 +20,14 @@ Proctor Suite is a real-time, offline-tolerant event-day tool for running standa
 | Switch active test for a room/batch/all | ✅ | ❌ | ❌ | ❌ |
 | Grant "permission to start" to room(s) | ✅ | ✅ | ❌ | ❌ |
 | Send global "go" signal | ✅ | ✅ | ❌ | ❌ |
-| Start/stop/pause timer (own room) | — | — | — | ✅ (only after permission granted) |
+| Start/pause/resume timer (own room) | — | — | — | ✅ (start only after permission granted) |
+| Start timer on behalf of a room | ✅ | ✅ | ❌ | ❌ |
+| End a test early | ✅ | ✅ | ❌ | ❌ (proctors cannot end early) |
 | Manually adjust a running timer (+/- time) | ✅ | ✅ | ❌ | ❌ |
 | Log bathroom break (ID + timestamp) | — | — | — | ✅ |
 | Write/edit/retract clarifications | ❌ | ❌ | ✅ | ❌ (view only) |
 | Send free-text message to students (room/batch/all) | ✅ | ✅ | ❌ | ❌ |
-| View/export all records (CSV) | ✅ | ✅ (own rooms) | ✅ (own tests) | ❌ |
+| View/export all records (CSV) | ✅ | ✅ (all rooms in v1; no PM-to-room assignment) | ✅ (own tests) | ❌ |
 | Enter/exit Practice Mode | ✅ | ✅ | ✅ | ✅ (own room only) |
 
 Notes:
@@ -150,7 +152,7 @@ Practice Mode data should be clearly segregated from real event data (e.g., its 
 - **Backend:** Python, FastAPI
 - **Database:** PostgreSQL
 - **Hosting:** AWS
-- Real-time sync likely via WebSockets (with polling fallback for degraded networks), given the multi-device-per-room sync requirement.
+- Real-time sync via **Server-Sent Events plus plain POST commands**, with a polling fallback for degraded networks (decision D2 in `development-plan.md`; replaces the earlier WebSockets idea). See `docs/protocol.md`.
 - Client-side timer computation (Section 7) to tolerate offline periods; exact framework not yet specified.
 
 ---
