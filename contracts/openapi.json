@@ -1,0 +1,1817 @@
+{
+  "components": {
+    "schemas": {
+      "AdjustCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "delta_ms": {
+            "title": "Delta Ms",
+            "type": "integer"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "proctor_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctor Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "adjust",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "device_id",
+          "room_id",
+          "session_id",
+          "claimed_at_ms",
+          "type",
+          "delta_ms"
+        ],
+        "title": "AdjustCommand",
+        "type": "object"
+      },
+      "CommandOutcome": {
+        "enum": [
+          "applied",
+          "rejected"
+        ],
+        "title": "CommandOutcome",
+        "type": "string"
+      },
+      "CommandResponse": {
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CommandOutcome"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RejectionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/RoomSnapshot"
+          }
+        },
+        "required": [
+          "command_id",
+          "outcome",
+          "reason",
+          "replayed",
+          "snapshot"
+        ],
+        "title": "CommandResponse",
+        "type": "object"
+      },
+      "EndCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "proctor_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctor Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "end",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "device_id",
+          "room_id",
+          "session_id",
+          "claimed_at_ms",
+          "type"
+        ],
+        "title": "EndCommand",
+        "type": "object"
+      },
+      "ErrorCode": {
+        "description": "HTTP-level errors. These are NOT recorded as events (see docs/protocol.md \u00a76.5).",
+        "enum": [
+          "invalid_request",
+          "invalid_credentials",
+          "unauthenticated",
+          "forbidden",
+          "unknown_room",
+          "unknown_session",
+          "command_id_conflict",
+          "rate_limited",
+          "unavailable",
+          "internal"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Heartbeat": {
+        "properties": {
+          "server_time_ms": {
+            "title": "Server Time Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "server_time_ms"
+        ],
+        "title": "Heartbeat",
+        "type": "object"
+      },
+      "HeartbeatMessage": {
+        "description": "SSE frame: `event: heartbeat`, `data: <Heartbeat as JSON>`.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Heartbeat"
+          },
+          "event": {
+            "const": "heartbeat",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "HeartbeatMessage",
+        "type": "object"
+      },
+      "LoginOptionsResponse": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_name": {
+            "title": "Event Name",
+            "type": "string"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/LoginRoomOption"
+            },
+            "maxItems": 500,
+            "title": "Rooms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "event_id",
+          "event_name",
+          "rooms"
+        ],
+        "title": "LoginOptionsResponse",
+        "type": "object"
+      },
+      "LoginRoomOption": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "name"
+        ],
+        "title": "LoginRoomOption",
+        "type": "object"
+      },
+      "PauseCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "proctor_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctor Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "pause",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "device_id",
+          "room_id",
+          "session_id",
+          "claimed_at_ms",
+          "type"
+        ],
+        "title": "PauseCommand",
+        "type": "object"
+      },
+      "PermitCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "proctor_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctor Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "permit",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "device_id",
+          "room_id",
+          "session_id",
+          "claimed_at_ms",
+          "type"
+        ],
+        "title": "PermitCommand",
+        "type": "object"
+      },
+      "RejectionReason": {
+        "description": "Why an event was recorded but not applied. Only the fold produces these.",
+        "enum": [
+          "claimed_at_out_of_bounds",
+          "session_ended",
+          "already_permitted",
+          "not_permitted",
+          "already_started",
+          "not_running",
+          "not_paused",
+          "not_started",
+          "adjust_out_of_range",
+          "stale_session"
+        ],
+        "title": "RejectionReason",
+        "type": "string"
+      },
+      "ResumeCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "proctor_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctor Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "resume",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "device_id",
+          "room_id",
+          "session_id",
+          "claimed_at_ms",
+          "type"
+        ],
+        "title": "ResumeCommand",
+        "type": "object"
+      },
+      "RoomIdentity": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "room",
+            "title": "Kind",
+            "type": "string"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          },
+          "surface": {
+            "enum": [
+              "display",
+              "control"
+            ],
+            "title": "Surface",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "room_id",
+          "room_name",
+          "surface",
+          "event_id"
+        ],
+        "title": "RoomIdentity",
+        "type": "object"
+      },
+      "RoomLoginRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "surface": {
+            "enum": [
+              "display",
+              "control"
+            ],
+            "title": "Surface",
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "password",
+          "surface"
+        ],
+        "title": "RoomLoginRequest",
+        "type": "object"
+      },
+      "RoomSnapshot": {
+        "description": "Everything a room device needs to show and tick the timer. Sent in full every time.",
+        "properties": {
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          },
+          "server_time_ms": {
+            "title": "Server Time Ms",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "test_name": {
+            "title": "Test Name",
+            "type": "string"
+          },
+          "timer": {
+            "$ref": "#/components/schemas/TimerSnapshot"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "room_id",
+          "room_name",
+          "test_name",
+          "session_id",
+          "version",
+          "server_time_ms",
+          "timer"
+        ],
+        "title": "RoomSnapshot",
+        "type": "object"
+      },
+      "SnapshotMessage": {
+        "description": "SSE frame: `event: snapshot`, `id: <version>`, `data: <RoomSnapshot as JSON>`.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RoomSnapshot"
+          },
+          "event": {
+            "const": "snapshot",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SnapshotMessage",
+        "type": "object"
+      },
+      "StaffIdentity": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "staff",
+            "title": "Kind",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/StaffRole"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "account_id",
+          "username",
+          "role"
+        ],
+        "title": "StaffIdentity",
+        "type": "object"
+      },
+      "StaffLoginRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "StaffLoginRequest",
+        "type": "object"
+      },
+      "StaffRole": {
+        "enum": [
+          "admin",
+          "pm",
+          "to"
+        ],
+        "title": "StaffRole",
+        "type": "string"
+      },
+      "StaffRoomsResponse": {
+        "properties": {
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomSnapshot"
+            },
+            "maxItems": 1000,
+            "title": "Rooms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rooms"
+        ],
+        "title": "StaffRoomsResponse",
+        "type": "object"
+      },
+      "StartCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "proctor_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proctor Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "room_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Room Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "start",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "device_id",
+          "room_id",
+          "session_id",
+          "claimed_at_ms",
+          "type"
+        ],
+        "title": "StartCommand",
+        "type": "object"
+      },
+      "Surface": {
+        "enum": [
+          "display",
+          "control",
+          "staff"
+        ],
+        "title": "Surface",
+        "type": "string"
+      },
+      "TimeResponse": {
+        "properties": {
+          "server_time_ms": {
+            "title": "Server Time Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "server_time_ms"
+        ],
+        "title": "TimeResponse",
+        "type": "object"
+      },
+      "TimerSnapshot": {
+        "description": "The folded timer state (plan \u00a73.3).\n\nremaining(now) = max(0, duration_ms + adjust_total_ms - elapsed_banked_ms\n                        - (now - running_since_ms if RUNNING else 0))",
+        "properties": {
+          "adjust_total_ms": {
+            "title": "Adjust Total Ms",
+            "type": "integer"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "elapsed_banked_ms": {
+            "title": "Elapsed Banked Ms",
+            "type": "integer"
+          },
+          "running_since_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Since Ms"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TimerStatus"
+          }
+        },
+        "required": [
+          "status",
+          "duration_ms",
+          "adjust_total_ms",
+          "elapsed_banked_ms",
+          "running_since_ms"
+        ],
+        "title": "TimerSnapshot",
+        "type": "object"
+      },
+      "TimerStatus": {
+        "enum": [
+          "NOT_PERMITTED",
+          "PERMITTED",
+          "RUNNING",
+          "PAUSED",
+          "ENDED"
+        ],
+        "title": "TimerStatus",
+        "type": "string"
+      }
+    },
+    "securitySchemes": {
+      "control": {
+        "in": "cookie",
+        "name": "control_sid",
+        "type": "apiKey"
+      },
+      "display": {
+        "in": "cookie",
+        "name": "display_sid",
+        "type": "apiKey"
+      },
+      "staff": {
+        "in": "cookie",
+        "name": "staff_sid",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
+    "title": "Proctor Suite protocol",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/auth/logout": {
+      "post": {
+        "description": "Clears the cookie for one surface.",
+        "operationId": "logout_api_auth_logout_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "surface",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Surface"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/room-login": {
+      "post": {
+        "description": "Room name (dropdown) + event password. Sets display_sid or control_sid.",
+        "operationId": "room_login_api_auth_room_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomIdentity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Room Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/rooms": {
+      "get": {
+        "description": "Rooms for the login dropdown. No auth. Bounded (MAX_LOGIN_ROOMS).",
+        "operationId": "login_options_api_auth_rooms_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "practice",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Practice",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Login Options",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/staff-login": {
+      "post": {
+        "description": "Named staff account. Sets staff_sid.",
+        "operationId": "staff_login_api_auth_staff_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffIdentity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/commands": {
+      "post": {
+        "description": "One command, idempotent on command_id. Needs X-Proctor-Client.",
+        "operationId": "post_command_api_commands_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "adjust": "#/components/schemas/AdjustCommand",
+                    "end": "#/components/schemas/EndCommand",
+                    "pause": "#/components/schemas/PauseCommand",
+                    "permit": "#/components/schemas/PermitCommand",
+                    "resume": "#/components/schemas/ResumeCommand",
+                    "start": "#/components/schemas/StartCommand"
+                  },
+                  "propertyName": "type"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/PermitCommand"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StartCommand"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PauseCommand"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ResumeCommand"
+                  },
+                  {
+                    "$ref": "#/components/schemas/EndCommand"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AdjustCommand"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Post Command",
+        "tags": [
+          "commands"
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "description": "Who is logged in on this surface (cookies are HttpOnly, so the UI asks).",
+        "operationId": "me_api_me_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "surface",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Surface"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "room": "#/components/schemas/RoomIdentity",
+                      "staff": "#/components/schemas/StaffIdentity"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/RoomIdentity"
+                    },
+                    {
+                      "$ref": "#/components/schemas/StaffIdentity"
+                    }
+                  ],
+                  "title": "Response Me Api Me Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/rooms/{room_id}/snapshot": {
+      "get": {
+        "description": "Polling fallback. Served from memory. 304 when version <= since_version.",
+        "operationId": "room_snapshot_api_rooms__room_id__snapshot_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "304": {
+            "description": "Nothing newer than since_version"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Room Snapshot",
+        "tags": [
+          "rooms"
+        ]
+      }
+    },
+    "/api/rooms/{room_id}/stream": {
+      "get": {
+        "description": "SSE: current snapshot immediately, then every change, plus heartbeats.",
+        "operationId": "room_stream_api_rooms__room_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SnapshotMessage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HeartbeatMessage"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "text/event-stream. Frames are SnapshotMessage and HeartbeatMessage."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Room Stream",
+        "tags": [
+          "rooms"
+        ]
+      }
+    },
+    "/api/staff/rooms": {
+      "get": {
+        "description": "All rooms' snapshots (staff dashboard first load).",
+        "operationId": "staff_rooms_api_staff_rooms_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRoomsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Rooms",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/stream": {
+      "get": {
+        "description": "SSE: a snapshot per room on connect, then every change in any room, plus heartbeats.",
+        "operationId": "staff_stream_api_staff_stream_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SnapshotMessage"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HeartbeatMessage"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "text/event-stream. Frames are SnapshotMessage and HeartbeatMessage."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Stream",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/time": {
+      "get": {
+        "description": "Clock-sync probe. No auth. Never touches Postgres.",
+        "operationId": "get_time_api_time_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Time",
+        "tags": [
+          "time"
+        ]
+      }
+    }
+  }
+}
