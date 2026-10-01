@@ -1,0 +1,6 @@
+{$SITE_ADDRESS} {
+	reverse_proxy app:8000 {
+		# Needed later for Server-Sent Events: never buffer responses.
+		flush_interval -1
+	}
+}
