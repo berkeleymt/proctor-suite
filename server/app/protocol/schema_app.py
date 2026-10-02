@@ -33,6 +33,7 @@ from app.protocol.models import (
     RoomSnapshot,
     RosterImportResponse,
     RosterResponse,
+    RosterRoomRequest,
     StaffIdentity,
     StaffLoginRequest,
     StaffRoomsResponse,
@@ -363,6 +364,16 @@ def build_schema_app() -> FastAPI:
     )
     async def staff_roster_sync():
         """Admin: replace the roster from ContestDojo's API, only when CONTESTDOJO_* is set."""
+        _stub()
+
+    @app.post(
+        "/api/staff/roster/room",
+        response_model=RosterImportResponse,
+        tags=["staff"],
+        responses=_ERRORS,
+    )
+    async def staff_roster_room(body: RosterRoomRequest):
+        """Admin: set (empty = clear) the room of the given student IDs. `count` = students changed."""
         _stub()
 
     @app.post(

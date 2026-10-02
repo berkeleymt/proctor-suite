@@ -219,7 +219,6 @@ def test_sync_not_configured_then_configured(monkeypatch):
     r = admin.post("/api/staff/roster/sync", headers=H)
     assert r.status_code == 503 and r.json()["detail"]["error"] == "not_configured"
     for k, v in {
-        "CONTESTDOJO_API_URL": "https://cd.test",
         "CONTESTDOJO_API_TOKEN": "t",
         "CONTESTDOJO_EVENT_ID": "ev1",
     }.items():
@@ -232,7 +231,7 @@ def test_sync_not_configured_then_configured(monkeypatch):
         lambda *cfg: seen.append(cfg) or [roster.Student("1A", "Sync Kid")],
     )
     r = admin.post("/api/staff/roster/sync", headers=H)
-    assert r.json() == {"count": 1, "notes": []} and seen == [("https://cd.test", "t", "ev1", "")]
+    assert r.json() == {"count": 1, "notes": []} and seen == [("t", "ev1")]
     assert admin.get("/api/staff/roster").json()["source"] == "contestdojo"
 
     def boom(*cfg):
@@ -265,20 +264,17 @@ def test_fetch_contestdojo_maps_students_teams_orgs(monkeypatch):
     }  # fmt: skip
 
     def fake_get(url, headers, timeout):
-        path = url.removeprefix("https://cd.test")
+        path = url.removeprefix(roster.CONTESTDOJO_URL)
         calls.append((path, headers["Authorization"]))
         return FakeResp(200, data[path])
 
     monkeypatch.setattr(roster.requests, "get", fake_get)
-    got = roster.fetch_contestdojo("https://cd.test/", "tok", "ev1", "test")
+    got = roster.fetch_contestdojo("tok", "ev1")
     assert got == [
-        roster.Student("054A", "Ada L", "Moor High", "Moor A", "Evans 10", "a@x.org"),
+        roster.Student("054A", "Ada L", "Moor High", "Moor A", "", "a@x.org"),
         roster.Student("ROW2", "No Number", "", "", "", ""),  # no number: still imported
     ]
     assert calls[0] == ("/events/ev1/students/", "Bearer tok")
-    assert (
-        roster.fetch_contestdojo("https://cd.test", "tok", "ev1")[0].room == ""
-    )  # no key, no room
 
 
 def test_fetch_contestdojo_imports_everything_even_without_numbers_or_orgs(monkeypatch):
@@ -291,7 +287,7 @@ def test_fetch_contestdojo_imports_everything_even_without_numbers_or_orgs(monke
         return FakeResp(404, {})  # orgs and teams unavailable
 
     monkeypatch.setattr(roster.requests, "get", fake_get)
-    got = roster.fetch_contestdojo("https://cd.test", "tok", "ev1")
+    got = roster.fetch_contestdojo("tok", "ev1")
     assert [(s.id, s.school) for s in got] == [("U1", "Fallback HS"), ("U2", "")]
 
 
@@ -299,4 +295,27 @@ def test_fetch_contestdojo_imports_everything_even_without_numbers_or_orgs(monke
 def test_fetch_contestdojo_errors_are_plain(monkeypatch, status, words):
     monkeypatch.setattr(roster.requests, "get", lambda *a, **k: FakeResp(status, {}))
     with pytest.raises(roster.RosterError, match=words):
-        roster.fetch_contestdojo("https://cd.test", "tok", "ev1")
+        roster.fetch_contestdojo("tok", "ev1")
+
+
+def test_roster_set_room_and_sync_keeps_it(monkeypatch):
+    admin, _ = setup(monkeypatch, "Evans 10")
+    load(admin, monkeypatch)
+    r = admin.post(
+        "/api/staff/roster/room", json={"ids": ["140d", "NOPE"], "room": " Soda 306 "}, headers=H
+    )
+    assert r.json() == {"count": 1, "notes": []}
+    rows = {s["id"]: s["room"] for s in admin.get("/api/staff/roster").json()["students"]}
+    assert rows["140D"] == "Soda 306" and rows["054A"] == "Evans 10"
+    load(admin, monkeypatch, [roster.Student("140D", "Grace Hopper"), roster.Student("9Z", "New")])
+    rows = {s["id"]: s["room"] for s in admin.get("/api/staff/roster").json()["students"]}
+    assert rows == {"140D": "Soda 306", "9Z": ""}  # kept by name; the new student has none
+    assert (
+        admin.post("/api/staff/roster/room", json={"ids": ["140D"], "room": ""}, headers=H).json()[
+            "count"
+        ]
+        == 1
+    )
+    assert (
+        admin.post("/api/staff/roster/room", json={"ids": ["x"], "room": "r"}).status_code == 400
+    )  # CSRF

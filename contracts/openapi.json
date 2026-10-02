@@ -1338,6 +1338,32 @@
         "title": "RosterResponse",
         "type": "object"
       },
+      "RosterRoomRequest": {
+        "additionalProperties": false,
+        "description": "Set (or, with an empty `room`, clear) the room of these students. Admin only.",
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          },
+          "room": {
+            "maxLength": 60,
+            "title": "Room",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ids",
+          "room"
+        ],
+        "title": "RosterRoomRequest",
+        "type": "object"
+      },
       "RosterStudent": {
         "properties": {
           "contact": {
@@ -4724,6 +4750,88 @@
           }
         },
         "summary": "Staff Roster Clear",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/roster/room": {
+      "post": {
+        "description": "Admin: set (empty = clear) the room of the given student IDs. `count` = students changed.",
+        "operationId": "staff_roster_room_api_staff_roster_room_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterRoomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Roster Room",
         "tags": [
           "staff"
         ]

@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from dataclasses import replace
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -42,6 +43,7 @@ from app.protocol.models import (
     RoomSnapshot,
     RosterImportResponse,
     RosterResponse,
+    RosterRoomRequest,
     RosterStudent,
     StaffIdentity,
     StaffLoginRequest,
@@ -498,15 +500,13 @@ async def staff_roster_clear(request: Request, _: Post) -> RosterImportResponse:
     return RosterImportResponse(count=n, notes=[])
 
 
-def _contestdojo() -> tuple[str, str, str, str] | None:
-    s = store.setting
+def _contestdojo() -> tuple[str, str] | None:
+    """(token, event id): /super value if set, else .env; None when either is missing."""
     cfg = (
-        s("CONTESTDOJO_API_URL", "https://api.contestdojo.com"),
-        s("CONTESTDOJO_API_TOKEN"),
-        s("CONTESTDOJO_EVENT_ID"),
-        s("CONTESTDOJO_ROOM_KEY"),
+        store.setting("CONTESTDOJO_API_TOKEN").strip(),
+        store.setting("CONTESTDOJO_EVENT_ID").strip(),
     )
-    return cfg if all(cfg[:3]) else None
+    return cfg if all(cfg) else None
 
 
 @router.post("/staff/roster/sync", response_model=RosterImportResponse)
@@ -517,14 +517,27 @@ async def staff_roster_sync(request: Request, _: Post) -> RosterImportResponse:
         raise err(
             503,
             "not_configured",
-            "Add the ContestDojo token and event ID on the /super page first.",
+            "Add the ContestDojo token and event ID on the /super page (or in .env) first.",
         )
     try:  # a blocking HTTP call, so it runs in a thread and never stalls the timers
         students = await asyncio.to_thread(fetch_contestdojo, *cfg)
     except RosterError as e:
         raise err(502, "sync_failed", str(e)) from None
+    # ContestDojo has no rooms: keep the ones admins set (matched by email, else name).
+    key = lambda s: (s.contact or s.name).lower()
+    kept = {key(s): s.room for s in store.roster.values() if s.room}
+    students = [replace(s, room=s.room or kept.get(key(s), "")) for s in students]
     await store.replace_roster(students, "contestdojo")
     return RosterImportResponse(count=len(students), notes=[])
+
+
+@router.post("/staff/roster/room", response_model=RosterImportResponse)
+async def staff_roster_room(
+    body: RosterRoomRequest, request: Request, _: Post
+) -> RosterImportResponse:
+    admin_only(request)
+    n = await store.set_roster_room([norm_id(i) for i in body.ids], body.room.strip())
+    return RosterImportResponse(count=n, notes=[])
 
 
 # --- clarifications (0.6.0) ---

@@ -249,7 +249,7 @@ button.bad { color: var(--bad); }
 .logbar select { min-height: 44px; padding-block: 8px; }
 .logbar > button { min-height: 44px; }
 .table.log { grid-template-columns: max-content minmax(max-content, 1.6fr) minmax(max-content, 1fr) max-content max-content max-content max-content; }
-.table.roster { grid-template-columns: minmax(max-content, 1.2fr) max-content minmax(max-content, 1.2fr) minmax(max-content, 1.2fr) max-content; }
+.table.roster { grid-template-columns: max-content minmax(max-content, 1.2fr) max-content minmax(max-content, 1.2fr) max-content minmax(max-content, 1.2fr) max-content; }
 .table.log .tr:not(.th) { animation: row-in 200ms var(--ease); }
 .table .when { font-size: 14px; color: var(--muted); transition: color 200ms var(--ease); }
 .table .when[data-late="true"] { color: var(--warn); font-weight: 600; }

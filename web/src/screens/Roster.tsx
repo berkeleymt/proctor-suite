@@ -17,6 +17,8 @@ export function Roster() {
   const [room, setRoom] = useState("");
   const [q, setQ] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [assigning, setAssigning] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const query = useDebounced(q.trim());
@@ -89,20 +91,31 @@ export function Roster() {
               {data.matching.toLocaleString()} {data.matching === 1 ? "student" : "students"} · {data.out_now} out
             </span>
           </div>
+          {sel.size > 0 && (
+            <div className="bulk" role="toolbar" aria-label="Selected students">
+              <strong>{sel.size} selected</strong>
+              <button className="primary" onClick={() => setAssigning(true)}>Set room…</button>
+              <button onClick={() => setSel(new Set())}>Clear selection</button>
+            </div>
+          )}
           <div className="table roster">
             <div className="tr th">
+              <input type="checkbox" aria-label="Select all shown" checked={data.students.length > 0 && data.students.every((s) => sel.has(s.id))} onChange={(e) => setSel(e.target.checked ? new Set(data.students.map((s) => s.id)) : new Set())} />
               <span>Name</span>
               <span>ID</span>
               <span>School / team</span>
+              <span>Room</span>
               <span>Parent / coach contact</span>
               <span>Status</span>
             </div>
             {data.students.length === 0 && <p className="muted empty">No students match.</p>}
             {data.students.map((s) => (
               <div className="tr" key={s.id}>
+                <input type="checkbox" aria-label={`Select ${s.name || s.id}`} checked={sel.has(s.id)} onChange={() => setSel((o) => (new Set(o), o.has(s.id) ? o.delete(s.id) : o.add(s.id), new Set(o)))} />
                 <span>{s.name || <span className="muted">(no name)</span>}</span>
                 <span className="mono">{s.id}</span>
                 <span className="muted">{[s.school, s.team].filter(Boolean).join(" · ")}</span>
+                <span>{s.room || <span className="muted">—</span>}</span>
                 <span className="muted">{s.contact}</span>
                 <span className="when" data-late={s.out_since_ms !== null}>
                   {s.out_since_ms !== null ? `Out since ${clock(s.out_since_ms)}` : "Present"}
@@ -112,6 +125,19 @@ export function Roster() {
           </div>
           {data.matching > data.students.length && <p className="muted note">Showing the first {data.students.length}. Search or pick a room to narrow it down.</p>}
         </>
+      )}
+      {assigning && (
+        <RoomSheet
+          ids={[...sel]}
+          names={(live.data?.rooms ?? []).map((r) => r.room_name)}
+          onClose={() => setAssigning(false)}
+          onDone={(n, room) => {
+            setAssigning(false);
+            setSel(new Set());
+            setMsg({ text: room ? `Set ${n.toLocaleString()} students to ${room}.` : `Cleared the room of ${n.toLocaleString()} students.`, bad: false });
+            void refresh();
+          }}
+        />
       )}
       {clearing && (
         <ClearSheet
@@ -125,6 +151,43 @@ export function Roster() {
         />
       )}
     </main>
+  );
+}
+
+/** Assign one room to the selected students. Empty = no room. Suggests the rooms from the Timers page. */
+function RoomSheet({ ids, names, onClose, onDone }: { ids: string[]; names: string[]; onClose: () => void; onDone: (n: number, room: string) => void }) {
+  const [room, setRoom] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    setBusy(true);
+    setErr("");
+    try {
+      onDone((await post<{ count: number }>("/api/staff/roster/room", { ids, room: room.trim() }))!.count, room.trim());
+    } catch (e) {
+      setErr(why(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet title={`Set room for ${ids.length.toLocaleString()} students`} onClose={onClose} onSubmit={go}>
+      <label>
+        Room (as named on the Timers page; leave empty to remove the room)
+        <input autoFocus list="roster-rooms" value={room} maxLength={60} onChange={(e) => setRoom(e.target.value)} autoComplete="off" />
+        <datalist id="roster-rooms">{names.map((n) => <option key={n} value={n} />)}</datalist>
+      </label>
+      <p className="error" role="alert" hidden={!err}>
+        {err}
+      </p>
+      <div className="row">
+        <button type="button" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="primary" disabled={busy}>
+          {busy ? "Saving…" : room.trim() ? "Set room" : "Remove room"}
+        </button>
+      </div>
+    </Sheet>
   );
 }
 

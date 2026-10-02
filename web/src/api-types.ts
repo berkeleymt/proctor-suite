@@ -563,6 +563,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/roster/room": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Staff Roster Room
+         * @description Admin: set (empty = clear) the room of the given student IDs. `count` = students changed.
+         */
+        post: operations["staff_roster_room_api_staff_roster_room_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/roster/sync": {
         parameters: {
             query?: never;
@@ -1215,6 +1235,16 @@ export interface components {
             synced_at_ms: number | null;
             /** Total */
             total: number;
+        };
+        /**
+         * RosterRoomRequest
+         * @description Set (or, with an empty `room`, clear) the room of these students. Admin only.
+         */
+        RosterRoomRequest: {
+            /** Ids */
+            ids: string[];
+            /** Room */
+            room: string;
         };
         /** RosterStudent */
         RosterStudent: {
@@ -3444,6 +3474,75 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterImportResponse"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    staff_roster_room_api_staff_roster_room_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterRoomRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

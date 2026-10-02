@@ -217,6 +217,13 @@ async def load_roster(pool: asyncpg.Pool) -> list[asyncpg.Record]:
         return await c.fetch("SELECT * FROM roster_students")
 
 
+async def set_roster_room(pool: asyncpg.Pool, ids: list[str], room: str) -> None:
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE roster_students SET room=$1 WHERE student_id = ANY($2::text[])", room, ids
+        )
+
+
 async def replace_roster(pool: asyncpg.Pool, students, source: str, at_ms: int) -> None:
     """The whole roster in one transaction: readers never see half of an import."""
     async with pool.acquire() as c, c.transaction():

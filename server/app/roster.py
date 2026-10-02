@@ -1,6 +1,6 @@
 """The student roster: who a student ID belongs to (names, school, room, contact).
 
-Only source: ContestDojo's API, on demand from the Roster tab (settings on /super).
+Only source: ContestDojo's API, on demand from the Roster tab.
 Nothing here runs on the event-day critical path (invariant 6): a roster is loaded once, kept in
 memory, and room devices only ever look one student up in memory (invariant 1).
 """
@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import requests
 
 SYNC_TIMEOUT_S = 20
+CONTESTDOJO_URL = "https://api.contestdojo.com"
 
 
 @dataclass(frozen=True)
@@ -59,20 +60,20 @@ def _get(base: str, token: str, path: str) -> list[dict]:
 def _get_opt(base: str, token: str, path: str) -> list[dict]:
     """Orgs and teams only add detail: if they fail, students are still imported."""
     try:
-        return _get(base, token, path)
+        return _get(CONTESTDOJO_URL, token, path)
     except RosterError:
         return []
 
 
-def fetch_contestdojo(base: str, token: str, event_id: str, room_key: str = "") -> list[Student]:
+def fetch_contestdojo(token: str, event_id: str) -> list[Student]:
     """Blocking (run it in a thread). Joins `/events/{id}/students|teams|orgs/` (students carry
     `org` and `team` ids). Imports EVERY student returned: the ID is `number` when set, else the
     ContestDojo user id, so a proctor can still find them. School = org name, else the
-    `customFields.school` text. Room comes from `roomAssignments[room_key]` when a key is set."""
+    `customFields.school` text."""
     ev = f"/events/{event_id}"
-    students = _get(base, token, f"{ev}/students/")
-    teams = {t.get("id"): t for t in _get_opt(base, token, f"{ev}/teams/")}
-    orgs = {o.get("id"): o for o in _get_opt(base, token, f"{ev}/orgs/")}
+    students = _get(CONTESTDOJO_URL, token, f"{ev}/students/")
+    teams = {t.get("id"): t for t in _get_opt(CONTESTDOJO_URL, token, f"{ev}/teams/")}
+    orgs = {o.get("id"): o for o in _get_opt(CONTESTDOJO_URL, token, f"{ev}/orgs/")}
     out: dict[str, Student] = {}
     for n, s in enumerate(students, start=1):
         sid = norm_id(s.get("number") or s.get("id") or s.get("user") or f"ROW{n}")
@@ -81,13 +82,12 @@ def fetch_contestdojo(base: str, token: str, event_id: str, room_key: str = "") 
         t = teams.get(s.get("team")) or {}
         o = orgs.get(s.get("org")) or {}
         cf = s.get("customFields") or {}
-        room = (s.get("roomAssignments") or {}).get(room_key, "") if room_key else ""
         out[sid] = Student(
             sid,
             " ".join(f"{s.get('fname') or ''} {s.get('lname') or ''}".split()),
             str(o.get("name") or cf.get("school") or ""),
             str(t.get("name") or t.get("number") or ""),
-            str(room or ""),
+            "",  # room: not synced; ContestDojo has no room data yet
             s.get("email") or "",
         )
     return list(out.values())

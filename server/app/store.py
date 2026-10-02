@@ -749,6 +749,15 @@ class Store:
             self.roster = {s.id: s for s in students}
             self.roster_source, self.roster_synced_ms = source, at
 
+    async def set_roster_room(self, ids: list[str], room: str) -> int:
+        async with self._admin_lock:
+            hit = [i for i in dict.fromkeys(ids) if i in self.roster]
+            if self.pool and hit:
+                await db.set_roster_room(self.pool, hit, room)
+            for i in hit:
+                self.roster[i] = replace(self.roster[i], room=room)
+            return len(hit)
+
     def out_since(self) -> dict[str, int]:
         """student id -> when they left, for everyone out right now (any room)."""
         r: dict[str, int] = {}

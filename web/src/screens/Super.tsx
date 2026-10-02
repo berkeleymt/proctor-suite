@@ -168,11 +168,11 @@ function ContestDojo({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSetti
       <p className="muted">Used by Admin → Roster → Sync. Saved here, they replace CONTESTDOJO_API_TOKEN and CONTESTDOJO_EVENT_ID in .env.</p>
       <label>
         API token
-        <input type="password" autoComplete="off" value={token} maxLength={200} onChange={(e) => (setToken(e.target.value), setSaved(false))} />
+        <input value={token} maxLength={200} autoComplete="off" onChange={(e) => (setToken(e.target.value), setSaved(false))} />
       </label>
       <label>
         Event ID
-        <input value={ev} maxLength={100} onChange={(e) => (setEv(e.target.value), setSaved(false))} />
+        <input value={ev} maxLength={100} autoComplete="off" onChange={(e) => (setEv(e.target.value), setSaved(false))} />
       </label>
       <p className="error" role="alert" hidden={!err}>{err}</p>
       <div className="row">

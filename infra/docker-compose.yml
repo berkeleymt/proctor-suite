@@ -44,9 +44,9 @@ services:
       # Super-admin page: Google sign-in, plus the emails that may always open it.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS:-}
-      # Roster sync (token and event ID live on /super). See docs/setup-contestdojo.md.
-      CONTESTDOJO_API_URL: ${CONTESTDOJO_API_URL:-}
-      CONTESTDOJO_ROOM_KEY: ${CONTESTDOJO_ROOM_KEY:-}
+      # Roster sync (set both to enable Admin > Roster > Sync). See docs/setup-contestdojo.md.
+      CONTESTDOJO_API_TOKEN: ${CONTESTDOJO_API_TOKEN:-}
+      CONTESTDOJO_EVENT_ID: ${CONTESTDOJO_EVENT_ID:-}
       SEED_ROOMS: ${SEED_ROOMS:-Dwinelle 145,Evans 10,Soda 306,Wheeler 150}
       SESSION_DURATION_MIN: ${SESSION_DURATION_MIN:-60}
     depends_on:

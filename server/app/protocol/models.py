@@ -596,6 +596,14 @@ class RosterResponse(BaseModel):
     sync_available: bool  # CONTESTDOJO_* is configured on the server
 
 
+class RosterRoomRequest(BaseModel):
+    """Set (or, with an empty `room`, clear) the room of these students. Admin only."""
+
+    model_config = ConfigDict(extra="forbid")
+    ids: list[str] = Field(min_length=1, max_length=20_000)
+    room: str = Field(max_length=60)
+
+
 class RosterImportResponse(BaseModel):
     count: int = Field(ge=0)
     notes: list[str] = Field(max_length=6)  # skipped rows, first few only
