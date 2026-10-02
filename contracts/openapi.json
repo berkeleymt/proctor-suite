@@ -1098,7 +1098,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1740,7 +1740,7 @@
     },
     "/api/rooms/{room_id}/stream": {
       "get": {
-        "description": "SSE: current snapshot immediately, then every change, plus heartbeats.",
+        "description": "SSE: current snapshot immediately, then every change, plus heartbeats.\n`cid` is a random id the page picks so it can end this stream early (0.5.0).",
         "operationId": "room_stream_api_rooms__room_id__stream_get",
         "parameters": [
           {
@@ -1770,6 +1770,23 @@
                 }
               ],
               "title": "Surface"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cid"
             }
           }
         ],
@@ -1846,6 +1863,91 @@
           }
         },
         "summary": "Room Stream",
+        "tags": [
+          "rooms"
+        ]
+      }
+    },
+    "/api/rooms/{room_id}/stream/{cid}/close": {
+      "post": {
+        "description": "A page is closing: end its stream now so presence updates at once. Needs X-Proctor-Client. 0.5.0.",
+        "operationId": "close_room_stream_api_rooms__room_id__stream__cid__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cid",
+            "required": true,
+            "schema": {
+              "title": "Cid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Close Room Stream",
         "tags": [
           "rooms"
         ]

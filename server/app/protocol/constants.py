@@ -4,7 +4,7 @@ Changing any value here is a contract change: bump PROTOCOL_VERSION and add a
 changelog line to docs/protocol.md.
 """
 
-PROTOCOL_VERSION = "0.4.0"
+PROTOCOL_VERSION = "0.5.0"
 
 # --- Streaming and network behavior (invariant 2) ---
 HEARTBEAT_INTERVAL_S = 15  # server sends a heartbeat on every open stream this often

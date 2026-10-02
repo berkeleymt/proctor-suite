@@ -140,6 +140,29 @@ def test_presence_counts_open_pages_per_surface():
     asyncio.run(run())
 
 
+def test_page_close_signal_ends_stream_and_clears_presence_at_once():
+    import asyncio
+
+    from app.store import Store
+    from app.stream import frames
+
+    async def run() -> None:
+        store = Store()
+        control = frames(store, "evans-10", heartbeat_s=60, surface="control", cid="abcdefgh1234")
+        await anext(control)
+        assert store.hub.presence("evans-10")["control"]["online"] == 1
+        nxt = asyncio.ensure_future(anext(control))  # now waiting, as an idle stream does
+        await asyncio.sleep(0)
+        store.hub.close("evans-10", "abcdefgh1234")
+        try:
+            await asyncio.wait_for(nxt, 1)
+        except StopAsyncIteration:
+            pass
+        assert store.hub.presence("evans-10")["control"]["online"] == 0
+
+    asyncio.run(run())
+
+
 def test_deleted_room_stream_ends():
     import asyncio
 

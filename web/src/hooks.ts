@@ -64,9 +64,22 @@ export function useLive<T extends { version?: number }>(
     let retry: number;
     let dead: number;
     let fails = 0;
+    // Room pages count as "open" while their stream is. Tell the server when we go, so it needn't wait.
+    const counted = streamPath.includes("surface=");
+    const cid = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+    const leave = () => {
+      if (!counted) return;
+      fetch(`${streamPath.split("?")[0]}/${cid}/close`, {
+        method: "POST",
+        keepalive: true,
+        credentials: "same-origin",
+        headers: { "X-Proctor-Client": "web" },
+      }).catch(() => {});
+    };
+    window.addEventListener("pagehide", leave);
     const open = () => {
       if (stop) return;
-      es = new EventSource(streamPath);
+      es = new EventSource(counted ? `${streamPath}&cid=${cid}` : streamPath);
       const alive = () => {
         clearTimeout(dead);
         dead = window.setTimeout(fail, DEAD_AFTER_MS);
@@ -95,6 +108,8 @@ export function useLive<T extends { version?: number }>(
     open();
     return () => {
       stop = true;
+      window.removeEventListener("pagehide", leave);
+      leave();
       es?.close();
       clearTimeout(retry);
       clearTimeout(dead);

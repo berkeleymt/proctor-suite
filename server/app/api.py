@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.protocol.constants import (
@@ -157,9 +157,11 @@ async def snapshot(request: Request, room_id: str, since_version: int = -1) -> R
     return JSONResponse(store.snapshot(room).model_dump(mode="json"))
 
 
-def sse(room_id: str | None, surface: str | None = None) -> StreamingResponse:
+def sse(
+    room_id: str | None, surface: str | None = None, cid: str | None = None
+) -> StreamingResponse:
     return StreamingResponse(
-        frames(store, room_id, surface=surface),
+        frames(store, room_id, surface=surface, cid=cid),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -167,7 +169,10 @@ def sse(room_id: str | None, surface: str | None = None) -> StreamingResponse:
 
 @router.get("/rooms/{room_id}/stream")
 async def room_stream(
-    request: Request, room_id: str, surface: Literal["control", "display"] | None = None
+    request: Request,
+    room_id: str,
+    surface: Literal["control", "display"] | None = None,
+    cid: Annotated[str | None, Query(pattern=r"^[A-Za-z0-9_-]{8,64}$")] = None,
 ) -> StreamingResponse:
     """`surface` says which page is listening, so staff can see who is connected. It only counts
     if that surface's own login is valid for this room (a staff preview never counts)."""
@@ -177,7 +182,14 @@ async def room_stream(
     if not can_read(session_for(request, "staff", "control", "display"), room_id):
         raise err(401, "unauthenticated", "Not logged in.")
     counted = surface if surface and can_read(session_for(request, surface), room_id) else None
-    return sse(room_id, counted)
+    return sse(room_id, counted, cid)
+
+
+@router.post("/rooms/{room_id}/stream/{cid}/close", status_code=204)
+async def close_room_stream(room_id: str, cid: str, _: Post) -> Response:
+    """A page is closing: drop its stream now so presence turns grey right away (0.5.0)."""
+    store.hub.close(room_id, cid)
+    return Response(status_code=204)
 
 
 @router.get("/staff/stream")

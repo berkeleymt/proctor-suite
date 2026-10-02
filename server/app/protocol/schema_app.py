@@ -122,8 +122,20 @@ def build_schema_app() -> FastAPI:
     async def room_stream(
         room_id: Annotated[str, Path()],
         surface: Annotated[Literal["control", "display"] | None, Query()] = None,
+        cid: Annotated[str | None, Query(pattern=r"^[A-Za-z0-9_-]{8,64}$")] = None,
     ):
-        """SSE: current snapshot immediately, then every change, plus heartbeats."""
+        """SSE: current snapshot immediately, then every change, plus heartbeats.
+        `cid` is a random id the page picks so it can end this stream early (0.5.0)."""
+        _stub()
+
+    @app.post(
+        "/api/rooms/{room_id}/stream/{cid}/close",
+        status_code=204,
+        tags=["rooms"],
+        responses=_ERRORS,
+    )
+    async def close_room_stream(room_id: str, cid: str):
+        """A page is closing: end its stream now so presence updates at once. Needs X-Proctor-Client. 0.5.0."""
         _stub()
 
     @app.post("/api/commands", response_model=CommandResponse, tags=["commands"], responses=_ERRORS)

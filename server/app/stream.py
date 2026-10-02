@@ -23,9 +23,11 @@ def _now() -> int:
 
 
 class Sub:
-    def __init__(self, room_id: str | None, surface: str | None) -> None:
+    def __init__(self, room_id: str | None, surface: str | None, cid: str | None = None) -> None:
         self.room_id = room_id  # None = staff: every room
         self.surface = surface  # counted in presence when set
+        self.cid = cid  # the page's own stream id, so it can say "I'm leaving"
+        self.closed = False
         self.dirty: set[str] = set()
         self.dirty_presence: set[str] = set()
         self.wake = asyncio.Event()
@@ -62,8 +64,17 @@ class Hub:
                 sub.dirty_presence.add(room_id)
                 sub.wake.set()
 
-    def subscribe(self, room_id: str | None, surface: str | None = None) -> Sub:
-        sub = Sub(room_id, surface)
+    def close(self, room_id: str, cid: str) -> None:
+        """A page says it is closing: end that stream now instead of at the next failed write."""
+        for sub in self._subs:
+            if sub.cid == cid and sub.room_id == room_id:
+                sub.closed = True
+                sub.wake.set()
+
+    def subscribe(
+        self, room_id: str | None, surface: str | None = None, cid: str | None = None
+    ) -> Sub:
+        sub = Sub(room_id, surface, cid)
         self._subs.add(sub)
         if room_id and surface:
             self._touch(room_id, surface, +1)
@@ -93,12 +104,13 @@ async def frames(
     room_id: str | None,
     heartbeat_s: float = HEARTBEAT_INTERVAL_S,
     surface: str | None = None,
+    cid: str | None = None,
 ) -> AsyncIterator[str]:
     """Initial snapshot(s), then one per change; a heartbeat after each quiet interval.
     A room stream ends when its room is deleted (the device then re-authenticates and is refused).
     """
     hub: Hub = store.hub
-    sub = hub.subscribe(room_id, surface)  # subscribe first so nothing is lost
+    sub = hub.subscribe(room_id, surface, cid)  # subscribe first so nothing is lost
     try:
         for rid in [room_id] if room_id else sorted(store.rooms):
             room = store.rooms.get(rid)
@@ -115,6 +127,8 @@ async def frames(
                 yield _frame("heartbeat", json.dumps({"server_time_ms": _now()}))
                 continue
             sub.wake.clear()
+            if sub.closed:
+                return
             dirty, sub.dirty = sorted(sub.dirty), set()
             pres, sub.dirty_presence = sorted(sub.dirty_presence), set()
             for rid in dirty:

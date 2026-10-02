@@ -154,10 +154,31 @@ export interface paths {
         /**
          * Room Stream
          * @description SSE: current snapshot immediately, then every change, plus heartbeats.
+         *     `cid` is a random id the page picks so it can end this stream early (0.5.0).
          */
         get: operations["room_stream_api_rooms__room_id__stream_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{room_id}/stream/{cid}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Room Stream
+         * @description A page is closing: end its stream now so presence updates at once. Needs X-Proctor-Client. 0.5.0.
+         */
+        post: operations["close_room_stream_api_rooms__room_id__stream__cid__close_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1220,6 +1241,7 @@ export interface operations {
         parameters: {
             query?: {
                 surface?: ("control" | "display") | null;
+                cid?: string | null;
             };
             header?: never;
             path: {
@@ -1238,6 +1260,72 @@ export interface operations {
                     "application/json": unknown;
                     "text/event-stream": components["schemas"]["SnapshotMessage"] | components["schemas"]["HeartbeatMessage"];
                 };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    close_room_stream_api_rooms__room_id__stream__cid__close_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+                cid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description unauthenticated / invalid_credentials */
             401: {
