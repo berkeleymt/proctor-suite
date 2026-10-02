@@ -73,22 +73,35 @@ export function BathroomLog({ s, setData }: { s: Snapshot; setData: (s: Snapshot
     const out = v.back_ms === null;
     const m = mins(out ? serverNow() : v.back_ms!, v.left_ms);
     return (
-      <li key={v.id} className={out ? "" : "done"}>
-        <span className="who">
+      <li key={v.id} className={out ? "visit" : "visit done"} data-late={out && m >= LATE_MIN}>
+        <span className="bwho">
           <strong className="mono">{v.student_id}</strong>
           {v.student_name && <small>{v.student_name}</small>}
         </span>
-        <span className="when" data-late={out && m >= LATE_MIN}>
-          {out ? `left ${clock(v.left_ms)} · ${m < 1 ? "just now" : `${m} min`}` : `${clock(v.left_ms)}–${clock(v.back_ms!)} · ${m < 1 ? "under 1 min" : `${m} min`}`}
+        <span className="btime">
+          <b>{m < 1 ? (out ? "Just now" : "Under 1 min") : `${m} min`}</b>
+          <small>{out ? `left ${clock(v.left_ms)}` : `${clock(v.left_ms)}\u2013${clock(v.back_ms!)}`}</small>
         </span>
-        {out ? <button onClick={() => back(v)}>Returned</button> : <span className="slot" aria-hidden />}
+        {out && <button onClick={() => back(v)}>Returned</button>}
       </li>
     );
   };
+  // One flat, keyed list: when a student comes back their row keeps its identity (it fades and
+  // moves under "Back") instead of being thrown away and rebuilt, so nothing re-animates.
+  const items = [
+    ...s.bathroom_out.map(row),
+    ...(s.bathroom_out.length > 0 && returned.length > 0 ? [<li key="sep" className="sep">Back</li>] : []),
+    ...returned.map(row),
+  ];
 
   return (
     <section className="bath" aria-labelledby="bath-h">
-      <h2 id="bath-h">Bathroom</h2>
+      <div className="bath-head">
+        <h2 id="bath-h">Bathroom</h2>
+        <span className={s.students_out > 0 ? "pill" : "muted"} aria-live="polite">
+          {s.students_out > 0 ? `${s.students_out} out` : "Nobody out"}
+        </span>
+      </div>
       <form className="row bath-in" onSubmit={markOut}>
         <input
           value={student}
@@ -124,12 +137,7 @@ export function BathroomLog({ s, setData }: { s: Snapshot; setData: (s: Snapshot
       <p className="error" role="alert" hidden={!err}>
         {err}
       </p>
-      {s.bathroom_out.length === 0 && returned.length === 0 && <p className="hint">Nobody is out.</p>}
-      {s.bathroom_out.length === 0 && returned.length > 0 && <p className="hint">Nobody is out right now.</p>}
-      <ul className="bath-list">
-        {s.bathroom_out.map(row)}
-        {returned.map(row)}
-      </ul>
+      {items.length === 0 ? <p className="hint">Students you mark out will show up here.</p> : <ul className="bath-list">{items}</ul>}
     </section>
   );
 }

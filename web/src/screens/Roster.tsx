@@ -18,6 +18,7 @@ export function Roster() {
   const [q, setQ] = useState("");
   const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const query = useDebounced(q.trim());
   const params = new URLSearchParams();
@@ -51,6 +52,11 @@ export function Roster() {
         {data.sync_available && (
           <button disabled={syncing} onClick={sync}>
             {syncing ? "Syncing…" : "Sync"}
+          </button>
+        )}
+        {!empty && (
+          <button className="bad" onClick={() => setClearing(true)}>
+            Clear roster…
           </button>
         )}
         <button className={empty ? "primary" : ""} onClick={() => setImporting(true)}>
@@ -115,6 +121,17 @@ export function Roster() {
           </div>
           {data.matching > data.students.length && <p className="muted note">Showing the first {data.students.length}. Search or pick a room to narrow it down.</p>}
         </>
+      )}
+      {clearing && (
+        <ClearSheet
+          count={data.total}
+          onClose={() => setClearing(false)}
+          onDone={(n) => {
+            setClearing(false);
+            setMsg({ text: `Cleared ${n.toLocaleString()} students from the roster.`, bad: false });
+            void refresh();
+          }}
+        />
       )}
       {importing && (
         <ImportSheet
@@ -185,6 +202,46 @@ function ImportSheet({ existing, onClose, onDone }: { existing: number; onClose:
         </button>
         <button className="primary" disabled={!text.trim() || busy}>
           {busy ? "Importing…" : "Import"}
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+/** Wipes names and contacts of minors. Type DELETE, like every other destructive action here. */
+function ClearSheet({ count, onClose, onDone }: { count: number; onClose: () => void; onDone: (n: number) => void }) {
+  const [typed, setTyped] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    if (typed !== "DELETE") return;
+    setBusy(true);
+    setErr("");
+    try {
+      onDone((await post<{ count: number }>("/api/staff/roster/clear"))!.count);
+    } catch (e) {
+      setErr(why(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet title={`Clear all ${count.toLocaleString()} students?`} onClose={onClose} onSubmit={go}>
+      <p className="muted">
+        This removes every name, school and contact from the roster for good. Proctors will see only IDs until you import again. Bathroom records stay, without names.
+      </p>
+      <label>
+        Type DELETE to confirm
+        <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+      </label>
+      <p className="error" role="alert" hidden={!err}>
+        {err}
+      </p>
+      <div className="row">
+        <button type="button" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="danger" disabled={typed !== "DELETE" || busy}>
+          {busy ? "Clearing…" : "Clear roster"}
         </button>
       </div>
     </Sheet>

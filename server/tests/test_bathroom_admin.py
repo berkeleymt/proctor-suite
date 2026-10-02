@@ -206,6 +206,21 @@ def test_roster_import_errors_and_replace(monkeypatch):
     assert [s["id"] for s in admin.get("/api/staff/roster").json()["students"]] == ["9"]
 
 
+def test_roster_clear(monkeypatch):
+    admin, (a,) = setup(monkeypatch, "Evans 10")
+    p = proctor(monkeypatch, a)
+    admin.post("/api/staff/roster/import", json={"csv": CSV}, headers=H)
+    assert p.post("/api/staff/roster/clear", headers=H).status_code == 401  # admins only
+    assert admin.post("/api/staff/roster/clear").status_code == 400  # CSRF header needed
+    r = admin.post("/api/staff/roster/clear", headers=H)
+    assert r.status_code == 200 and r.json() == {"count": 3, "notes": []}
+    assert admin.get("/api/staff/roster").json()["total"] == 0
+    assert p.get("/api/roster/lookup", params={"id": "054A"}).json() == {
+        "roster_loaded": False,
+        "student": None,
+    }
+
+
 def test_parse_csv_header_spellings():
     s, _ = roster.parse_csv(
         "Number\tFull Name\tOrganization\tRoom Assignment\n12b\tX Y\tSchool\tR1\n"

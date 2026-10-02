@@ -377,6 +377,16 @@ def build_schema_app() -> FastAPI:
         """Admin: replace the roster from ContestDojo's API, only when CONTESTDOJO_* is set."""
         _stub()
 
+    @app.post(
+        "/api/staff/roster/clear",
+        response_model=RosterImportResponse,
+        tags=["staff"],
+        responses=_ERRORS,
+    )
+    async def staff_roster_clear():
+        """Admin: delete every roster row (privacy cleanup). `count` = students removed."""
+        _stub()
+
     @app.get("/api/roster/lookup", response_model=StudentLookup, tags=["rooms"], responses=_ERRORS)
     async def roster_lookup(id: str):
         """A room's proctor or staff: one student by ID, from memory. No contact details."""

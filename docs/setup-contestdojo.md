@@ -23,6 +23,8 @@ Re-import any time (even event morning): it **replaces** the roster, it doesn't 
 
 ## Path B: Sync from ContestDojo's API (optional; needs help from ContestDojo)
 
+**Status (2026-10-02): waiting on the ContestDojo maintainers to guide us. This is the only open Phase 1 item.** Until then use Path A.
+
 The API repo (`github.com/contestdojo/api`) is archived and has no public address or login flow in it. It authenticates with a **token that someone with ContestDojo's database access must create** (a document in their `api_tokens` collection, tied to an admin user). Your website login can't do this. So:
 
 1. Ask ContestDojo's maintainers (the repo author is Oliver Ni) for: **the API's base URL**, **an API token for an admin account on the BMT entity**, and **the event ID** for BMT 2026. Also ask whether the API still runs (the repo was archived July 22, 2026).
@@ -40,7 +42,7 @@ The API repo (`github.com/contestdojo/api`) is archived and has no public addres
 
 ## Privacy and cleanup
 
-The roster holds names, schools and parent/coach contacts of students (minors). Only admins see contacts; proctors see name, school, team and room. After the event, wipe it:
+The roster holds names, schools and parent/coach contacts of students (minors). Only admins see contacts; proctors see name, school, team and room. After the event, wipe it with **Admin -> Roster -> Clear roster…** (type DELETE). If the page is unavailable, the fallback is:
 
 ```bash
 cd ~/proctor-suite/infra

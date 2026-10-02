@@ -35,7 +35,7 @@ export function LogoutButton() {
   );
 }
 
-const TAB_LABEL = { timers: "Timers", clarifications: "Clarifications", bathroom: "Bathroom log", roster: "Roster" } as const;
+const TAB_LABEL = { timers: "Timers", clarifications: "Clarifications", bathroom: "Bathroom", roster: "Roster" } as const;
 
 /**
  * The admin header, one component for every admin tab. Wide screens: tabs, summary, light and

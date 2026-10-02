@@ -37,7 +37,7 @@ Real-time, offline-tolerant timer and proctoring app for Berkeley Math Tournamen
 | `server/` | FastAPI app (Python 3.13, managed with `uv`) | Ian |
 | `web/` | Frontend: display, control, staff (TS/React/Vite), from Phase 1 | Forrest |
 | `infra/` | Docker Compose, Caddy, server scripts, AWS runbook | Forrest |
-| `contracts/`, `docs/protocol.md` | Shared contract: protocol v0.1.0, `openapi.json`, timer fixtures | Both |
+| `contracts/`, `docs/protocol.md` | Shared contract: protocol (version history in `protocol.md` §14), `openapi.json`, timer fixtures | Both |
 | `server/app/protocol/` | Pydantic wire models and constants (source of the OpenAPI file) | Both |
 
 ## Commands

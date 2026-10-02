@@ -215,26 +215,31 @@ button.bad { color: var(--bad); }
 .check-row { display: flex; gap: 10px; align-items: center; font-size: 15px; color: var(--text); }
 .gsi { display: flex; justify-content: center; min-height: 44px; color-scheme: light; }
 
-/* Proctor · Bathroom log: same card look as the rest, rows rise in like the admin list. */
-.bath { background: var(--card); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
-.bath h2 { font-size: 17px; }
-.bath-in input { flex: 1; min-width: 0; text-transform: uppercase; }
-.bath-in input::placeholder { text-transform: none; }
-.bath-list { list-style: none; margin: 0; padding: 0; display: grid; }
-.bath-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); animation: row-in 240ms var(--ease); }
-.bath-list .when { flex: 1; font-size: 14px; color: var(--muted); transition: color 200ms var(--ease); }
-.bath-list .when[data-late="true"] { color: var(--warn); font-weight: 600; }
-.bath-list button { min-height: 40px; }
-
-/* Proctor bathroom: returned rows keep the exact row shape, just faded. The class change fades
-   over 250 ms (opacity only), so a student "settling" into the faded part reads as a change. */
-.bath-list li { transition: opacity 250ms var(--ease); }
-.bath-list li.done { opacity: 0.5; }
-.bath-list .who { display: grid; min-width: 0; line-height: 1.25; }
-.bath-list .who small { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bath-list .slot { width: 0; }
-.who-line { margin: -4px 0 0; min-height: 1.4em; font-size: 14px; }
+/* Proctor · Bathroom log. Big ID field for a thumb, one row shape (out now, then "Back" faded).
+   Motion: a new row eases in (opacity + translateY, 220 ms), a returned row fades to 50 %, a late
+   row warms up. Only transform/opacity/color move; reduced motion is handled globally above. */
+.bath { background: var(--card); border-radius: 20px; padding: 18px; display: grid; gap: 14px; }
+.bath-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
+.bath-head h2 { font-size: 20px; margin: 0; }
+.bath-in { flex-wrap: nowrap; }
+.bath-in input { flex: 1; min-width: 0; min-height: 56px; font: 600 20px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+.bath-in input::placeholder { font: 400 16px var(--font); letter-spacing: 0; text-transform: none; }
+.bath-in button { min-height: 56px; padding-inline: 20px; }
+.who-line { margin: -6px 0 0; min-height: 1.4em; font-size: 14px; }
 .who-line .warn { color: var(--warn); font-weight: 600; }
+.bath-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bath-list .visit { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--muted) 9%, transparent); animation: row-in 220ms var(--ease); transition: opacity 250ms var(--ease), background-color 250ms var(--ease), box-shadow 250ms var(--ease); }
+.bath-list .visit[data-late="true"] { background: color-mix(in srgb, var(--warn) 13%, transparent); box-shadow: inset 3px 0 var(--warn); }
+.bath-list .visit.done { opacity: 0.5; grid-template-columns: minmax(0, 1fr) auto; }
+.bath-list .sep { padding: 6px 4px 0; font-size: 13px; font-weight: 600; color: var(--muted); animation: fade 200ms var(--ease); }
+.bwho { display: grid; min-width: 0; line-height: 1.25; }
+.bwho strong { font-size: 20px; letter-spacing: 0.02em; }
+.bwho small { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btime { display: grid; justify-items: end; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.btime b { font-size: 17px; transition: color 250ms var(--ease); }
+.btime small { color: var(--muted); font-size: 13px; }
+.visit[data-late="true"] .btime b { color: var(--warn); }
+.bath-list button { min-height: 44px; }
 
 /* Admin Bathroom log + Roster: filter row above a table that reuses .table / .tr. */
 .logbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 20px 0; }

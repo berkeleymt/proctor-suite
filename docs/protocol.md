@@ -244,6 +244,7 @@ Every `RoomSnapshot` carries `students_out` (count, always right), `bathroom_out
 
 **Roster.** One list of students, replaced as a whole (never merged), kept in Postgres (`roster_students`, migration 0009) and in memory.
 - `POST /api/staff/roster/import` `{csv}`: header row required. Columns (spacing, case and punctuation ignored): ID (`ID`, `Student ID`, `Number`, ...), Name (or First + Last), optional School/Org, Team, Room (the room name), Contact. Comma, semicolon or tab. Duplicate IDs: the later row wins. 422 `bad_csv` with a plain message otherwise.
+- `POST /api/staff/roster/clear` (0.12.0): deletes every roster row (Postgres and memory, one transaction). Idempotent: clearing an empty roster returns `count: 0`. Bathroom records keep their IDs but lose names. The UI asks you to type DELETE first.
 - `POST /api/staff/roster/sync`: only when `CONTESTDOJO_API_URL`, `CONTESTDOJO_API_TOKEN` and `CONTESTDOJO_EVENT_ID` are set (503 `not_configured` otherwise; 502 `sync_failed` with a plain message if ContestDojo refuses or is down; the old roster is kept). Reads ContestDojo's `/events/{id}/students/`, `/teams/`, `/orgs/` (ADR 0017).
 - `GET /api/staff/roster?room=&q=` (admin/PM): students with contact and `out_since_ms`, plus `total`, `matching`, `out_now`, `rooms`, `synced_at_ms`, `source` (`csv` | `contestdojo`), `sync_available`. At most `MAX_ROSTER_ROWS` (500) rows; `room=` (empty) means students with no room.
 - `GET /api/roster/lookup?id=` (a room's proctor or staff; **never display pages**): one student from memory, `{roster_loaded, student}` where `student` is `{id, name, school, team, room}`. **No contact details** (admins only). Always 200 so "not on the roster" is not an error; `roster_loaded: false` means nothing was imported yet. IDs are normalised like bathroom IDs (trimmed, upper-cased).
@@ -301,6 +302,7 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `GET /api/staff/roster` | admin/PM | `?room&q` | `RosterResponse` |
 | `POST /api/staff/roster/import` | admin/PM | `{csv}` | `{count, notes}`; 422 `bad_csv` |
 | `POST /api/staff/roster/sync` | admin/PM | — | `{count, notes}`; 503 `not_configured`; 502 `sync_failed` |
+| `POST /api/staff/roster/clear` | admin/PM | — | `{count, notes}` (`count` = students removed; `notes` empty) |
 | `GET /api/roster/lookup` | room proctor or staff | `?id` | `StudentLookup` (no contact details) |
 | `GET /api/brand` | public | — | `{name, icon}` (0.9.0) |
 | `GET /api/auth/super-config` | public | — | `{google_client_id \| null}` |
@@ -363,3 +365,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.9.0 | 2026-10-02 | Branding and super-admin. Added `GET /api/brand`, `GET /api/auth/super-config`, `POST /api/auth/super-login`, `POST /api/auth/super-logout`, `GET /api/super/me`, `GET/PATCH /api/super/settings`, `GET/POST /api/super/admins`, `DELETE /api/super/admins/{email}` (§7.6). Migration 0007 (`settings`, `super_admins`). |
 | 0.10.0 | 2026-10-02 | Bathroom log (proctor). Added `POST /api/rooms/{room_id}/bathroom` and `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` (§7.7). `RoomSnapshot` gains `students_out`, `bathroom_out`, `bathroom_back` (all required). Migration 0008 (`bathroom_visits`). |
 | 0.11.0 | 2026-10-02 | Admin Bathroom log and the roster (§7.8). Added `GET /api/staff/bathroom`, `POST /api/staff/bathroom/action` (soft delete / restore / empty), `GET /api/staff/roster`, `POST /api/staff/roster/import`, `POST /api/staff/roster/sync`, `GET /api/roster/lookup`. **Breaking:** recording and returning a student is now that room's proctor only (admins/PMs get 403). `BathroomVisit` gains `student_name`; soft-deleted records are left out of snapshots and `students_out`. Response fields `BathroomVisit.back_ms` and `student_name` are now required-but-nullable (no defaults). Migration 0009 (`bathroom_visits.deleted`, `roster_students`). |
+| 0.12.0 | 2026-10-02 | Added `POST /api/staff/roster/clear` (privacy cleanup of the roster; §7.8). No change to existing endpoints. |

@@ -1,9 +1,9 @@
 # Phase 0: Foundations
 
 Source: `development-plan.md` §6 (deliverables and gate), §5 (AWS), §7.4 (contract sprint).
-**Planned window:** Sep 26 – Sep 29, 2026. **Last updated:** 2026-10-01.
+**Planned window:** Sep 26 – Sep 29, 2026. **Last updated:** 2026-10-02.
 
-**Verdict: complete, pending a final commit/push of the contract files and a green CI run on them.** AWS and CI were reported working by the PM on 2026-10-01; the contract sprint was done on 2026-10-01 (see `log/2026-10-01-claude-contract-sprint.md`).
+**Verdict: complete.** The contract files are pushed and CI is green *(reported by the PM, 2026-10-02)*. AWS and CI were reported working by the PM on 2026-10-01; the contract sprint was done on 2026-10-01 (see `log/2026-10-01-claude-contract-sprint.md`).
 
 ## A. AWS account and prod server live with HTTPS (owner: Forrest)
 
@@ -20,9 +20,9 @@ Source: `development-plan.md` §6 (deliverables and gate), §5 (AWS), §7.4 (con
 - [x] `server/Dockerfile` pinned, `--workers 1` (invariant 9).
 - [x] `infra/` compose, Caddyfile, `.env.example`, `bootstrap.sh`, `deploy.sh` (+ `--rollback`, `--restart`), `lib.sh`.
 - [x] `.gitattributes` forces LF on `*.sh`.
-- [x] CI is green. *Reported by the PM, 2026-10-01, for the commits up to `b383d65`. **Re-check after the contract files are pushed.***
+- [x] CI is green. *Reported by the PM, 2026-10-01, for the commits up to `b383d65`.*
 - [ ] `infra/README.md` with the click-by-click AWS steps. Deferred; not a gate item.
-- [-] Alembic and the `deploy.sh` migration step: placeholder only. Needed before the first schema (Phase 1/2).
+- [x] Alembic and the `deploy.sh` migration step: real since Phase 1 slice 4 (migrations 0001-0009).
 - [-] CI jobs for later phases (Vitest, fixtures in both languages, OpenAPI→TS types check, Playwright). Added when `web/` exists.
 
 ## C. Contract sprint
@@ -32,7 +32,7 @@ Source: `development-plan.md` §6 (deliverables and gate), §5 (AWS), §7.4 (con
 - [x] `docs/protocol.md` v0.1.0 written.
 - [x] Pydantic wire models + constants: `server/app/protocol/`.
 - [x] OpenAPI exported to `contracts/openapi.json`; a test fails if it is stale.
-- [-] Generated TypeScript types: deferred to the first frontend ticket (`web/` doesn't exist yet). Input is ready: `contracts/openapi.json`.
+- [x] Generated TypeScript types: `npm run gen` in `web/` (since Phase 1), checked in CI.
 - [x] 23 timer fixtures in `contracts/timer-fixtures/` (plan asked for 20), plus a reference Python fold (`server/app/fold.py`) that passes all of them. Mutation-checked: breaking a fixture value or the sort order makes tests fail.
 - [x] `CLAUDE.md` with the invariants (and now the protocol/contract rules).
 - [x] ADRs for today's decisions (`docs/adr/0001`–`0003`).
@@ -44,7 +44,7 @@ Source: `development-plan.md` §6 (deliverables and gate), §5 (AWS), §7.4 (con
 ## D. Gate
 
 - [x] `healthz` is green on AWS (reported by PM)
-- [x] CI is green (reported by PM; re-check on the contract commit)
+- [x] CI is green (reported by PM; green on the pushed contract commit, 2026-10-02)
 - [x] Contract approved (waived by PM, ADR 0003)
 
 ## Follow-ups before Phase 1 work starts

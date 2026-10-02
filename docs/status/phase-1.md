@@ -5,7 +5,7 @@ Source: `development-plan.md` §6. **Window:** Wed Sep 30 – **Mon Oct 5**. **G
 Not in the prototype: offline outbox, Service Worker.
 
 ## Server (owner: Ian)
-- [~] Postgres schema + first Alembic migration; `deploy.sh` runs it (invariant 10). Written and tested against local Postgres 16 (slice 4); not yet run in the compose stack or on prod
+- [~] Postgres schema + first Alembic migration; `deploy.sh` runs it (invariant 10). Run by `deploy.sh` on prod (migrations 0001-0009 applied; PM-verified 2026-10-02)
 - [~] Seed tooling: rooms seeded once from `SEED_ROOMS` into an empty DB (slice 4). No event/test tables yet
 - [x] In-memory state loaded at startup from Postgres (`app/store.py load`; test `test_state_survives_restart`, slice 4)
 - [x] `GET /api/time` (slice 1; `server/app/api.py`, tested)
@@ -17,31 +17,37 @@ Not in the prototype: offline outbox, Service Worker.
 
 ## Frontend (owner: Forrest)
 - [x] `web/` scaffold + generated types (`npm run gen`, checked in CI). Build passes locally
-- [~] Clock sync + backoff in `web/src/{api,hooks}.ts`; `useLive` = SSE with our own backoff reconnect, 35 s dead-stream rule, polling only while the stream is down (slice 6). No TS fold yet (remaining time is computed from the snapshot). Not tried in a browser or through Caddy
-- [?] Login + "Is this your room?" built (slice 1); not tried in a browser
-- [?] Proctor control (slice 1, slice 5): Start / Pause / Resume, and Start, Open display window and Log out on one row, timer with A-/A+ zoom. Not tried in a browser
-- [?] Display / projector screen (slice 5): light theme, timer auto-fits any screen size, A-/A+ zoom (remembered per device), controls fade after 4 s. Slices 8-10: clarifications (quiet "Clarifications" heading, Auto size = 3 steps below the largest fit) under a top-pinned timer, Markdown + math, ¶−/Auto/¶+, edited ones crossed out, optional Google Doc iframe instead of the list. Not tried in a browser
-- [?] Admin Timers (slices 1-7): summary line, Add room, Edit (name, duration before start, test label, doc link), filters (room, test, status, duration, pages open), per-row actions by timer state (Allow start, Start, Pause, Resume, Reset, +5 min, "more" menu with Edit and Delete), confirm dialogs (Shift skips), bulk Allow start / Start / +5 / Edit / Delete (type DELETE), "Show deleted" with Restore, Proctor/Display presence dots. Missing: End (protocol has it, wireframe doesn't show it), doc link display, "Show hidden" is called "Show deleted". Slice 10: deleted rooms also have Empty… (permanent). Not tried in a browser
-- [?] Proctor panel timer states (slice 7): Start (locked until allowed), Pause, Resume, "Time's up"; hint line explains disabled buttons. Not tried in a browser
+- [x] Clock sync + backoff in `web/src/{api,hooks}.ts`; `useLive` = SSE with our own backoff reconnect, 35 s dead-stream rule, polling only while the stream is down (slice 6). No TS fold yet (remaining time is computed from the snapshot).
+- [x] Login + "Is this your room?" built (slice 1).
+- [x] Proctor control (slice 1, slice 5): Start / Pause / Resume, and Start, Open display window and Log out on one row, timer with A-/A+ zoom.
+- [x] Display / projector screen (slice 5): light theme, timer auto-fits any screen size, A-/A+ zoom (remembered per device), controls fade after 4 s. Slices 8-10: clarifications (quiet "Clarifications" heading, Auto size = 3 steps below the largest fit) under a top-pinned timer, Markdown + math, ¶−/Auto/¶+, edited ones crossed out, optional Google Doc iframe instead of the list.
+- [x] Admin Timers (slices 1-7): summary line, Add room, Edit (name, duration before start, test label, doc link), filters (room, test, status, duration, pages open), per-row actions by timer state (Allow start, Start, Pause, Resume, Reset, +5 min, "more" menu with Edit and Delete), confirm dialogs (Shift skips), bulk Allow start / Start / +5 / Edit / Delete (type DELETE), "Show deleted" with Restore, Proctor/Display presence dots. Missing: End (protocol has it, wireframe doesn't show it), doc link display, "Show hidden" is called "Show deleted". Slice 10: deleted rooms also have Empty… (permanent).
+- [x] Proctor panel timer states (slice 7): Start (locked until allowed), Pause, Resume, "Time's up"; hint line explains disabled buttons.
 
-- [?] Admin Clarifications (slices 8-9): navbar tabs, composer with live Markdown/math preview, compact room picker (All rooms / All building / All test / Clear + searchable list), posted list with a summary and per-room Rooms popover, Edit (old text stays crossed out), Hide (asks first; Edit instead), Delete, per-room Hide/Delete. Server tests pass incl. real Postgres; not tried in a browser. Slice 10: header counts + light + Log out, live list without reload, Delete is soft with "Show deleted" (Restore, Empty…), per-room Edit (that room gets its own copy). Missing: Preview-display button. No Deletion tab (cancelled, ADR 0013)
+- [x] Admin Clarifications (slices 8-9): navbar tabs, composer with live Markdown/math preview, compact room picker (All rooms / All building / All test / Clear + searchable list), posted list with a summary and per-room Rooms popover, Edit (old text stays crossed out), Hide (asks first; Edit instead), Delete, per-room Hide/Delete. Server tests pass incl. real Postgres. Slice 10: header counts + light + Log out, live list without reload, Delete is soft with "Show deleted" (Restore, Empty…), per-room Edit (that room gets its own copy). Missing: Preview-display button. No Deletion tab (cancelled, ADR 0013)
 
-- [?] Super-admin page (slice 12): Google sign-in (token check tested with a fake; real Google not tried), name, icon, passwords, super-admin list. Server tests pass incl. Postgres; not tried in a browser
+- [x] Super-admin page (slice 12): Google sign-in (token check tested with a fake), name, icon, passwords, super-admin list. Server tests pass incl. Postgres.
 
-- [?] Proctor Bathroom log (slices 13-14): ID field with a live "who is this" line (name, school, "assigned to <room>" warning), Mark out, one list: out now (live time, highlight at 10 min, Returned button) then returned rows in the same shape, faded. Recording is that room's proctor only. Server tests pass incl. real Postgres; not tried in a browser.
-- [?] Admin Bathroom log tab (slice 14): Room filter, Out now / Returned / All (with counts), search ID/name/room, Export CSV (all statuses for the chosen room), row checkboxes + Delete…, Delete all…, Show deleted with Restore / Empty… / Restore all / Empty all…, updates itself through the staff stream. Delete is admin-only and soft (ADR 0016). Not tried in a browser.
-- [?] Admin Roster tab (slice 14): Import CSV… (file or paste), Sync (only if CONTESTDOJO_* set; **never run against the real API**, ADR 0017), room filter, search, out status, contact column (admins only). Not tried in a browser.
+- [x] Proctor Bathroom log (slices 13-14): ID field with a live "who is this" line (name, school, "assigned to <room>" warning), Mark out, one list: out now (live time, highlight at 10 min, Returned button) then returned rows in the same shape, faded. Recording is that room's proctor only. Server tests pass incl. real Postgres.
+- [x] Admin Bathroom log tab (slice 14): Room filter, Out now / Returned / All (with counts), search ID/name/room, Export CSV (all statuses for the chosen room), row checkboxes + Delete…, Delete all…, Show deleted with Restore / Empty… / Restore all / Empty all…, updates itself through the staff stream. Delete is admin-only and soft (ADR 0016).
+- [x] Admin Roster tab (slice 14, Clear roster… in slice 15): Import CSV… (file or paste), Sync (only if CONTESTDOJO_* set; **not yet run against the real API: blocked on the ContestDojo maintainers**, ADR 0017), room filter, search, out status, contact column (admins only).
+- Not needed (ADR 0018): a student dropdown in the proctor bathroom log; typing the ID plus the name line is enough.
 - Cut by the PM (ADR 0016), not to be built: chat with admins, bathroom on the projector (Log drawer / mirror), Preview-display button.
 
+## Blocked
+- [ ] **ContestDojo Sync checked against the real API.** The only Phase 1 item left. Waiting on the ContestDojo maintainers to give us the base URL, a token, the event ID and one real `GET /events/{id}/students/` response, then confirm the `number` -> ID and `roomAssignments` mapping (ADR 0017, `setup-contestdojo.md`). CSV import already works in prod, so event day does not depend on this.
+
 ## Deploy and demo
-- [ ] Deployed to AWS via `deploy.sh`
+- [x] Deployed to AWS via `deploy.sh`; `/healthz` ok, `/readyz` ready, CI green, everything below checked in browsers. *Reported by the PM, 2026-10-02.*
 - [ ] Oct 5 demo run; evidence recorded here (date, devices, outcome)
-- [ ] Chaos C1, C6, C11 pass (Forrest decides if the gate is green)
+- [ ] Chaos C1, C6, C11 pass (Forrest decides if the gate is green). Manual steps and where to record results: [`../chaos-phase1.md`](../chaos-phase1.md)
 
 ## Decide before starting
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 15 (2026-10-02): admin **Clear roster…** (type DELETE; protocol 0.12.0), proctor bathroom log layout and motion pass, docs sweep (everything verified in browsers and deployed, per the PM), chaos runbook; ADR 0018, `log/2026-10-02-claude-slice15-clear-roster-log-layout-docs.md`.
+- Slice 14 (2026-10-02): admin Bathroom log + Roster tabs, CSV import, optional ContestDojo Sync; protocol 0.11.0, migration 0009, ADRs 0016-0017, `log/2026-10-02-claude-slice14-admin-bathroom-roster.md`.
 - Slice 13 (2026-10-02): proctor bathroom log + admin Out column; protocol 0.10.0, migration 0008, ADR 0015, `log/2026-10-02-claude-slice13-bathroom-log.md`.
 - Slice 12 (2026-10-02): name/icon from config, projector window full screen, super-admin page (Google sign-in, passwords, super-admins), DNS and Google setup guide; protocol 0.9.0, migration 0007, ADR 0014, `log/2026-10-02-claude-slice12-branding-super-admin.md`.
 - Slice 11 (2026-10-02): mobile admin header (shared `AdminBar`, ☰ menu under 1040 px), contract regenerated, stale test fixed, `log/2026-10-02-claude-slice11-admin-header-mobile.md`.

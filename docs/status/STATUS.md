@@ -1,48 +1,41 @@
 # Project status
 
-**Last updated:** 2026-10-02 (slice 14) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-02 (slice 15) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
-**Phase 0 (Foundations): COMPLETE** (pending push of today's files and a green CI run on them). Details in [`phase-0.md`](phase-0.md).
+**Phase 0 (Foundations): COMPLETE.** **Phase 1 (Prototype): feature-complete and live; one blocker left.** Details in [`phase-0.md`](phase-0.md) and [`phase-1.md`](phase-1.md).
 
-- AWS prod is live and CI is green *(reported by the PM, 2026-10-01)*.
-- The contract exists: [`docs/protocol.md`](../protocol.md) v0.1.0, `contracts/openapi.json`, 23 timer fixtures, Pydantic models, and a reference fold that passes all fixtures.
-- Decisions made today: D1–D12 approved; proctors cannot end early; staff can start on behalf; login is a room-name dropdown; no approval gate on contract changes (ADRs 0001–0003).
+- Prod is deployed through `deploy.sh` (migrations 0001-0009 applied), `/healthz` is `ok`, `/readyz` is `ready`, GitHub CI is green, and every screen has been checked in real browsers *(reported by the PM, 2026-10-02)*.
+- Built: login, proctor timer (Start / Pause / Resume, zoom), projector display, admin Timers (add, edit, delete/restore/empty, filters, bulk actions, presence), Clarifications, proctor Bathroom log, admin Bathroom log, Roster (CSV import, optional ContestDojo Sync, **Clear roster**), branding and `/super`. Protocol is **0.12.0** (history in [`protocol.md`](../protocol.md) §14). Server: 117 tests pass without Postgres (the real-Postgres set was 124 before slice 15 and was not re-run for it).
+- Scope ceiling is `docs/wireframe.html`. Cut by the PM ([ADR 0016](../adr/0016-admin-bathroom-delete-and-scope-cuts.md)): chat, bathroom on the projector, Preview-display button. Not needed ([ADR 0018](../adr/0018-clear-roster-and-proctor-log-layout.md)): a student dropdown in the proctor log. No Deletion tab ([ADR 0013](../adr/0013-soft-delete-empty-per-room-edit-no-deletion-tab.md)).
 
-**Phase 1 (Prototype): in progress. Slices 1-7 are pushed; slices 8-13 are not pushed. Slices 8-10 (clarifications; edit/delete/markdown/projector layout; soft delete + Empty, per-room edit, live admin list) are written, not pushed. Nothing is verified in a browser, and the Oct 5 demo gate has not been run.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
+## Blocker (the only open Phase 1 item)
 
-- Built so far: login → proctor Start/Pause/Resume (+ zoom) → projector display (fits any screen, zoom) → proctor bathroom log (slice 13), admin timers table (add, rename, edit, delete/restore, filter, per-state actions incl. reset, bulk allow/start/+5/edit/delete, device presence). Server tests pass (86 with a real Postgres; 83 + 3 skipped without). UI not yet tried in a browser. Slice 4 added Postgres persistence (rooms and commands; sessions still in memory); slice 6 replaced polling with SSE (polling is the fallback). See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
-- Scope ceiling is `docs/wireframe.html`. **Cut by the PM (ADR 0016): chat (Discord only), bathroom on the projector (Log drawer, mirror), Preview-display button.** There is no Deletion tab (ADR 0013).
+**ContestDojo Sync has never run against the real API.** We are waiting for the ContestDojo maintainers to walk us through it: base URL, token, event ID, and one real `GET /events/{id}/students/` response so we can confirm the ID (`number`) and `roomAssignments` mapping. See [ADR 0017](../adr/0017-roster-csv-first-contestdojo-optional.md) and [`setup-contestdojo.md`](../setup-contestdojo.md). CSV import works in prod today, so the event does not depend on Sync.
 
 ## Next actions, in order
 
--3. Slice 14 (admin Bathroom log + roster): deploy runs migration 0009. Import a roster CSV (or get a ContestDojo token, see [`setup-contestdojo.md`](../setup-contestdojo.md)), then try on two devices: a proctor marks students out and back, the admin Bathroom tab updates by itself, admin deletes / restores / empties, a proctor can't. **Phase 1's feature list is complete after this slice**; what remains is browser verification, the Oct 5 demo and chaos C1/C6/C11.
-
--2. Slice 13 (bathroom log): deploy runs migration 0008. Try it on a phone and watch the admin Out column on a second device. 
-
--1. Slice 12: add `APP_NAME` / `APP_ICON` to prod `.env` (compose requires `APP_NAME`), do DNS and Google setup ([`setup-domain-and-google.md`](../setup-domain-and-google.md)), then deploy (migration 0007).
-
-0. *(Done in slice 11)* Contract regenerated; pytest 98 passed with Postgres, `npm run build` passes.
-1. Push slices 8-10 (migrations 0003-0005) and run `deploy.sh` (README). Open `/display` on a real projector or a resized window and click through login, Add room, filters, bulk actions on 2 devices. **Browser verification is the biggest open risk.**
-2. After deploy: `/readyz` says `ready`; restart the app container and confirm rooms and running timers survive.
-3. Slices 9-10 are done except the Preview-display button (ADR 0012, 0013); the Deletion tab was cancelled. Check a Google Doc embed on a real display.
+1. **ContestDojo Sync** with the maintainers (above). Immediate next step; do the field-mapping check on one real response, then press Sync on prod and spot-check a real student ID on `/proctor`.
+2. **Chaos C1, C6, C11 and the Oct 5 demo** (3+ devices, one room, plus the admin page, on AWS). Manual steps and a place to record results: [`chaos-phase1.md`](../chaos-phase1.md). Forrest decides whether the gate is green; record the date, devices and outcome in `phase-1.md`.
+3. **Phase 2 (Oct 6 - Oct 18):** outbox, merge rules, Service Worker, wake lock, presence/system page, staff "start on behalf". Forrest writes the Playwright chaos suite in parallel (`web/e2e/`, doesn't exist yet), which replaces the manual C1/C6/C11 steps.
+4. Before Nov 14: after the event, use **Roster -> Clear roster...** (students are minors). Bathroom log: **Delete all...** then **Show deleted -> Empty all...** if it shouldn't be kept.
 
 ## Open, non-blocking
 
-- UI polish bar for later: [`design-principles.md`](../design-principles.md). Not a priority until features land.
-
+- Server gaps from `phase-1.md`: no rate limiting; sessions are in memory (people sign in again after a restart).
 - Protocol §13: adding time after expiry; staff pause/resume; public room list in the login dropdown.
-- Optional ADRs for D1–D4 and D7; `server/CLAUDE.md`; `infra/README.md`.
+- Optional ADRs for D1-D4 and D7; `server/CLAUDE.md`; `infra/README.md`.
 - AWS hygiene (shared email, MFA, budget alert) and backups/monitoring/staging are not verified.
+- Proctor log: a returned row jumps to the "Back" group while it fades (no FLIP slide). Fine for now; polish pass before Oct 31 ([`design-principles.md`](../design-principles.md)).
 
 ## Phase overview
 
 | Phase | Planned dates | State |
 |---|---|---|
-| 0 Foundations | Sep 26 – Sep 29 | **Done** (Oct 1) |
-| 1 Prototype | Sep 30 – Oct 5 | In progress (slice 1 written) |
-| 2 Offline core | Oct 6 – Oct 18 | Not started |
-| 3 Surfaces | Oct 6 – Oct 24 | Not started |
-| 3b Hardening | Oct 19 – Oct 30 | Not started |
+| 0 Foundations | Sep 26 - Sep 29 | **Done** (Oct 1) |
+| 1 Prototype | Sep 30 - Oct 5 | Features done and deployed; open: ContestDojo Sync check, C1/C6/C11, Oct 5 demo |
+| 2 Offline core | Oct 6 - Oct 18 | Not started |
+| 3 Surfaces | Oct 6 - Oct 24 | Mostly built early (clarifications, bathroom, roster); exports and polish left |
+| 3b Hardening | Oct 19 - Oct 30 | Not started |
 | 4 Dress rehearsal | Oct 31 | Not started |

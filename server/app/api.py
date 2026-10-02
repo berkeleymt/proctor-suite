@@ -503,6 +503,15 @@ async def staff_roster_import(
     return RosterImportResponse(count=len(students), notes=notes[:6])
 
 
+@router.post("/staff/roster/clear", response_model=RosterImportResponse)
+async def staff_roster_clear(request: Request, _: Post) -> RosterImportResponse:
+    """Wipe the roster (0.12.0): names and contacts of minors shouldn't outlive the event."""
+    admin_only(request)
+    n = len(store.roster)
+    await store.replace_roster([], "csv")
+    return RosterImportResponse(count=n, notes=[])
+
+
 def _contestdojo() -> tuple[str, str, str, str] | None:
     s = store.setting
     cfg = (

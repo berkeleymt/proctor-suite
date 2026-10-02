@@ -20,3 +20,8 @@ So: whether we can use the API at all depends on ContestDojo's maintainers givin
 ## Consequences
 - The roster is personal data about minors, stored in the app's Postgres. There is no "clear roster" button yet; after the event wipe it with `DELETE FROM roster_students;` (steps in `docs/setup-contestdojo.md`) or `docker compose down -v`. Worth a button before Nov 14 if the PM wants it.
 - If ContestDojo gives us a token, only the field mapping above needs checking against one real response (`GET /events/{id}/students/`), not a redesign.
+
+
+## Update 2026-10-02
+- The "Clear roster" button now exists (ADR 0018); the SQL is only a fallback.
+- Sync is still unverified against the real API. We are waiting on the ContestDojo maintainers to guide us; this is the only open Phase 1 item (`status/STATUS.md`).

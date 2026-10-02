@@ -19,7 +19,7 @@ const span = (ms: number) => {
 
 /** Proctors record, admins look and (carefully) delete. Deleting hides, like rooms and clarifications. */
 export function AdminBathroom() {
-  usePageTitle("Bathroom log");
+  usePageTitle("Bathroom");
   useClock();
   useTick();
   const live = useLive<{ rooms: Snapshot[]; version?: number }>("/api/staff/rooms", "/api/staff/stream", mergeRooms, 4000, { room_removed: dropRoom });
