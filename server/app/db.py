@@ -197,3 +197,32 @@ async def insert_visit(pool: asyncpg.Pool, room_id: str, v) -> None:
 async def mark_visit_back(pool: asyncpg.Pool, vid, back_ms: int) -> None:
     async with pool.acquire() as c:
         await c.execute("UPDATE bathroom_visits SET back_ms=$2 WHERE id=$1", vid, back_ms)
+
+
+async def visits_action(pool: asyncpg.Pool, action: str, ids: list) -> None:
+    """Soft delete, restore, or (for good) empty bathroom records. One statement."""
+    async with pool.acquire() as c:
+        if action == "empty":
+            await c.execute("DELETE FROM bathroom_visits WHERE id = ANY($1::uuid[])", ids)
+        else:
+            await c.execute(
+                "UPDATE bathroom_visits SET deleted=$2 WHERE id = ANY($1::uuid[])",
+                ids, action == "delete",
+            )  # fmt: skip
+
+
+# --- roster (0.11.0) ---
+async def load_roster(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+    async with pool.acquire() as c:
+        return await c.fetch("SELECT * FROM roster_students")
+
+
+async def replace_roster(pool: asyncpg.Pool, students, source: str, at_ms: int) -> None:
+    """The whole roster in one transaction: readers never see half of an import."""
+    async with pool.acquire() as c, c.transaction():
+        await c.execute("DELETE FROM roster_students")
+        await c.executemany(
+            "INSERT INTO roster_students (student_id, name, school, team, room, contact, source, synced_at_ms)"
+            " VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+            [(s.id, s.name, s.school, s.team, s.room, s.contact, source, at_ms) for s in students],
+        )

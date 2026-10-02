@@ -232,9 +232,23 @@ The super-admin page (`/super`) is not a room or staff login. The browser gets a
 
 ### 7.7 Bathroom log (0.10.0)
 
-A student leaves (`POST .../bathroom`) and comes back (`POST .../bathroom/{visit_id}/return`). `student_id` is free text (trimmed, whitespace collapsed, upper-cased, 1-20 characters). The client makes the visit `id` (invariant 3): a retry with the same `id` and student is a no-op, the same `id` with another student is 409 `id_conflict`. A student who is already out cannot be marked out again (409 `already_out`); at most `MAX_BATHROOM_OUT` (50) can be out in one room (409 `too_many_out`). Times are **server time** (`left_ms`, `back_ms`); when the offline outbox arrives (phase 2) the outbox will have to carry claimed times, like the timer commands.
+A student leaves (`POST .../bathroom`) and comes back (`POST .../bathroom/{visit_id}/return`). **Only that room's proctor can do either** (0.11.0; admins and PMs get 403: they view and delete in the admin tab, §7.8). `student_id` is free text (trimmed, whitespace collapsed, upper-cased, 1-20 characters). The client makes the visit `id` (invariant 3): a retry with the same `id` and student is a no-op, the same `id` with another student is 409 `id_conflict`. A student who is already out cannot be marked out again (409 `already_out`); at most `MAX_BATHROOM_OUT` (50) can be out in one room (409 `too_many_out`). Times are **server time** (`left_ms`, `back_ms`); when the offline outbox arrives (phase 2) the outbox will have to carry claimed times, like the timer commands.
 
-Every `RoomSnapshot` carries `students_out` (count, always right), `bathroom_out` (everyone out now, oldest first, at most 50) and `bathroom_back` (the `MAX_BATHROOM_BACK` = 20 most recent returns, oldest first). The staff room list and staff stream send the count but `[]` for both lists, same as clarifications. A change bumps that room's `version`, so it rides the existing SSE/polling path. Rows live in `bathroom_visits` (migration 0008), are loaded into memory at startup, and are deleted with the room on Empty. Display pages cannot log students. The admin Bathroom tab (all-rooms view, CSV) and the roster are marked "later" in the wireframe and are not built.
+Every `RoomSnapshot` carries `students_out` (count, always right), `bathroom_out` (everyone out now, oldest first, at most 50) and `bathroom_back` (the `MAX_BATHROOM_BACK` = 20 most recent returns, oldest first). The staff room list and staff stream send the count but `[]` for both lists, same as clarifications. A change bumps that room's `version`, so it rides the existing SSE/polling path. Rows live in `bathroom_visits` (migration 0008), are loaded into memory at startup, and are deleted with the room on Empty. Display pages cannot log students. `bathroom_out` / `bathroom_back` rows carry `student_name` (from the roster, else null) and never include soft-deleted records; `students_out` doesn't count them either. `bathroom_back` is shown to proctors as faded rows in the same list. The admin tab and roster are §7.8.
+
+### 7.8 Admin bathroom log and the roster (0.11.0)
+
+**Admin list.** `GET /api/staff/bathroom?status=out|returned|all&room_id=&q=&deleted=&limit=` (admin/PM only) lists records across rooms with room name, student name and school (from the roster). `out` sorts longest-out first, the others newest first. `q` matches ID, name or room. `limit` defaults to `MAX_ADMIN_BATHROOM` (500) and may be up to `MAX_ADMIN_BATHROOM_EXPORT` (5000, used by the CSV export). `out_now`, `returned`, `deleted` count everything, whatever the filters; `truncated` says the list was cut. Soft-deleted records are only listed with `deleted=true` and come after the live ones. Served from memory.
+
+**Delete.** `POST /api/staff/bathroom/action` with `{action: "delete" | "restore" | "empty", ids: [uuid] | all: true}` (exactly one of `ids`/`all`; at most `MAX_BATHROOM_IDS` ids). Same soft-delete model as rooms and clarifications (ADR 0013): `delete` hides a live record (proctors stop seeing it, a student who was out stops counting as out), `restore` brings it back, `empty` removes **deleted** records from Postgres for good (live ones are ignored). `all` means every record the action applies to. Returns `{changed, skipped}`; a restore is skipped when that student has since been marked out again in the same room (never two open visits). Every change bumps the affected rooms' `version`, so proctor pages update through the usual stream. **Proctors have no way to delete**: the endpoint needs a staff session (a room login gets 401).
+
+**Roster.** One list of students, replaced as a whole (never merged), kept in Postgres (`roster_students`, migration 0009) and in memory.
+- `POST /api/staff/roster/import` `{csv}`: header row required. Columns (spacing, case and punctuation ignored): ID (`ID`, `Student ID`, `Number`, ...), Name (or First + Last), optional School/Org, Team, Room (the room name), Contact. Comma, semicolon or tab. Duplicate IDs: the later row wins. 422 `bad_csv` with a plain message otherwise.
+- `POST /api/staff/roster/sync`: only when `CONTESTDOJO_API_URL`, `CONTESTDOJO_API_TOKEN` and `CONTESTDOJO_EVENT_ID` are set (503 `not_configured` otherwise; 502 `sync_failed` with a plain message if ContestDojo refuses or is down; the old roster is kept). Reads ContestDojo's `/events/{id}/students/`, `/teams/`, `/orgs/` (ADR 0017).
+- `GET /api/staff/roster?room=&q=` (admin/PM): students with contact and `out_since_ms`, plus `total`, `matching`, `out_now`, `rooms`, `synced_at_ms`, `source` (`csv` | `contestdojo`), `sync_available`. At most `MAX_ROSTER_ROWS` (500) rows; `room=` (empty) means students with no room.
+- `GET /api/roster/lookup?id=` (a room's proctor or staff; **never display pages**): one student from memory, `{roster_loaded, student}` where `student` is `{id, name, school, team, room}`. **No contact details** (admins only). Always 200 so "not on the roster" is not an error; `roster_loaded: false` means nothing was imported yet. IDs are normalised like bathroom IDs (trimmed, upper-cased).
+
+Names are looked up when a list is built, so importing a roster fills in names on records that were logged earlier; proctor pages pick them up on their next change.
 
 ## 8. Client network behavior (invariant 2)
 
@@ -280,8 +294,14 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `GET /api/staff/clarifications` | staff (admin/pm) | — | `{clarifications: [ClarificationAdmin]}` |
 | `POST /api/staff/clarifications` | staff (admin/pm) | `{body, room_ids \| null}` | `ClarificationAdmin` (201); 422 `unknown_room` |
 | `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden, room_id?}` or `{body}` | `ClarificationAdmin`; 404 `unknown_clarification`; 422 `empty` / `edit_limit` / `unknown_room` / `not_in_room` |
-| `POST /api/rooms/{room_id}/bathroom` | that room's proctor, or admin/PM | `{id (uuid), student_id}` | `RoomSnapshot` (0.10.0). Same `id` again = same visit, no new entry. 409 `already_out` / `id_conflict` / `too_many_out`; 422 empty or over 20 characters |
-| `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` | that room's proctor, or admin/PM | — | `RoomSnapshot`; already back = no change; 404 `unknown_visit` |
+| `POST /api/rooms/{room_id}/bathroom` | that room's proctor only (0.11.0) | `{id (uuid), student_id}` | `RoomSnapshot` (0.10.0). Same `id` again = same visit, no new entry. 409 `already_out` / `id_conflict` / `too_many_out`; 422 empty or over 20 characters |
+| `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` | that room's proctor only (0.11.0) | — | `RoomSnapshot`; already back = no change; 404 `unknown_visit` |
+| `GET /api/staff/bathroom` | admin/PM | `?status&room_id&q&deleted&limit` | `BathroomLogResponse` (0.11.0, §7.8) |
+| `POST /api/staff/bathroom/action` | admin/PM | `{action, ids \| all}` | `{changed, skipped}` |
+| `GET /api/staff/roster` | admin/PM | `?room&q` | `RosterResponse` |
+| `POST /api/staff/roster/import` | admin/PM | `{csv}` | `{count, notes}`; 422 `bad_csv` |
+| `POST /api/staff/roster/sync` | admin/PM | — | `{count, notes}`; 503 `not_configured`; 502 `sync_failed` |
+| `GET /api/roster/lookup` | room proctor or staff | `?id` | `StudentLookup` (no contact details) |
 | `GET /api/brand` | public | — | `{name, icon}` (0.9.0) |
 | `GET /api/auth/super-config` | public | — | `{google_client_id \| null}` |
 | `POST /api/auth/super-login` | public | `{credential}` (Google ID token) | `{email}`, sets `super_sid`; 401 `invalid_credentials`; 403 `not_allowed`; 503 `not_configured` |
@@ -312,6 +332,8 @@ Source of truth: `server/app/protocol/constants.py`.
 | `OFFLINE_RED_AFTER_S` | 300 | display goes red |
 | `MAX_LOGIN_ROOMS` / `MAX_STAFF_ROOMS` | 500 / 1000 | list bounds |
 | `MAX_BATHROOM_OUT` / `MAX_BATHROOM_BACK` | 50 / 20 | students out per room / recent returns per snapshot (0.10.0) |
+| `MAX_ADMIN_BATHROOM` / `MAX_ADMIN_BATHROOM_EXPORT` | 500 / 5000 | admin bathroom rows by default / most one request may ask for (0.11.0) |
+| `MAX_ROSTER_ROWS` / `MAX_BATHROOM_IDS` | 500 / 1000 | admin roster rows per list / records per delete request (0.11.0) |
 | `CLIENT_HEADER` | `X-Proctor-Client` | CSRF header |
 | cookie names | `display_sid`, `control_sid`, `staff_sid` | one per surface |
 | `STAFF_SESSION_TTL_H` | 24 | staff session lifetime |
@@ -340,3 +362,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.8.0 | 2026-10-02 | Clarification delete is soft: `DELETE` no longer wipes; new `POST /api/staff/clarifications/{id}/restore` and `/empty`, new `POST /api/staff/rooms/{id}/empty`. `ClarificationAdmin` gains `deleted`, `edited_room_ids`. `PATCH {body, room_id}` = per-room edit (returns the new copy). `GET /api/staff/stream?clarifications=1` adds a `clarifications` event; the staff stream sends `room_removed` after an Empty. Migration 0005. |
 | 0.9.0 | 2026-10-02 | Branding and super-admin. Added `GET /api/brand`, `GET /api/auth/super-config`, `POST /api/auth/super-login`, `POST /api/auth/super-logout`, `GET /api/super/me`, `GET/PATCH /api/super/settings`, `GET/POST /api/super/admins`, `DELETE /api/super/admins/{email}` (§7.6). Migration 0007 (`settings`, `super_admins`). |
 | 0.10.0 | 2026-10-02 | Bathroom log (proctor). Added `POST /api/rooms/{room_id}/bathroom` and `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` (§7.7). `RoomSnapshot` gains `students_out`, `bathroom_out`, `bathroom_back` (all required). Migration 0008 (`bathroom_visits`). |
+| 0.11.0 | 2026-10-02 | Admin Bathroom log and the roster (§7.8). Added `GET /api/staff/bathroom`, `POST /api/staff/bathroom/action` (soft delete / restore / empty), `GET /api/staff/roster`, `POST /api/staff/roster/import`, `POST /api/staff/roster/sync`, `GET /api/roster/lookup`. **Breaking:** recording and returning a student is now that room's proctor only (admins/PMs get 403). `BathroomVisit` gains `student_name`; soft-deleted records are left out of snapshots and `students_out`. Response fields `BathroomVisit.back_ms` and `student_name` are now required-but-nullable (no defaults). Migration 0009 (`bathroom_visits.deleted`, `roster_students`). |

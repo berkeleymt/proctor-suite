@@ -91,6 +91,189 @@
         "title": "AdjustCommand",
         "type": "object"
       },
+      "BathroomActionRequest": {
+        "additionalProperties": false,
+        "description": "Delete (soft), restore, or empty (for good, deleted ones only). Exactly one of `ids`\nor `all`; `all` means every record the action applies to.",
+        "properties": {
+          "action": {
+            "enum": [
+              "delete",
+              "restore",
+              "empty"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "all": {
+            "default": false,
+            "title": "All",
+            "type": "boolean"
+          },
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 1000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "BathroomActionRequest",
+        "type": "object"
+      },
+      "BathroomActionResponse": {
+        "properties": {
+          "changed": {
+            "minimum": 0.0,
+            "title": "Changed",
+            "type": "integer"
+          },
+          "skipped": {
+            "minimum": 0.0,
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changed",
+          "skipped"
+        ],
+        "title": "BathroomActionResponse",
+        "type": "object"
+      },
+      "BathroomEntry": {
+        "description": "One bathroom record in the admin list. `deleted` ones are only listed on request.",
+        "properties": {
+          "back_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Back Ms"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "left_ms": {
+            "title": "Left Ms",
+            "type": "integer"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          },
+          "school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School"
+          },
+          "student_id": {
+            "title": "Student Id",
+            "type": "string"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          }
+        },
+        "required": [
+          "id",
+          "room_id",
+          "room_name",
+          "student_id",
+          "student_name",
+          "school",
+          "left_ms",
+          "back_ms",
+          "deleted"
+        ],
+        "title": "BathroomEntry",
+        "type": "object"
+      },
+      "BathroomLogResponse": {
+        "description": "Counts are for everything; the list is cut to `limit` (`truncated`).",
+        "properties": {
+          "deleted": {
+            "minimum": 0.0,
+            "title": "Deleted",
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/BathroomEntry"
+            },
+            "maxItems": 10000,
+            "title": "Entries",
+            "type": "array"
+          },
+          "out_now": {
+            "minimum": 0.0,
+            "title": "Out Now",
+            "type": "integer"
+          },
+          "returned": {
+            "minimum": 0.0,
+            "title": "Returned",
+            "type": "integer"
+          },
+          "server_time_ms": {
+            "title": "Server Time Ms",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entries",
+          "out_now",
+          "returned",
+          "deleted",
+          "truncated",
+          "server_time_ms"
+        ],
+        "title": "BathroomLogResponse",
+        "type": "object"
+      },
       "BathroomVisit": {
         "description": "One student leaving the room. `back_ms` is null while they are out. Times are server time.",
         "properties": {
@@ -117,12 +300,25 @@
           "student_id": {
             "title": "Student Id",
             "type": "string"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
           }
         },
         "required": [
           "id",
           "student_id",
-          "left_ms"
+          "student_name",
+          "left_ms",
+          "back_ms"
         ],
         "title": "BathroomVisit",
         "type": "object"
@@ -1047,6 +1243,167 @@
         "title": "RoomSnapshot",
         "type": "object"
       },
+      "RosterImportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "csv": {
+            "maxLength": 2000000,
+            "minLength": 1,
+            "title": "Csv",
+            "type": "string"
+          }
+        },
+        "required": [
+          "csv"
+        ],
+        "title": "RosterImportRequest",
+        "type": "object"
+      },
+      "RosterImportResponse": {
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Notes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "notes"
+        ],
+        "title": "RosterImportResponse",
+        "type": "object"
+      },
+      "RosterResponse": {
+        "properties": {
+          "matching": {
+            "minimum": 0.0,
+            "title": "Matching",
+            "type": "integer"
+          },
+          "out_now": {
+            "minimum": 0.0,
+            "title": "Out Now",
+            "type": "integer"
+          },
+          "rooms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rooms",
+            "type": "array"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "students": {
+            "items": {
+              "$ref": "#/components/schemas/RosterStudent"
+            },
+            "maxItems": 500,
+            "title": "Students",
+            "type": "array"
+          },
+          "sync_available": {
+            "title": "Sync Available",
+            "type": "boolean"
+          },
+          "synced_at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synced At Ms"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "students",
+          "total",
+          "matching",
+          "out_now",
+          "rooms",
+          "synced_at_ms",
+          "source",
+          "sync_available"
+        ],
+        "title": "RosterResponse",
+        "type": "object"
+      },
+      "RosterStudent": {
+        "properties": {
+          "contact": {
+            "title": "Contact",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "out_since_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Since Ms"
+          },
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "school": {
+            "title": "School",
+            "type": "string"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "school",
+          "team",
+          "room",
+          "contact",
+          "out_since_ms"
+        ],
+        "title": "RosterStudent",
+        "type": "object"
+      },
       "SnapshotMessage": {
         "description": "SSE frame: `event: snapshot`, `id: <version>`, `data: <RoomSnapshot as JSON>`.",
         "properties": {
@@ -1219,6 +1576,64 @@
           "type"
         ],
         "title": "StartCommand",
+        "type": "object"
+      },
+      "StudentInfo": {
+        "description": "What a proctor may see about a student: no contact details.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "room": {
+            "title": "Room",
+            "type": "string"
+          },
+          "school": {
+            "title": "School",
+            "type": "string"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "school",
+          "team",
+          "room"
+        ],
+        "title": "StudentInfo",
+        "type": "object"
+      },
+      "StudentLookup": {
+        "properties": {
+          "roster_loaded": {
+            "title": "Roster Loaded",
+            "type": "boolean"
+          },
+          "student": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "roster_loaded",
+          "student"
+        ],
+        "title": "StudentLookup",
         "type": "object"
       },
       "SuperAdminOut": {
@@ -1689,7 +2104,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.10.0"
+    "version": "0.11.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2671,6 +3086,312 @@
         "summary": "Close Room Stream",
         "tags": [
           "rooms"
+        ]
+      }
+    },
+    "/api/roster/lookup": {
+      "get": {
+        "description": "A room's proctor or staff: one student by ID, from memory. No contact details.",
+        "operationId": "roster_lookup_api_roster_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentLookup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Roster Lookup",
+        "tags": [
+          "rooms"
+        ]
+      }
+    },
+    "/api/staff/bathroom": {
+      "get": {
+        "description": "Admin: bathroom records across rooms, newest first (longest out first for `out`).\n`deleted=true` adds the soft-deleted ones after the live ones. Added in 0.11.0.",
+        "operationId": "staff_bathroom_api_staff_bathroom_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "out",
+              "enum": [
+                "out",
+                "returned",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Room Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "deleted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Deleted",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BathroomLogResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Bathroom",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/bathroom/action": {
+      "post": {
+        "description": "Admin only (proctors can record and view, never delete): soft delete, restore, or\nempty (permanent, deleted records only). 0.11.0.",
+        "operationId": "staff_bathroom_action_api_staff_bathroom_action_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BathroomActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BathroomActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Bathroom Action",
+        "tags": [
+          "staff"
         ]
       }
     },
@@ -3807,6 +4528,286 @@
           }
         },
         "summary": "Restore Room",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/roster": {
+      "get": {
+        "description": "Admin: the imported roster, filtered by room name (`room=` for no room) or search.",
+        "operationId": "staff_roster_api_staff_roster_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "room",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Room"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Roster",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/roster/import": {
+      "post": {
+        "description": "Admin: replace the roster with a CSV (headers: ID, Name or First/Last, School, Team,\nRoom, Contact). 0.11.0.",
+        "operationId": "staff_roster_import_api_staff_roster_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RosterImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "bad_csv"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Staff Roster Import",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/roster/sync": {
+      "post": {
+        "description": "Admin: replace the roster from ContestDojo's API, only when CONTESTDOJO_* is set.",
+        "operationId": "staff_roster_sync_api_staff_roster_sync_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sync_failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_configured"
+          }
+        },
+        "summary": "Staff Roster Sync",
         "tags": [
           "staff"
         ]

@@ -14,6 +14,9 @@ from app.protocol.constants import COOKIE_NAMES, PROTOCOL_VERSION
 from app.protocol.models import (
     EXTRA_SCHEMA_MODELS,
     AddSuperAdminRequest,
+    BathroomActionRequest,
+    BathroomActionResponse,
+    BathroomLogResponse,
     BrandResponse,
     ClarificationAdmin,
     ClarificationsResponse,
@@ -28,9 +31,13 @@ from app.protocol.models import (
     RoomIdentity,
     RoomLoginRequest,
     RoomSnapshot,
+    RosterImportRequest,
+    RosterImportResponse,
+    RosterResponse,
     StaffIdentity,
     StaffLoginRequest,
     StaffRoomsResponse,
+    StudentLookup,
     SuperAdminsResponse,
     SuperConfig,
     SuperIdentity,
@@ -313,6 +320,66 @@ def build_schema_app() -> FastAPI:
     )
     async def empty_room(room_id: str):
         """Admin wipes a deleted room and its history from the database for good. 0.8.0."""
+        _stub()
+
+    @app.get(
+        "/api/staff/bathroom", response_model=BathroomLogResponse, tags=["staff"], responses=_ERRORS
+    )
+    async def staff_bathroom(
+        status: Literal["out", "returned", "all"] = "out",
+        room_id: str | None = None,
+        q: str | None = None,
+        deleted: bool = False,
+        limit: int = 500,
+    ):
+        """Admin: bathroom records across rooms, newest first (longest out first for `out`).
+        `deleted=true` adds the soft-deleted ones after the live ones. Added in 0.11.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/bathroom/action",
+        response_model=BathroomActionResponse,
+        tags=["staff"],
+        responses=_ERRORS,
+    )
+    async def staff_bathroom_action(body: BathroomActionRequest):
+        """Admin only (proctors can record and view, never delete): soft delete, restore, or
+        empty (permanent, deleted records only). 0.11.0."""
+        _stub()
+
+    @app.get("/api/staff/roster", response_model=RosterResponse, tags=["staff"], responses=_ERRORS)
+    async def staff_roster(room: str | None = None, q: str | None = None):
+        """Admin: the imported roster, filtered by room name (`room=` for no room) or search."""
+        _stub()
+
+    @app.post(
+        "/api/staff/roster/import",
+        response_model=RosterImportResponse,
+        tags=["staff"],
+        responses={**_ERRORS, 422: {"model": ErrorResponse, "description": "bad_csv"}},
+    )
+    async def staff_roster_import(body: RosterImportRequest):
+        """Admin: replace the roster with a CSV (headers: ID, Name or First/Last, School, Team,
+        Room, Contact). 0.11.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/roster/sync",
+        response_model=RosterImportResponse,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            502: {"model": ErrorResponse, "description": "sync_failed"},
+            503: {"model": ErrorResponse, "description": "not_configured"},
+        },
+    )
+    async def staff_roster_sync():
+        """Admin: replace the roster from ContestDojo's API, only when CONTESTDOJO_* is set."""
+        _stub()
+
+    @app.get("/api/roster/lookup", response_model=StudentLookup, tags=["rooms"], responses=_ERRORS)
+    async def roster_lookup(id: str):
+        """A room's proctor or staff: one student by ID, from memory. No contact details."""
         _stub()
 
     @app.get("/api/brand", response_model=BrandResponse, tags=["public"])

@@ -225,6 +225,29 @@ button.bad { color: var(--bad); }
 .bath-list .when { flex: 1; font-size: 14px; color: var(--muted); transition: color 200ms var(--ease); }
 .bath-list .when[data-late="true"] { color: var(--warn); font-weight: 600; }
 .bath-list button { min-height: 40px; }
-.bath details { font-size: 14px; color: var(--muted); }
-.bath summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
-.bath details p { margin: 4px 0 0; line-height: 1.6; }
+
+/* Proctor bathroom: returned rows keep the exact row shape, just faded. The class change fades
+   over 250 ms (opacity only), so a student "settling" into the faded part reads as a change. */
+.bath-list li { transition: opacity 250ms var(--ease); }
+.bath-list li.done { opacity: 0.5; }
+.bath-list .who { display: grid; min-width: 0; line-height: 1.25; }
+.bath-list .who small { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bath-list .slot { width: 0; }
+.who-line { margin: -4px 0 0; min-height: 1.4em; font-size: 14px; }
+.who-line .warn { color: var(--warn); font-weight: 600; }
+
+/* Admin Bathroom log + Roster: filter row above a table that reuses .table / .tr. */
+.logbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 20px 0; }
+.logbar .grow { flex: 1; }
+.logbar input[type="search"] { flex: 1 1 200px; max-width: 320px; min-width: 160px; }
+.logbar label.inline { display: flex; align-items: center; gap: 8px; }
+.logbar select { min-height: 44px; padding-block: 8px; }
+.logbar > button { min-height: 44px; }
+.table.log { grid-template-columns: max-content minmax(max-content, 1.6fr) minmax(max-content, 1fr) max-content max-content max-content max-content; }
+.table.roster { grid-template-columns: minmax(max-content, 1.2fr) max-content minmax(max-content, 1.2fr) minmax(max-content, 1.2fr) max-content; }
+.table.log .tr:not(.th) { animation: row-in 200ms var(--ease); }
+.table .when { font-size: 14px; color: var(--muted); transition: color 200ms var(--ease); }
+.table .when[data-late="true"] { color: var(--warn); font-weight: 600; }
+.bulk.quiet { box-shadow: none; border: 1px solid var(--line); }
+.note { margin: 12px 20px; font-size: 14px; }
+.block-empty { display: grid; justify-items: center; gap: 12px; padding: 64px 24px; max-width: 520px; margin: 0 auto; }

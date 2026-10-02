@@ -12,6 +12,9 @@ from app import google_auth
 from app.protocol.constants import (
     CLIENT_HEADER,
     COOKIE_NAMES,
+    MAX_ADMIN_BATHROOM,
+    MAX_ADMIN_BATHROOM_EXPORT,
+    MAX_ROSTER_ROWS,
     MAX_STAFF_ROOMS,
     STAFF_SESSION_TTL_H,
     SUPER_COOKIE,
@@ -19,6 +22,9 @@ from app.protocol.constants import (
 from app.protocol.models import (
     ActorKind,
     AddSuperAdminRequest,
+    BathroomActionRequest,
+    BathroomActionResponse,
+    BathroomLogResponse,
     BathroomOutRequest,
     BrandResponse,
     ClarificationAdmin,
@@ -34,10 +40,16 @@ from app.protocol.models import (
     RoomLoginRequest,
     RoomPresence,
     RoomSnapshot,
+    RosterImportRequest,
+    RosterImportResponse,
+    RosterResponse,
+    RosterStudent,
     StaffIdentity,
     StaffLoginRequest,
     StaffRole,
     StaffRoomsResponse,
+    StudentInfo,
+    StudentLookup,
     SuperAdminOut,
     SuperAdminsResponse,
     SuperConfig,
@@ -49,6 +61,7 @@ from app.protocol.models import (
     UpdateRoomRequest,
     UpdateSettingsRequest,
 )
+from app.roster import RosterError, Student, fetch_contestdojo, norm_id, parse_csv
 from app.store import ClarError, Session, Store, now_ms
 from app.stream import frames
 
@@ -360,17 +373,17 @@ async def commands(cmd: Command, request: Request, _: Post) -> CommandResponse:
 
 
 def bathroom_room(request: Request, room_id: str):
-    """The room's own proctor page, or an admin. Display pages cannot log students."""
+    """Only the room's own proctor records students (0.11.0, ADR 0016). Admins view and delete
+    in the admin Bathroom tab; display pages can do neither."""
     room = store.rooms.get(room_id)
     if not room or room.deleted:
         raise err(404, "unknown_room", "No such room.")
     staff = session_for(request, "staff")
     mine = session_for(request, "control")
-    if not (
-        (staff and staff.role in (StaffRole.ADMIN, StaffRole.PM))
-        or (mine and mine.room_id == room_id)
-    ):
-        raise err(403 if (staff or mine) else 401, "forbidden", "Not allowed.")
+    if not (mine and mine.room_id == room_id):
+        raise err(
+            403 if (staff or mine) else 401, "forbidden", "Only this room's proctor can do that."
+        )
     return room
 
 
@@ -402,6 +415,117 @@ async def bathroom_return(room_id: str, visit_id: UUID, request: Request, _: Pos
     except KeyError:
         raise err(404, "unknown_visit", "No such entry.") from None
     return store.snapshot(room)
+
+
+# --- bathroom (admin) and roster (0.11.0) ---
+
+
+@router.get("/staff/bathroom", response_model=BathroomLogResponse)
+async def staff_bathroom(
+    request: Request,
+    status: Literal["out", "returned", "all"] = "out",
+    room_id: str | None = Query(default=None, max_length=100),
+    q: str | None = Query(default=None, max_length=60),
+    deleted: bool = False,
+    limit: int = Query(default=MAX_ADMIN_BATHROOM, ge=1, le=MAX_ADMIN_BATHROOM_EXPORT),
+) -> BathroomLogResponse:
+    admin_only(request)
+    entries, counts, cut = store.bathroom_list(status, room_id, q, deleted, limit)
+    return BathroomLogResponse(entries=entries, truncated=cut, server_time_ms=now_ms(), **counts)
+
+
+@router.post("/staff/bathroom/action", response_model=BathroomActionResponse)
+async def staff_bathroom_action(
+    body: BathroomActionRequest, request: Request, _: Post
+) -> BathroomActionResponse:
+    admin_only(request)
+    changed, skipped = await store.bathroom_action(
+        body.action, set(body.ids) if body.ids is not None else None
+    )
+    return BathroomActionResponse(changed=changed, skipped=skipped)
+
+
+def _info(s: Student) -> StudentInfo:
+    return StudentInfo(id=s.id, name=s.name, school=s.school, team=s.team, room=s.room)
+
+
+@router.get("/roster/lookup", response_model=StudentLookup)
+async def roster_lookup(request: Request, id: str = Query(max_length=40)) -> StudentLookup:
+    """From memory only (invariant 1). Proctors get no contact details."""
+    if not session_for(request, "staff", "control"):
+        raise err(401, "unauthenticated", "Sign in first.")
+    s = store.roster.get(norm_id(id))
+    return StudentLookup(roster_loaded=bool(store.roster), student=_info(s) if s else None)
+
+
+@router.get("/staff/roster", response_model=RosterResponse)
+async def staff_roster(
+    request: Request,
+    room: str | None = Query(default=None, max_length=100),
+    q: str | None = Query(default=None, max_length=60),
+) -> RosterResponse:
+    """`room` omitted = everyone, `room=` (empty) = students with no room, else that room name."""
+    admin_only(request)
+    needle = (q or "").strip().lower()
+    out = store.out_since()
+    rows = sorted(store.roster.values(), key=lambda s: (s.name.lower(), s.id))
+    rows = [
+        s
+        for s in rows
+        if (room is None or s.room.lower() == room.strip().lower())
+        and (not needle or needle in f"{s.id} {s.name} {s.school} {s.team}".lower())
+    ]
+    return RosterResponse(
+        students=[
+            RosterStudent(**_info(s).model_dump(), contact=s.contact, out_since_ms=out.get(s.id))
+            for s in rows[:MAX_ROSTER_ROWS]
+        ],
+        total=len(store.roster),
+        matching=len(rows),
+        out_now=sum(1 for s in rows if s.id in out),
+        rooms=sorted({s.room for s in store.roster.values() if s.room}, key=str.lower),
+        synced_at_ms=store.roster_synced_ms,
+        source=store.roster_source,
+        sync_available=bool(_contestdojo()),
+    )
+
+
+@router.post("/staff/roster/import", response_model=RosterImportResponse)
+async def staff_roster_import(
+    body: RosterImportRequest, request: Request, _: Post
+) -> RosterImportResponse:
+    admin_only(request)
+    try:
+        students, notes = parse_csv(body.csv)
+    except RosterError as e:
+        raise err(422, "bad_csv", str(e)) from None
+    await store.replace_roster(students, "csv")
+    return RosterImportResponse(count=len(students), notes=notes[:6])
+
+
+def _contestdojo() -> tuple[str, str, str, str] | None:
+    s = store.setting
+    cfg = (
+        s("CONTESTDOJO_API_URL"),
+        s("CONTESTDOJO_API_TOKEN"),
+        s("CONTESTDOJO_EVENT_ID"),
+        s("CONTESTDOJO_ROOM_KEY"),
+    )
+    return cfg if all(cfg[:3]) else None
+
+
+@router.post("/staff/roster/sync", response_model=RosterImportResponse)
+async def staff_roster_sync(request: Request, _: Post) -> RosterImportResponse:
+    admin_only(request)
+    cfg = _contestdojo()
+    if not cfg:
+        raise err(503, "not_configured", "ContestDojo isn't set up here. Import a CSV instead.")
+    try:  # a blocking HTTP call, so it runs in a thread and never stalls the timers
+        students = await asyncio.to_thread(fetch_contestdojo, *cfg)
+    except RosterError as e:
+        raise err(502, "sync_failed", str(e)) from None
+    await store.replace_roster(students, "contestdojo")
+    return RosterImportResponse(count=len(students), notes=[])
 
 
 # --- clarifications (0.6.0) ---

@@ -2,7 +2,7 @@
 
 Source: `development-plan.md` §6. **Window:** Wed Sep 30 – **Mon Oct 5**. **Gate:** Oct 5 demo with 3+ phones/laptops on one room plus the staff dashboard, all in sync on AWS; chaos tests C1, C6, C11 pass.
 
-Not in the prototype: offline outbox, Service Worker, clarifications, bathroom log, exports.
+Not in the prototype: offline outbox, Service Worker.
 
 ## Server (owner: Ian)
 - [~] Postgres schema + first Alembic migration; `deploy.sh` runs it (invariant 10). Written and tested against local Postgres 16 (slice 4); not yet run in the compose stack or on prod
@@ -28,7 +28,10 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 
 - [?] Super-admin page (slice 12): Google sign-in (token check tested with a fake; real Google not tried), name, icon, passwords, super-admin list. Server tests pass incl. Postgres; not tried in a browser
 
-- [?] Proctor Bathroom log (slice 13): ID field, Mark out, Currently out (live time, highlight at 10 min), Returned, Recently returned; admin Timers has the Out column and "N students out". Server tests pass incl. restart with Postgres; not tried in a browser. Not built (wireframe says Later): admin Bathroom tab, Roster. Not built: display "Log" drawer, projector mirror.
+- [?] Proctor Bathroom log (slices 13-14): ID field with a live "who is this" line (name, school, "assigned to <room>" warning), Mark out, one list: out now (live time, highlight at 10 min, Returned button) then returned rows in the same shape, faded. Recording is that room's proctor only. Server tests pass incl. real Postgres; not tried in a browser.
+- [?] Admin Bathroom log tab (slice 14): Room filter, Out now / Returned / All (with counts), search ID/name/room, Export CSV (all statuses for the chosen room), row checkboxes + Delete…, Delete all…, Show deleted with Restore / Empty… / Restore all / Empty all…, updates itself through the staff stream. Delete is admin-only and soft (ADR 0016). Not tried in a browser.
+- [?] Admin Roster tab (slice 14): Import CSV… (file or paste), Sync (only if CONTESTDOJO_* set; **never run against the real API**, ADR 0017), room filter, search, out status, contact column (admins only). Not tried in a browser.
+- Cut by the PM (ADR 0016), not to be built: chat with admins, bathroom on the projector (Log drawer / mirror), Preview-display button.
 
 ## Deploy and demo
 - [ ] Deployed to AWS via `deploy.sh`

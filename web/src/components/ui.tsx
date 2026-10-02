@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { post } from "../api";
 import { go } from "../main";
 
-/** Admin page switcher (wireframe: tabs). Only the tabs that exist so far. */
-export function AdminTabs({ active }: { active: "timers" | "clarifications" }) {
+type Tab = "timers" | "clarifications" | "bathroom" | "roster";
+
+/** Admin page switcher (wireframe: tabs). */
+export function AdminTabs({ active }: { active: Tab }) {
   const tab = (id: typeof active, label: string, path: string) => (
     <a className="tab" href={path} aria-current={active === id ? "page" : undefined} onClick={(e) => (e.preventDefault(), go(path))}>
       {label}
@@ -13,6 +15,8 @@ export function AdminTabs({ active }: { active: "timers" | "clarifications" }) {
     <nav className="tabs" aria-label="Admin">
       {tab("timers", "Timers", "/admin")}
       {tab("clarifications", "Clarifications", "/admin/clarifications")}
+      {tab("bathroom", "Bathroom", "/admin/bathroom")}
+      {tab("roster", "Roster", "/admin/roster")}
     </nav>
   );
 }
@@ -31,7 +35,7 @@ export function LogoutButton() {
   );
 }
 
-const TAB_LABEL = { timers: "Timers", clarifications: "Clarifications" } as const;
+const TAB_LABEL = { timers: "Timers", clarifications: "Clarifications", bathroom: "Bathroom log", roster: "Roster" } as const;
 
 /**
  * The admin header, one component for every admin tab. Wide screens: tabs, summary, light and

@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-02 (slice 13) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-02 (slice 14) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -13,11 +13,13 @@
 **Phase 1 (Prototype): in progress. Slices 1-7 are pushed; slices 8-13 are not pushed. Slices 8-10 (clarifications; edit/delete/markdown/projector layout; soft delete + Empty, per-room edit, live admin list) are written, not pushed. Nothing is verified in a browser, and the Oct 5 demo gate has not been run.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
 
 - Built so far: login → proctor Start/Pause/Resume (+ zoom) → projector display (fits any screen, zoom) → proctor bathroom log (slice 13), admin timers table (add, rename, edit, delete/restore, filter, per-state actions incl. reset, bulk allow/start/+5/edit/delete, device presence). Server tests pass (86 with a real Postgres; 83 + 3 skipped without). UI not yet tried in a browser. Slice 4 added Postgres persistence (rooms and commands; sessions still in memory); slice 6 replaced polling with SSE (polling is the fallback). See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
-- Scope ceiling is `docs/wireframe.html`. Chat, bathroom log, roster, super-admin need protocol additions first. There is no Deletion tab (ADR 0013).
+- Scope ceiling is `docs/wireframe.html`. **Cut by the PM (ADR 0016): chat (Discord only), bathroom on the projector (Log drawer, mirror), Preview-display button.** There is no Deletion tab (ADR 0013).
 
 ## Next actions, in order
 
--2. Slice 13 (bathroom log): deploy runs migration 0008. Try it on a phone and watch the admin Out column on a second device. Then the remaining small wireframe gaps: Preview display button, display Log drawer.
+-3. Slice 14 (admin Bathroom log + roster): deploy runs migration 0009. Import a roster CSV (or get a ContestDojo token, see [`setup-contestdojo.md`](../setup-contestdojo.md)), then try on two devices: a proctor marks students out and back, the admin Bathroom tab updates by itself, admin deletes / restores / empties, a proctor can't. **Phase 1's feature list is complete after this slice**; what remains is browser verification, the Oct 5 demo and chaos C1/C6/C11.
+
+-2. Slice 13 (bathroom log): deploy runs migration 0008. Try it on a phone and watch the admin Out column on a second device. 
 
 -1. Slice 12: add `APP_NAME` / `APP_ICON` to prod `.env` (compose requires `APP_NAME`), do DNS and Google setup ([`setup-domain-and-google.md`](../setup-domain-and-google.md)), then deploy (migration 0007).
 

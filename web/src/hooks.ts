@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { api, ApiError, backoff, syncClock, type RoomPresence, type Snapshot } from "./api";
 
 /** Re-renders every 250 ms (protocol TIMER_TICK_MS). Time is derived, never decremented. */
@@ -192,4 +192,47 @@ export function usePoll<T extends { version?: number }>(path: string, everyMs = 
   }, [path, everyMs, enabled]);
 
   return { data, setData, online, unauthorized };
+}
+
+/** `value`, but only after it has stopped changing for `ms` (search boxes). */
+export function useDebounced<T>(value: T, ms = 250): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return v;
+}
+
+/** Sum of room versions: goes up whenever anything in any room changes (the staff stream pushes it). */
+export const stampOf = (rooms: { version: number }[] | undefined) => (rooms ?? []).reduce((n, r) => n + r.version, 0);
+
+/**
+ * A list the server filters for us (admin bathroom log, roster). Fetched when `path` changes, and
+ * again when `stamp` moves (something changed somewhere), at most once per 1.5 s, so a busy
+ * test day never turns into a request storm. A late answer for an old path is dropped. A failed
+ * fetch keeps what is on screen; the connection light already says when we are offline.
+ */
+export function useFetched<T>(path: string, stamp: number) {
+  const [data, setData] = useState<T | null>(null);
+  const seq = useRef(0);
+  const last = useRef(0);
+  const load = useCallback(async () => {
+    const n = ++seq.current;
+    last.current = Date.now();
+    try {
+      const r = await api<T>(path);
+      if (n === seq.current && r) setData(r);
+    } catch {
+      /* keep the old list */
+    }
+  }, [path]);
+  useEffect(() => void load(), [load]);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) return void (first.current = false);
+    const id = setTimeout(load, Math.max(0, 1500 - (Date.now() - last.current)));
+    return () => clearTimeout(id);
+  }, [stamp, load]);
+  return { data, refresh: load };
 }

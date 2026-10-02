@@ -47,7 +47,7 @@ def test_who_may_log_and_validation(monkeypatch):
     assert out(p, b).status_code == 403  # another room's proctor
     anon = mk(monkeypatch)
     assert out(anon, a).status_code == 401
-    assert out(admin, a, "117c").status_code == 200  # admins may too
+    assert out(admin, a, "117c").status_code == 403  # admins view and delete, never record
     assert out(p, a, "   ").status_code == 422 and out(p, a, "x" * 21).status_code == 422
     assert out(p, "nope").status_code == 404
     assert anon.post(f"/api/rooms/{a}/bathroom", json={"id": "x"}).status_code in (400, 422)

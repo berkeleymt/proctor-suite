@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 from app import db
 from app.fold import SessionSpec, TimerEvent, fold
 from app.protocol.constants import (
+    MAX_ADMIN_BATHROOM,
     MAX_ADMIN_CLARIFICATIONS,
     MAX_BATHROOM_BACK,
     MAX_BATHROOM_OUT,
@@ -26,6 +27,7 @@ from app.protocol.constants import (
 )
 from app.protocol.models import (
     ActorKind,
+    BathroomEntry,
     BathroomVisit,
     ClarificationAdmin,
     ClarificationOut,
@@ -37,6 +39,7 @@ from app.protocol.models import (
     StaffRole,
     TimerStatus,
 )
+from app.roster import Student
 from app.stream import Hub
 
 DEFAULT_ROOMS = "Dwinelle 145,Evans 10,Soda 306,Wheeler 150"
@@ -56,10 +59,15 @@ class Visit:
     student_id: str
     left_ms: int
     back_ms: int | None = None
+    deleted: bool = False  # soft delete by an admin: gone for proctors, restorable until emptied
 
-    def out(self) -> BathroomVisit:
+    def out(self, name: str | None = None) -> BathroomVisit:
         return BathroomVisit(
-            id=self.id, student_id=self.student_id, left_ms=self.left_ms, back_ms=self.back_ms
+            id=self.id,
+            student_id=self.student_id,
+            student_name=name or None,
+            left_ms=self.left_ms,
+            back_ms=self.back_ms,
         )
 
 
@@ -159,6 +167,9 @@ class Store:
         self.rooms = {_slug(n): Room(_slug(n), n, minutes * 60_000, t) for n in names if n}
         self.sessions: dict[str, Session] = {}
         self.clars: dict[UUID, Clarification] = {}
+        self.roster: dict[str, Student] = {}  # student id -> student (memory only for readers)
+        self.roster_source: str | None = None
+        self.roster_synced_ms: int | None = None
         self.settings: dict[str, str] = {}  # runtime overrides of APP_NAME, ROOM_PASSWORD, ...
         self.supers: dict[str, SuperAdmin] = {}  # super-admins added in the UI (emails, lower case)
         # Added to every room's version so a clarification change reaches all affected rooms
@@ -217,8 +228,17 @@ class Store:
         for v in await db.load_visits(pool):
             if v["room_id"] in loaded:
                 loaded[v["room_id"]].bathroom.append(
-                    Visit(v["id"], v["student_id"], v["left_ms"], v["back_ms"])
+                    Visit(v["id"], v["student_id"], v["left_ms"], v["back_ms"], v["deleted"])
                 )
+        rows = await db.load_roster(pool)
+        self.roster = {
+            r["student_id"]: Student(
+                r["student_id"], r["name"], r["school"], r["team"], r["room"], r["contact"]
+            )
+            for r in rows
+        }
+        if rows:
+            self.roster_source, self.roster_synced_ms = rows[0]["source"], rows[0]["synced_at_ms"]
         for c in await db.load_clarifications(pool):
             self.clars[c["id"]] = Clarification(
                 c["id"], c["body"], c["room_ids"], c["created_at_ms"], c["rev"], c["hidden"],
@@ -610,7 +630,7 @@ class Store:
                     if v.student_id != student_id:
                         raise ValueError("id_conflict")
                     return
-            open_ = [v for v in room.bathroom if v.back_ms is None]
+            open_ = [v for v in room.bathroom if v.back_ms is None and not v.deleted]
             if any(v.student_id == student_id for v in open_):
                 raise KeyError("already_out")
             if len(open_) >= MAX_BATHROOM_OUT:
@@ -624,7 +644,7 @@ class Store:
     async def bathroom_return(self, room: Room, vid: UUID) -> None:
         """Mark a student back. Already back = no change (idempotent). KeyError if unknown."""
         async with self.lock(room.room_id):
-            v = next((v for v in room.bathroom if v.id == vid), None)
+            v = next((v for v in room.bathroom if v.id == vid and not v.deleted), None)
             if v is None:
                 raise KeyError("unknown_visit")
             if v.back_ms is not None:
@@ -634,6 +654,108 @@ class Store:
                 await db.mark_visit_back(self.pool, vid, t)
             v.back_ms = t
             await self._commit(room)
+
+    # --- bathroom, admin side (0.11.0): list across rooms, soft delete / restore / empty ---
+    def bathroom_list(
+        self,
+        status: str,
+        room_id: str | None,
+        q: str | None,
+        with_deleted: bool,
+        limit: int = MAX_ADMIN_BATHROOM,
+    ) -> tuple[list[BathroomEntry], dict[str, int], bool]:
+        """Records for the admin table plus counts over everything. Out-now sorts longest-out
+        first (the ones to worry about); the rest newest first; deleted ones come last."""
+        needle = (q or "").strip().lower()
+        live: list[BathroomEntry] = []
+        gone: list[BathroomEntry] = []
+        counts = {"out_now": 0, "returned": 0, "deleted": 0}
+        for room in self.rooms.values():
+            for v in room.bathroom:
+                if v.deleted:
+                    counts["deleted"] += 1
+                elif v.back_ms is None:
+                    counts["out_now"] += 1
+                else:
+                    counts["returned"] += 1
+                if room_id and room.room_id != room_id:
+                    continue
+                if status != "all" and (status == "out") != (v.back_ms is None):
+                    continue
+                s = self.roster.get(v.student_id)
+                if (
+                    needle
+                    and needle
+                    not in " ".join((v.student_id, s.name if s else "", room.name)).lower()
+                ):
+                    continue
+                if v.deleted and not with_deleted:
+                    continue
+                e = BathroomEntry(
+                    id=v.id, room_id=room.room_id, room_name=room.name, student_id=v.student_id,
+                    student_name=(s.name or None) if s else None,
+                    school=(s.school or None) if s else None,
+                    left_ms=v.left_ms, back_ms=v.back_ms, deleted=v.deleted,
+                )  # fmt: skip
+                (gone if v.deleted else live).append(e)
+        live.sort(key=lambda e: e.left_ms, reverse=status != "out")
+        gone.sort(key=lambda e: e.left_ms, reverse=True)
+        cap = limit
+        return live[:cap] + gone[:cap], counts, len(live) > cap or len(gone) > cap
+
+    async def bathroom_action(self, action: str, ids: set[UUID] | None) -> tuple[int, int]:
+        """delete (hide), restore, or empty (gone for good; deleted records only). `ids=None`
+        means every record the action applies to. Returns (changed, skipped). Each room is done
+        under its own lock: Postgres first, then memory (invariant 5)."""
+        changed = skipped = 0
+        for room in list(self.rooms.values()):
+            async with self.lock(room.room_id):
+                want = action == "delete"
+                pick: list[Visit] = []
+                for v in room.bathroom:
+                    if v.deleted == want or (ids is not None and v.id not in ids):
+                        continue  # delete needs a live record, restore and empty a deleted one
+                    if (
+                        action == "restore"
+                        and v.back_ms is None
+                        and any(
+                            o.student_id == v.student_id and o.back_ms is None and not o.deleted
+                            for o in room.bathroom
+                        )
+                    ):
+                        skipped += 1  # that student has gone out again since: don't double them
+                        continue
+                    pick.append(v)
+                if not pick:
+                    continue
+                if self.pool:
+                    await db.visits_action(self.pool, action, [v.id for v in pick])
+                if action == "empty":
+                    drop = {v.id for v in pick}
+                    room.bathroom = [v for v in room.bathroom if v.id not in drop]
+                else:
+                    for v in pick:
+                        v.deleted = want
+                await self._commit(room)
+                changed += len(pick)
+        return changed, skipped
+
+    # --- roster (0.11.0): replaced as a whole, read from memory ---
+    async def replace_roster(self, students: list[Student], source: str) -> None:
+        at = now_ms()
+        async with self._admin_lock:
+            if self.pool:
+                await db.replace_roster(self.pool, students, source, at)
+            self.roster = {s.id: s for s in students}
+            self.roster_source, self.roster_synced_ms = source, at
+
+    def out_since(self) -> dict[str, int]:
+        """student id -> when they left, for everyone out right now (any room)."""
+        r: dict[str, int] = {}
+        for room in self.rooms.values():
+            for v in self._live(room, out=True):
+                r[v.student_id] = min(v.left_ms, r.get(v.student_id, v.left_ms))
+        return r
 
     # --- snapshots ---
     def snapshot(self, room: Room, with_clar: bool = True) -> RoomSnapshot:
@@ -653,14 +775,24 @@ class Store:
             deleted=room.deleted,
             doc_url=room.doc_url,
             clarifications=self.clarifications_for(room) if with_clar else [],
-            students_out=sum(1 for v in room.bathroom if v.back_ms is None),
-            bathroom_out=[v.out() for v in room.bathroom if v.back_ms is None] if with_clar else [],
-            bathroom_back=[v.out() for v in room.bathroom if v.back_ms is not None][
-                -MAX_BATHROOM_BACK:
+            students_out=len(self._live(room, out=True)),
+            bathroom_out=[self._visit_out(v) for v in self._live(room, out=True)]
+            if with_clar
+            else [],
+            bathroom_back=[
+                self._visit_out(v) for v in self._live(room, out=False)[-MAX_BATHROOM_BACK:]
             ]
             if with_clar
             else [],
         )
+
+    @staticmethod
+    def _live(room: Room, out: bool) -> list[Visit]:
+        return [v for v in room.bathroom if not v.deleted and (v.back_ms is None) == out]
+
+    def _visit_out(self, v: Visit) -> BathroomVisit:
+        s = self.roster.get(v.student_id)
+        return v.out(s.name if s else None)
 
     def version(self, room: Room) -> int:
         return room.version + self.clar_rev

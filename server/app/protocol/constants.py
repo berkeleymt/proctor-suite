@@ -4,7 +4,7 @@ Changing any value here is a contract change: bump PROTOCOL_VERSION and add a
 changelog line to docs/protocol.md.
 """
 
-PROTOCOL_VERSION = "0.10.0"
+PROTOCOL_VERSION = "0.11.0"
 
 # --- Streaming and network behavior (invariant 2) ---
 HEARTBEAT_INTERVAL_S = 15  # server sends a heartbeat on every open stream this often
@@ -43,3 +43,7 @@ MAX_ADMIN_CLARIFICATIONS = 200
 MAX_CLARIFICATION_EDITS = 10  # earlier wordings kept per clarification (invariant 8)
 MAX_BATHROOM_OUT = 50  # students out at once, per room (invariant 8)
 MAX_BATHROOM_BACK = 20  # most recent returns sent in a snapshot (invariant 8)
+MAX_ADMIN_BATHROOM = 500  # rows in the admin bathroom table by default (0.11.0)
+MAX_ADMIN_BATHROOM_EXPORT = 5000  # most rows one request may ask for (CSV export)
+MAX_ROSTER_ROWS = 500  # rows in one admin roster list (0.11.0)
+MAX_BATHROOM_IDS = 1000  # records in one delete / restore / empty request (0.11.0)

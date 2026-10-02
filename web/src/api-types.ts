@@ -262,6 +262,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/roster/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Roster Lookup
+         * @description A room's proctor or staff: one student by ID, from memory. No contact details.
+         */
+        get: operations["roster_lookup_api_roster_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/bathroom": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Staff Bathroom
+         * @description Admin: bathroom records across rooms, newest first (longest out first for `out`).
+         *     `deleted=true` adds the soft-deleted ones after the live ones. Added in 0.11.0.
+         */
+        get: operations["staff_bathroom_api_staff_bathroom_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/bathroom/action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Staff Bathroom Action
+         * @description Admin only (proctors can record and view, never delete): soft delete, restore, or
+         *     empty (permanent, deleted records only). 0.11.0.
+         */
+        post: operations["staff_bathroom_action_api_staff_bathroom_action_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/clarifications": {
         parameters: {
             query?: never;
@@ -461,6 +523,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Staff Roster
+         * @description Admin: the imported roster, filtered by room name (`room=` for no room) or search.
+         */
+        get: operations["staff_roster_api_staff_roster_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/roster/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Staff Roster Import
+         * @description Admin: replace the roster with a CSV (headers: ID, Name or First/Last, School, Team,
+         *     Room, Contact). 0.11.0.
+         */
+        post: operations["staff_roster_import_api_staff_roster_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/roster/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Staff Roster Sync
+         * @description Admin: replace the roster from ContestDojo's API, only when CONTESTDOJO_* is set.
+         */
+        post: operations["staff_roster_sync_api_staff_roster_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/staff/stream": {
         parameters: {
             query?: never;
@@ -623,12 +746,83 @@ export interface components {
             type: "adjust";
         };
         /**
+         * BathroomActionRequest
+         * @description Delete (soft), restore, or empty (for good, deleted ones only). Exactly one of `ids`
+         *     or `all`; `all` means every record the action applies to.
+         */
+        BathroomActionRequest: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "delete" | "restore" | "empty";
+            /**
+             * All
+             * @default false
+             */
+            all: boolean;
+            /** Ids */
+            ids?: string[] | null;
+        };
+        /** BathroomActionResponse */
+        BathroomActionResponse: {
+            /** Changed */
+            changed: number;
+            /** Skipped */
+            skipped: number;
+        };
+        /**
+         * BathroomEntry
+         * @description One bathroom record in the admin list. `deleted` ones are only listed on request.
+         */
+        BathroomEntry: {
+            /** Back Ms */
+            back_ms: number | null;
+            /** Deleted */
+            deleted: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Left Ms */
+            left_ms: number;
+            /** Room Id */
+            room_id: string;
+            /** Room Name */
+            room_name: string;
+            /** School */
+            school: string | null;
+            /** Student Id */
+            student_id: string;
+            /** Student Name */
+            student_name: string | null;
+        };
+        /**
+         * BathroomLogResponse
+         * @description Counts are for everything; the list is cut to `limit` (`truncated`).
+         */
+        BathroomLogResponse: {
+            /** Deleted */
+            deleted: number;
+            /** Entries */
+            entries: components["schemas"]["BathroomEntry"][];
+            /** Out Now */
+            out_now: number;
+            /** Returned */
+            returned: number;
+            /** Server Time Ms */
+            server_time_ms: number;
+            /** Truncated */
+            truncated: boolean;
+        };
+        /**
          * BathroomVisit
          * @description One student leaving the room. `back_ms` is null while they are out. Times are server time.
          */
         BathroomVisit: {
             /** Back Ms */
-            back_ms?: number | null;
+            back_ms: number | null;
             /**
              * Id
              * Format: uuid
@@ -638,6 +832,8 @@ export interface components {
             left_ms: number;
             /** Student Id */
             student_id: string;
+            /** Student Name */
+            student_name: string | null;
         };
         /**
          * BrandResponse
@@ -995,6 +1191,54 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** RosterImportRequest */
+        RosterImportRequest: {
+            /** Csv */
+            csv: string;
+        };
+        /** RosterImportResponse */
+        RosterImportResponse: {
+            /** Count */
+            count: number;
+            /** Notes */
+            notes: string[];
+        };
+        /** RosterResponse */
+        RosterResponse: {
+            /** Matching */
+            matching: number;
+            /** Out Now */
+            out_now: number;
+            /** Rooms */
+            rooms: string[];
+            /** Source */
+            source: string | null;
+            /** Students */
+            students: components["schemas"]["RosterStudent"][];
+            /** Sync Available */
+            sync_available: boolean;
+            /** Synced At Ms */
+            synced_at_ms: number | null;
+            /** Total */
+            total: number;
+        };
+        /** RosterStudent */
+        RosterStudent: {
+            /** Contact */
+            contact: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Out Since Ms */
+            out_since_ms: number | null;
+            /** Room */
+            room: string;
+            /** School */
+            school: string;
+            /** Team */
+            team: string;
+        };
         /**
          * SnapshotMessage
          * @description SSE frame: `event: snapshot`, `id: <version>`, `data: <RoomSnapshot as JSON>`.
@@ -1066,6 +1310,28 @@ export interface components {
              * @enum {string}
              */
             type: "start";
+        };
+        /**
+         * StudentInfo
+         * @description What a proctor may see about a student: no contact details.
+         */
+        StudentInfo: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Room */
+            room: string;
+            /** School */
+            school: string;
+            /** Team */
+            team: string;
+        };
+        /** StudentLookup */
+        StudentLookup: {
+            /** Roster Loaded */
+            roster_loaded: boolean;
+            student: components["schemas"]["StudentInfo"] | null;
         };
         /** SuperAdminOut */
         SuperAdminOut: {
@@ -1919,6 +2185,213 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    roster_lookup_api_roster_lookup_get: {
+        parameters: {
+            query: {
+                id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentLookup"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    staff_bathroom_api_staff_bathroom_get: {
+        parameters: {
+            query?: {
+                status?: "out" | "returned" | "all";
+                room_id?: string | null;
+                q?: string | null;
+                deleted?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BathroomLogResponse"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    staff_bathroom_action_api_staff_bathroom_action_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BathroomActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BathroomActionResponse"];
+                };
             };
             /** @description unauthenticated / invalid_credentials */
             401: {
@@ -2884,6 +3357,226 @@ export interface operations {
             };
             /** @description rate_limited */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    staff_roster_api_staff_roster_get: {
+        parameters: {
+            query?: {
+                room?: string | null;
+                q?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterResponse"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    staff_roster_import_api_staff_roster_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterImportResponse"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description bad_csv */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    staff_roster_sync_api_staff_roster_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterImportResponse"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description sync_failed */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_configured */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

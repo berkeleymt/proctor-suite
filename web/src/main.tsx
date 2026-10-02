@@ -2,6 +2,8 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import { Admin } from "./screens/Admin";
+import { AdminBathroom } from "./screens/AdminBathroom";
+import { Roster } from "./screens/Roster";
 import { Clarifications } from "./screens/Clarifications";
 import { Display } from "./screens/Display";
 import { Login } from "./screens/Login";
@@ -22,6 +24,8 @@ function App() {
     return () => window.removeEventListener("popstate", f);
   }, []);
   if (path.startsWith("/admin/clarifications")) return <Clarifications />;
+  if (path.startsWith("/admin/bathroom")) return <AdminBathroom />;
+  if (path.startsWith("/admin/roster")) return <Roster />;
   if (path.startsWith("/admin")) return <Admin />;
   if (path.startsWith("/display")) return <Display />;
   if (path.startsWith("/proctor")) return <Proctor />;

@@ -1,0 +1,192 @@
+import { useEffect, useRef, useState } from "react";
+import { ApiError, post, type RosterData, type Snapshot } from "../api";
+import { AdminBar, Sheet } from "../components/ui";
+import { dropRoom, mergeRooms, stampOf, useClock, useDebounced, useFetched, useLive } from "../hooks";
+import { go } from "../main";
+import { usePageTitle } from "../brand";
+
+const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const why = (e: unknown) => (e instanceof ApiError ? e.message : "Couldn't reach the server. Try again.");
+const NO_ROOM = "\u0000none"; // select value for "students with no room"
+
+/** The roster: who each student ID is. Filled from a CSV (always works) or ContestDojo (if connected). */
+export function Roster() {
+  usePageTitle("Roster");
+  useClock();
+  const live = useLive<{ rooms: Snapshot[]; version?: number }>("/api/staff/rooms", "/api/staff/stream", mergeRooms, 4000, { room_removed: dropRoom });
+  const [room, setRoom] = useState("");
+  const [q, setQ] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
+  const query = useDebounced(q.trim());
+  const params = new URLSearchParams();
+  if (room) params.set("room", room === NO_ROOM ? "" : room);
+  if (query) params.set("q", query);
+  const { data, refresh } = useFetched<RosterData>(`/api/staff/roster?${params}`, stampOf(live.data?.rooms));
+  useEffect(() => {
+    if (live.unauthorized) go("/login");
+  }, [live.unauthorized]);
+  if (!data) return <main className="center" />;
+
+  async function sync() {
+    setSyncing(true);
+    setMsg(null);
+    try {
+      const r = (await post<{ count: number }>("/api/staff/roster/sync"))!;
+      setMsg({ text: `Synced ${r.count.toLocaleString()} students from ContestDojo.`, bad: false });
+      await refresh();
+    } catch (e) {
+      setMsg({ text: why(e), bad: true });
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const empty = data.total === 0;
+  const stamp = data.synced_at_ms ? `${data.source === "contestdojo" ? "Synced from ContestDojo" : "Imported from a file"} ${clock(data.synced_at_ms)}` : "No roster yet";
+  return (
+    <main className="admin">
+      <AdminBar active="roster" online={live.online} summary={`${data.total.toLocaleString()} students · ${stamp}`}>
+        {data.sync_available && (
+          <button disabled={syncing} onClick={sync}>
+            {syncing ? "Syncing…" : "Sync"}
+          </button>
+        )}
+        <button className={empty ? "primary" : ""} onClick={() => setImporting(true)}>
+          Import CSV…
+        </button>
+      </AdminBar>
+      {msg && (
+        <p className={msg.bad ? "error note" : "muted note"} role={msg.bad ? "alert" : "status"}>
+          {msg.text}
+        </p>
+      )}
+      {empty ? (
+        <div className="center-text block-empty">
+          <h2>No roster yet</h2>
+          <p className="muted">
+            Import a CSV exported from ContestDojo (or any spreadsheet with an ID column and a name column). Then typing a student ID anywhere shows who it is.
+            {data.sync_available && " ContestDojo is connected, so you can also press Sync."}
+          </p>
+          <button className="primary" onClick={() => setImporting(true)}>
+            Import CSV…
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="logbar" role="search">
+            <label className="inline">
+              Room
+              <select value={room} onChange={(e) => setRoom(e.target.value)}>
+                <option value="">All rooms</option>
+                {data.rooms.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+                <option value={NO_ROOM}>No room yet</option>
+              </select>
+            </label>
+            <input type="search" aria-label="Search name, ID or school" placeholder="Search name, ID or school…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <span className="grow" />
+            <span className="muted">
+              {data.matching.toLocaleString()} {data.matching === 1 ? "student" : "students"} · {data.out_now} out
+            </span>
+          </div>
+          <div className="table roster">
+            <div className="tr th">
+              <span>Name</span>
+              <span>ID</span>
+              <span>School / team</span>
+              <span>Parent / coach contact</span>
+              <span>Status</span>
+            </div>
+            {data.students.length === 0 && <p className="muted empty">No students match.</p>}
+            {data.students.map((s) => (
+              <div className="tr" key={s.id}>
+                <span>{s.name || <span className="muted">(no name)</span>}</span>
+                <span className="mono">{s.id}</span>
+                <span className="muted">{[s.school, s.team].filter(Boolean).join(" · ")}</span>
+                <span className="muted">{s.contact}</span>
+                <span className="when" data-late={s.out_since_ms !== null}>
+                  {s.out_since_ms !== null ? `Out since ${clock(s.out_since_ms)}` : "Present"}
+                </span>
+              </div>
+            ))}
+          </div>
+          {data.matching > data.students.length && <p className="muted note">Showing the first {data.students.length}. Search or pick a room to narrow it down.</p>}
+        </>
+      )}
+      {importing && (
+        <ImportSheet
+          existing={data.total}
+          onClose={() => setImporting(false)}
+          onDone={(n, notes) => {
+            setImporting(false);
+            setMsg({ text: `Imported ${n.toLocaleString()} students.${notes.length ? ` ${notes.join(" ")}` : ""}`, bad: false });
+            void refresh();
+          }}
+        />
+      )}
+    </main>
+  );
+}
+
+/** Pick a file or paste the rows. Replaces the whole roster, so it says how many it will replace. */
+function ImportSheet({ existing, onClose, onDone }: { existing: number; onClose: () => void; onDone: (n: number, notes: string[]) => void }) {
+  const [text, setText] = useState("");
+  const [name, setName] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
+
+  async function submit() {
+    setBusy(true);
+    setErr("");
+    try {
+      const r = (await post<{ count: number; notes: string[] }>("/api/staff/roster/import", { csv: text }))!;
+      onDone(r.count, r.notes);
+    } catch (e) {
+      setErr(why(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Sheet title="Import roster" onClose={onClose} onSubmit={submit}>
+      <p className="muted">
+        A CSV with a header row: <b>ID</b> (like 054A), <b>Name</b> (or First and Last), and optionally <b>School</b>, <b>Team</b>, <b>Room</b> (the room name, as on the Timers page) and <b>Contact</b>.
+        {existing > 0 && ` This replaces the ${existing.toLocaleString()} students already here.`}
+      </p>
+      <input
+        ref={file}
+        type="file"
+        accept=".csv,.tsv,.txt,text/csv,text/plain"
+        hidden
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          setName(f.name);
+          setText(await f.text());
+        }}
+      />
+      <div className="row">
+        <button type="button" onClick={() => file.current?.click()}>
+          Choose file…
+        </button>
+        <span className="muted">{name || "or paste the rows below"}</span>
+      </div>
+      <textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={"ID,Name,School,Room\n054A,Ada Lovelace,Moor High,Evans 10"} aria-label="CSV rows" spellCheck={false} />
+      <p className="error" role="alert" hidden={!err}>
+        {err}
+      </p>
+      <div className="row">
+        <button type="button" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="primary" disabled={!text.trim() || busy}>
+          {busy ? "Importing…" : "Import"}
+        </button>
+      </div>
+    </Sheet>
+  );
+}

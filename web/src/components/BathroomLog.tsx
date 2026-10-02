@@ -1,22 +1,44 @@
-import { useRef, useState } from "react";
-import { ApiError, post, serverNow, type Snapshot } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { api, ApiError, post, serverNow, type Snapshot, type StudentLookup } from "../api";
+import { useDebounced } from "../hooks";
 
 type Visit = Snapshot["bathroom_out"][number];
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-const minsAway = (v: Visit) => Math.max(0, Math.floor((serverNow() - v.left_ms) / 60_000));
+const mins = (a: number, b: number) => Math.max(0, Math.floor((a - b) / 60_000));
 const LATE_MIN = 10; // rows past this are highlighted (wireframe)
 
-/** Proctor · Bathroom log (wireframe): type an ID, Mark out; Returned when they are back.
- *  The parent re-renders every second, so "out for" stays live without its own timer. */
+/**
+ * Proctor · Bathroom log. Type an ID, Mark out; Returned when they are back.
+ * One list, one row shape: students out now first, then the ones who came back, faded
+ * (the same way deleted rooms and clarifications look). The parent re-renders every second,
+ * so "out for" stays live without its own timer.
+ */
 export function BathroomLog({ s, setData }: { s: Snapshot; setData: (s: Snapshot) => void }) {
   const [student, setStudent] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [who, setWho] = useState<{ id: string; r: StudentLookup } | null>(null);
   // One id per attempt, reused if the request has to be retried, so a slow network can never log
   // the same student twice (invariant 3). Typing something else starts a new attempt.
   const attempt = useRef<string | null>(null);
   const base = `/api/rooms/${s.room_id}/bathroom`;
+
+  // Who is this? Looked up once typing pauses; a late answer for an old ID is never shown.
+  // Failing quietly is right: the name is a help, never a gate (marking out works without it).
+  const typed = useDebounced(student.trim().toUpperCase(), 300);
+  useEffect(() => {
+    if (typed.length < 2) return;
+    let live = true;
+    api<StudentLookup>(`/api/roster/lookup?id=${encodeURIComponent(typed)}`)
+      .then((r) => live && r && setWho({ id: typed, r }))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [typed]);
+  const shown = who && who.id === student.trim().toUpperCase() ? who.r : null;
+  const elsewhere = shown?.student?.room && shown.student.room.toLowerCase() !== s.room_name.toLowerCase();
 
   async function markOut(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +68,24 @@ export function BathroomLog({ s, setData }: { s: Snapshot; setData: (s: Snapshot
     }
   }
 
+  const returned = [...s.bathroom_back].reverse(); // most recent first
+  const row = (v: Visit) => {
+    const out = v.back_ms === null;
+    const m = mins(out ? serverNow() : v.back_ms!, v.left_ms);
+    return (
+      <li key={v.id} className={out ? "" : "done"}>
+        <span className="who">
+          <strong className="mono">{v.student_id}</strong>
+          {v.student_name && <small>{v.student_name}</small>}
+        </span>
+        <span className="when" data-late={out && m >= LATE_MIN}>
+          {out ? `left ${clock(v.left_ms)} · ${m < 1 ? "just now" : `${m} min`}` : `${clock(v.left_ms)}–${clock(v.back_ms!)} · ${m < 1 ? "under 1 min" : `${m} min`}`}
+        </span>
+        {out ? <button onClick={() => back(v)}>Returned</button> : <span className="slot" aria-hidden />}
+      </li>
+    );
+  };
+
   return (
     <section className="bath" aria-labelledby="bath-h">
       <h2 id="bath-h">Bathroom</h2>
@@ -57,6 +97,7 @@ export function BathroomLog({ s, setData }: { s: Snapshot; setData: (s: Snapshot
             attempt.current = null;
           }}
           aria-label="Student ID"
+          aria-describedby="bath-who"
           placeholder="Student ID, like 054A"
           maxLength={20}
           autoComplete="off"
@@ -68,38 +109,27 @@ export function BathroomLog({ s, setData }: { s: Snapshot; setData: (s: Snapshot
           Mark out
         </button>
       </form>
+      {/* Always one line tall, so the list never jumps while someone types. */}
+      <p id="bath-who" className="who-line" aria-live="polite">
+        {shown?.student ? (
+          <>
+            <strong>{shown.student.name || "No name on file"}</strong>
+            {shown.student.school && <span className="muted"> · {shown.student.school}</span>}
+            {elsewhere && <span className="warn"> · assigned to {shown.student.room}</span>}
+          </>
+        ) : shown?.roster_loaded ? (
+          <span className="muted">Not on the roster. You can still mark them out.</span>
+        ) : null}
+      </p>
       <p className="error" role="alert" hidden={!err}>
         {err}
       </p>
-      {s.bathroom_out.length ? (
-        <ul className="bath-list">
-          {s.bathroom_out.map((v) => {
-            const m = minsAway(v);
-            return (
-              <li key={v.id}>
-                <strong className="mono">{v.student_id}</strong>
-                <span className="when" data-late={m >= LATE_MIN}>
-                  left {clock(v.left_ms)} · {m < 1 ? "just now" : `${m} min`}
-                </span>
-                <button onClick={() => back(v)}>Returned</button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="hint">Nobody is out.</p>
-      )}
-      {s.bathroom_back.length > 0 && (
-        <details>
-          <summary>Recently returned ({s.bathroom_back.length})</summary>
-          <p className="mono">
-            {[...s.bathroom_back]
-              .reverse()
-              .map((v) => `${v.student_id} ${clock(v.left_ms)}–${clock(v.back_ms!)}`)
-              .join(" · ")}
-          </p>
-        </details>
-      )}
+      {s.bathroom_out.length === 0 && returned.length === 0 && <p className="hint">Nobody is out.</p>}
+      {s.bathroom_out.length === 0 && returned.length > 0 && <p className="hint">Nobody is out right now.</p>}
+      <ul className="bath-list">
+        {s.bathroom_out.map(row)}
+        {returned.map(row)}
+      </ul>
     </section>
   );
 }

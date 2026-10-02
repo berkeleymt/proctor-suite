@@ -16,9 +16,12 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.protocol.constants import (
+    MAX_ADMIN_BATHROOM_EXPORT,
     MAX_BATHROOM_BACK,
+    MAX_BATHROOM_IDS,
     MAX_BATHROOM_OUT,
     MAX_LOGIN_ROOMS,
+    MAX_ROSTER_ROWS,
     MAX_STAFF_ROOMS,
 )
 
@@ -171,8 +174,9 @@ class BathroomVisit(BaseModel):
 
     id: UUID
     student_id: str
+    student_name: str | None  # from the roster, when there is one (0.11.0)
     left_ms: int
-    back_ms: int | None = None
+    back_ms: int | None
 
 
 class BathroomOutRequest(BaseModel):
@@ -506,6 +510,96 @@ class HeartbeatMessage(BaseModel):
 
     event: Literal["heartbeat"]
     data: Heartbeat
+
+
+# ---------------------------------------------------------------- bathroom (admin) and roster, 0.11.0
+
+
+class BathroomEntry(BaseModel):
+    """One bathroom record in the admin list. `deleted` ones are only listed on request."""
+
+    id: UUID
+    room_id: str
+    room_name: str
+    student_id: str
+    student_name: str | None
+    school: str | None
+    left_ms: int
+    back_ms: int | None
+    deleted: bool
+
+
+class BathroomLogResponse(BaseModel):
+    """Counts are for everything; the list is cut to `limit` (`truncated`)."""
+
+    entries: list[BathroomEntry] = Field(max_length=2 * MAX_ADMIN_BATHROOM_EXPORT)
+    out_now: int = Field(ge=0)
+    returned: int = Field(ge=0)
+    deleted: int = Field(ge=0)
+    truncated: bool
+    server_time_ms: int
+
+
+class BathroomActionRequest(BaseModel):
+    """Delete (soft), restore, or empty (for good, deleted ones only). Exactly one of `ids`
+    or `all`; `all` means every record the action applies to."""
+
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["delete", "restore", "empty"]
+    ids: list[UUID] | None = Field(default=None, max_length=MAX_BATHROOM_IDS)
+    all: bool = False
+
+    @model_validator(mode="after")
+    def _one_target(self):
+        if (self.ids is None) == (not self.all):
+            raise ValueError("send exactly one of ids or all")
+        return self
+
+
+class BathroomActionResponse(BaseModel):
+    changed: int = Field(ge=0)
+    skipped: int = Field(ge=0)  # a restore that would put a student out twice in one room
+
+
+class StudentInfo(BaseModel):
+    """What a proctor may see about a student: no contact details."""
+
+    id: str
+    name: str
+    school: str
+    team: str
+    room: str  # "" when unknown
+
+
+class StudentLookup(BaseModel):
+    roster_loaded: bool  # false = nothing imported yet, so "not found" means nothing
+    student: StudentInfo | None
+
+
+class RosterStudent(StudentInfo):
+    contact: str
+    out_since_ms: int | None  # set while the student is out in any room
+
+
+class RosterResponse(BaseModel):
+    students: list[RosterStudent] = Field(max_length=MAX_ROSTER_ROWS)
+    total: int = Field(ge=0)  # students in the whole roster
+    matching: int = Field(ge=0)  # students matching the room / search
+    out_now: int = Field(ge=0)  # of the matching ones
+    rooms: list[str]  # room names that appear in the roster, sorted
+    synced_at_ms: int | None
+    source: str | None  # "csv" or "contestdojo"
+    sync_available: bool  # CONTESTDOJO_* is configured on the server
+
+
+class RosterImportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    csv: str = Field(min_length=1, max_length=2_000_000)
+
+
+class RosterImportResponse(BaseModel):
+    count: int = Field(ge=0)
+    notes: list[str] = Field(max_length=6)  # skipped rows, first few only
 
 
 # Models that no route references directly but that are part of the contract.

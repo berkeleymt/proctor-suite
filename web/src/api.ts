@@ -9,6 +9,11 @@ export type RoomOption = components["schemas"]["LoginRoomOption"];
 export type Brand = components["schemas"]["BrandResponse"];
 export type SuperSettings = components["schemas"]["SuperSettings"];
 export type SuperAdmin = components["schemas"]["SuperAdminOut"];
+export type BathroomEntry = components["schemas"]["BathroomEntry"];
+export type BathroomLogData = components["schemas"]["BathroomLogResponse"];
+export type RosterData = components["schemas"]["RosterResponse"];
+export type RosterStudent = components["schemas"]["RosterStudent"];
+export type StudentLookup = components["schemas"]["StudentLookup"];
 export type Identity = components["schemas"]["RoomIdentity"] | components["schemas"]["StaffIdentity"];
 
 const TIMEOUT_MS = 10_000; // protocol REQUEST_TIMEOUT_S
