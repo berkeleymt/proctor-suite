@@ -81,15 +81,16 @@ button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
 @media (max-width: 480px) { .actions .long { display: none; } .actions .short { display: inline; } }
 .clock.warn > span { color: var(--warn); } .clock.done > span { color: var(--bad); }
 
-.admin { max-width: 980px; margin: 0 auto; }
+.admin { max-width: 1400px; margin: 0 auto; }
 .admin .bar h1 { font-size: 22px; }
 .admin .bar .muted { flex: 1; font-size: 14px; }
 .admin .error { margin: 12px 20px; }
-.table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; }
-.tr { display: grid; grid-template-columns: 28px 1.2fr 1fr 1fr 0.9fr 0.8fr 1.3fr 2.5fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 1200px; }
+.table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; display: grid; grid-template-columns: max-content minmax(max-content, 1.2fr) minmax(max-content, 1fr) max-content max-content max-content max-content max-content; column-gap: 12px; }
+.tr { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
 .tr:first-child { border-top: 0; }
 .th { color: var(--muted); font-size: 13px; }
-.tr button { min-height: 40px; padding: 0 14px; }
+.tr button { min-height: 40px; padding: 0 14px; white-space: nowrap; }
+.tr > * { white-space: nowrap; }
 
 .scrim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); display: grid; place-items: end center; padding: 16px; animation: fade 180ms var(--ease); }
 .sheet { background: var(--card); border-radius: 20px; padding: 24px; width: min(440px, 100%); animation: rise 240ms var(--ease); }
@@ -100,7 +101,7 @@ input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; padding: 0; a
 .tr.filters { background: color-mix(in srgb, var(--muted) 7%, transparent); }
 .tr.filters input, .tr.filters select { min-height: 36px; padding: 4px 10px; font-size: 14px; width: 100%; }
 .tr.filters button { min-height: 36px; font-size: 13px; padding: 0 10px; }
-.empty { padding: 20px 16px; text-align: center; }
+.empty { grid-column: 1 / -1; padding: 20px 16px; text-align: center; }
 @keyframes row-in { from { opacity: 0; transform: translateY(-6px); } }
 .tr.fresh { animation: row-in 240ms var(--ease); }
 @keyframes fade { from { opacity: 0; } }

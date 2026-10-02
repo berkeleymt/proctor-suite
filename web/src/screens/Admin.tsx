@@ -264,7 +264,7 @@ export function Admin() {
     for (const k of kinds) {
       try {
         if (k === "reset") {
-          put((s = await post<Snapshot>(`/api/staff/rooms/${s.room_id}/reset`, { session_id: s.session_id })));
+          put((s = (await post<Snapshot>(`/api/staff/rooms/${s.room_id}/reset`, { session_id: s.session_id }))!));
           continue;
         }
         const r = await sendCommand(k, s, k === "adjust" ? { delta_ms: 300_000 } : {});
@@ -459,7 +459,7 @@ export function Admin() {
           <button disabled={working} onClick={(e) => askBulk(e, "pause")}>
             Pause
           </button>
-          <button disabled={working} onClick={(e) => askBulk(e, "resume")}>
+          <button className="primary" disabled={working} onClick={(e) => askBulk(e, "resume")}>
             Resume
           </button>
           <button disabled={working} onClick={(e) => askBulk(e, "reset")}>
