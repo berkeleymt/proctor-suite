@@ -255,6 +255,7 @@ The fold is written **twice**, in Python (server) and TypeScript (client). Both 
 
 ### 3.9 Frontend
 
+- **UI quality bar:** [`design-principles.md`](design-principles.md) (intentional, instantly obvious, conversational, smooth, well-formed). Low priority while features are missing; a full polish pass before the Oct 31 rehearsal.
 - **TypeScript + React + Vite + Tailwind, one app with three entry routes:** `/display`, `/control`, `/staff`. It's a single build, with the display route kept especially small. React/TS is the stack agents are most reliable in, and typed code catches the class of bugs that 3,000-line HTML files hid in swire2.
 - **`packages/sync-core`** holds the robustness logic in plain TypeScript with no UI dependencies: the clock, SSE and polling transport, outbox, fold, and connectivity state machine. It has a fake clock and fake network for tests. The screens are thin views on top of it.
 - **API types are generated** from FastAPI's OpenAPI schema (`openapi-typescript`), so the front and back ends can't drift apart without CI failing.
@@ -494,7 +495,7 @@ Each phase ends with a **gate**. We don't start the next phase's feature work un
 | **Total freeze** | Wed Nov 11 | Nothing merges. Resize prod on Fri Nov 13 (§5 Step 12) | |
 | **Event** | **Sat Nov 14** | Runbook (§8) | |
 
-**Progress against this table (2026-10-01; live detail in [`status/STATUS.md`](status/STATUS.md)):** Phase 0 done. Phase 1 is mostly written but unverified: room login, permit/start/pause/resume, admin +5 min, display and control screens, a staff dashboard well beyond "bare" (add/edit rooms, filters, bulk allow/start/+5/edit), clock sync, and Postgres persistence with Alembic run by `deploy.sh`. Two deliberate deviations from the plan: transport is **polling, not SSE** (allowed by protocol §7.3; SSE is the next server slice), and Phase 1 pulled in staff dashboard items the plan put in Phase 3 (batch select). The Oct 5 demo gate (3+ devices on AWS, C1/C6/C11) has **not** been run. Nothing from Phases 2-3b has started (outbox, Service Worker, clarifications, bathroom log, export, chaos tests, load gate).
+**Progress against this table (2026-10-01; live detail in [`status/STATUS.md`](status/STATUS.md)):** Phase 0 done. Phase 1 is mostly written but unverified: room login, permit/start/pause/resume, admin +5 min, display and control screens, a staff dashboard well beyond "bare" (add/edit rooms, filters, bulk allow/start/+5/edit), clock sync, and Postgres persistence with Alembic run by `deploy.sh`. Two deliberate deviations from the plan: transport is SSE with automatic polling fallback (slice 6; first-class SSE over real Caddy not yet verified), and Phase 1 pulled in staff dashboard items the plan put in Phase 3 (batch select). The Oct 5 demo gate (3+ devices on AWS, C1/C6/C11) has **not** been run. Nothing from Phases 2-3b has started (outbox, Service Worker, clarifications, bathroom log, export, chaos tests, load gate).
 
 **Stretch goals if the Oct 5 prototype lands early:** pull clarifications into Phase 1, and start Practice Mode and messages in Phase 3.
 

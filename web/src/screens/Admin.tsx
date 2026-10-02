@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, fmt, patch, post, remainingMs, sendCommand, serverNow, type Snapshot } from "../api";
-import { useClock, usePoll, useTick } from "../hooks";
+import { mergeRooms, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
 
@@ -149,7 +149,7 @@ function BulkEdit({ rooms, onApply, onClose }: { rooms: Snapshot[]; onApply: (m:
 export function Admin() {
   useClock();
   useTick();
-  const { data, setData, online, unauthorized } = usePoll<Rooms>("/api/staff/rooms");
+  const { data, setData, online, unauthorized } = useLive<Rooms>("/api/staff/rooms", "/api/staff/stream", mergeRooms);
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Snapshot | null>(null);

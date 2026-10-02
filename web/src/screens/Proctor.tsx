@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, fmt, post, remainingMs, sendCommand, serverNow, type Snapshot } from "../api";
-import { useClock, usePoll, useTick } from "../hooks";
+import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
 import { FitText, useZoom, ZoomButtons } from "../components/FitText";
@@ -39,7 +39,7 @@ export function Proctor() {
 
 function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
   useTick();
-  const { data: s, setData, online, unauthorized } = usePoll<Snapshot>(`/api/rooms/${roomId}/snapshot`);
+  const { data: s, setData, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream`, mergeRoom);
   const [err, setErr] = useState("");
   const [asking, setAsking] = useState(false);
   const z = useZoom("proctor");
@@ -72,7 +72,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
       </header>
       <div className="clock-wrap">
         <FitText className="clock" text={fmt(ms)} zoom={z.zoom} />
-        {/* <ZoomButtons z={z} /> */}
+        <ZoomButtons z={z} />
       </div>
       <p className="error" role="alert" hidden={!err}>
         {err}

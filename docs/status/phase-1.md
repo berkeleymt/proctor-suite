@@ -10,14 +10,14 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - [x] In-memory state loaded at startup from Postgres (`app/store.py load`; test `test_state_survives_restart`, slice 4)
 - [x] `GET /api/time` (slice 1; `server/app/api.py`, tested)
 - [~] Auth: all endpoints + CSRF header done and tested (slice 1). Missing: rate limiting; sessions are in memory
-- [~] `POST /api/commands`: roles, idempotency, 409 conflict done and tested. Commit-before-memory done in slice 4 (broadcast waits for SSE)
+- [~] `POST /api/commands`: roles, idempotency, 409 conflict done and tested. Commit-before-memory done in slice 4 (listeners are notified only after the commit and memory update; slice 6)
 - [~] Commands run through `app/fold.py` (fixtures still pass); events are saved to Postgres (`commands` table) and replayed at startup. No separate `events`/`room_current` tables yet
-- [~] `/snapshot?since_version` and `GET /api/staff/rooms` done (slice 1). SSE streams not started
-- [ ] Tests: command idempotency, role matrix, SSE initial snapshot + heartbeat
+- [x] `/snapshot?since_version`, `GET /api/staff/rooms`, `GET /api/rooms/{id}/stream`, `GET /api/staff/stream` (slice 1, slice 6; `app/stream.py`)
+- [x] Tests (SSE part, slice 6): initial snapshot, per-room filtering, new rooms reach staff, heartbeat, unsubscribe, 401/404. Earlier: command idempotency, role matrix, SSE initial snapshot + heartbeat
 
 ## Frontend (owner: Forrest)
 - [x] `web/` scaffold + generated types (`npm run gen`, checked in CI). Build passes locally
-- [~] Clock sync + backoff + polling in `web/src/{api,hooks}.ts`. No SSE client; no TS fold yet (remaining time is computed from the snapshot)
+- [~] Clock sync + backoff in `web/src/{api,hooks}.ts`; `useLive` = SSE with our own backoff reconnect, 35 s dead-stream rule, polling only while the stream is down (slice 6). No TS fold yet (remaining time is computed from the snapshot). Not tried in a browser or through Caddy
 - [?] Login + "Is this your room?" built (slice 1); not tried in a browser
 - [?] Proctor control (slice 1, slice 5): Start / Pause / Resume, and Start, Open display window and Log out on one row, timer with A-/A+ zoom. Not tried in a browser
 - [?] Display / projector screen (slice 5): light theme, timer auto-fits any screen size, A-/A+ zoom (remembered per device), controls fade after 4 s. No clarifications area or paragraph zoom yet (no clarifications feature). Not tried in a browser
@@ -32,6 +32,7 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 6 (2026-10-01): SSE streams + heartbeat, `useLive` client with polling fallback, design-principles doc, ADR 0009, `log/2026-10-01-claude-slice6-sse.md`.
 - Slice 5 (2026-10-01): bulk Allow start + bulk Edit, column filters, projector display with fit-to-screen timer and zoom, proctor single action row, docs sweep, ADR 0008, `log/2026-10-01-claude-slice5-display-filters.md`.
 - Fix (2026-10-01, already pushed): compose `migrate` service so `docker compose up --build` works on an empty DB (ADR 0007).
 - Slice 4 (2026-10-01): Postgres persistence, bulk select, ADR 0007, `log/2026-10-01-claude-slice4-postgres-bulk.md`.

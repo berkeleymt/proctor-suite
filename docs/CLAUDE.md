@@ -61,6 +61,10 @@ Full stack locally, from `infra/`:
 - Python: async all the way down. No sync DB calls in request handlers.
 - Pin versions: `uv.lock` and `package-lock.json` are committed. Docker images are pinned to a minor version.
 
+## Design bar
+
+UI work follows [`design-principles.md`](design-principles.md) (intentional, instantly obvious, conversational, smooth). Low priority until features land; fix obvious roughness, don't gold-plate.
+
 ## Progress tracking
 
 Before you start, read `docs/status/README.md`, `docs/status/STATUS.md`, and the current `docs/status/phase-N.md`. When you finish, add a note to `docs/status/log/` (use `_TEMPLATE.md`) and update the checklist. Tick a box only with evidence; use `[?]` for anything you couldn't verify. Humans alone record approvals.

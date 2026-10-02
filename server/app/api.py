@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.protocol.constants import (
     CLIENT_HEADER,
@@ -29,6 +29,7 @@ from app.protocol.models import (
     UpdateRoomRequest,
 )
 from app.store import Session, Store, now_ms
+from app.stream import frames
 
 store = Store()
 router = APIRouter(prefix="/api")
@@ -152,6 +153,30 @@ async def snapshot(request: Request, room_id: str, since_version: int = -1) -> R
     if room.version <= since_version:
         return Response(status_code=304)
     return JSONResponse(store.snapshot(room).model_dump(mode="json"))
+
+
+def sse(room_id: str | None) -> StreamingResponse:
+    return StreamingResponse(
+        frames(store, room_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/rooms/{room_id}/stream")
+async def room_stream(request: Request, room_id: str) -> StreamingResponse:
+    if room_id not in store.rooms:
+        raise err(404, "unknown_room", "No such room.")
+    if not can_read(session_for(request, "staff", "control", "display"), room_id):
+        raise err(401, "unauthenticated", "Not logged in.")
+    return sse(room_id)
+
+
+@router.get("/staff/stream")
+async def staff_stream(request: Request) -> StreamingResponse:
+    if not session_for(request, "staff"):
+        raise err(401, "unauthenticated", "Staff login required.")
+    return sse(None)
 
 
 @router.get("/staff/rooms", response_model=StaffRoomsResponse)

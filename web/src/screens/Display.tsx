@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, fmt, remainingMs, serverNow, type Snapshot } from "../api";
-import { useClock, usePoll, useTick } from "../hooks";
+import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { FitText, useActive, useZoom, ZoomButtons } from "../components/FitText";
 
@@ -26,7 +26,7 @@ export function Display() {
 }
 
 function Screen({ roomId }: { roomId: string }) {
-  const { data: s, online, unauthorized } = usePoll<Snapshot>(`/api/rooms/${roomId}/snapshot`);
+  const { data: s, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream`, mergeRoom);
   useEffect(() => {
     if (unauthorized) go(`/login?surface=display&room=${roomId}`);
   }, [unauthorized, roomId]);

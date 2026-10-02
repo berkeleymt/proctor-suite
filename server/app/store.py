@@ -27,6 +27,7 @@ from app.protocol.models import (
     StaffRole,
     TimerStatus,
 )
+from app.stream import Hub
 
 DEFAULT_ROOMS = "Dwinelle 145,Evans 10,Soda 306,Wheeler 150"
 
@@ -75,6 +76,7 @@ class Store:
         self.rooms = {_slug(n): Room(_slug(n), n, minutes * 60_000, t) for n in names if n}
         self.sessions: dict[str, Session] = {}
         self.pool = None  # asyncpg pool when persistence is on
+        self.hub = Hub()  # SSE subscribers; notified after every committed change
         self._locks: dict[str, asyncio.Lock] = {}
         self._admin_lock = asyncio.Lock()
 
@@ -143,6 +145,7 @@ class Store:
             if self.pool:
                 await db.insert_room(self.pool, room)
             self.rooms[slug] = room
+            self.hub.notify(slug)
             return room
 
     async def update_room(
@@ -163,6 +166,7 @@ class Store:
                 )
             room.duration_ms, room.test_name = duration_ms, label
             room.version += 1
+            self.hub.notify(room.room_id)
 
     # --- snapshots ---
     def snapshot(self, room: Room) -> RoomSnapshot:
@@ -234,6 +238,8 @@ class Store:
             room.events.append(ev)
         room.version = version
         room.seen[cmd.command_id] = (key, outcome, reason)
+        if ev:
+            self.hub.notify(room.room_id)
         return CommandResponse(
             command_id=cmd.command_id,
             outcome=outcome,
