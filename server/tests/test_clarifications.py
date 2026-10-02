@@ -183,7 +183,9 @@ def test_per_room_edit_makes_a_copy_for_that_room(monkeypatch):
     some = clar(c, "P4: x > 0", [a, b])
     va = snap(c, a)["version"]
     # one room of an "All rooms" post gets the edited wording; the others are untouched
-    r = c.patch(url(everyone), json={"body": "P3: n is a positive integer", "room_id": a}, headers=H)
+    r = c.patch(
+        url(everyone), json={"body": "P3: n is a positive integer", "room_id": a}, headers=H
+    )
     assert r.status_code == 200
     copy = r.json()
     assert copy["id"] != everyone and copy["room_ids"] == [a]
