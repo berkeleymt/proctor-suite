@@ -230,6 +230,12 @@ Markdown with `$inline$` and `$$display$$` math (raw HTML is not rendered; lines
 
 The super-admin page (`/super`) is not a room or staff login. The browser gets a Google ID token (Google Identity Services), `POST /api/auth/super-login` verifies it against `GOOGLE_CLIENT_ID` (signature, audience, `email_verified`) and the lower-cased email must be in `SUPER_ADMIN_EMAILS` (`.env`, cannot be removed on the page) or the `super_admins` table. The session is its own cookie, `super_sid`. Removing someone ends their session at once; nobody can remove themselves. `PATCH /api/super/settings` with `log_out_old` signs out every room device (room password changed) or admin (admin password changed). Only `/super` talks to Google; room and admin pages never do (invariant 6).
 
+### 7.7 Bathroom log (0.10.0)
+
+A student leaves (`POST .../bathroom`) and comes back (`POST .../bathroom/{visit_id}/return`). `student_id` is free text (trimmed, whitespace collapsed, upper-cased, 1-20 characters). The client makes the visit `id` (invariant 3): a retry with the same `id` and student is a no-op, the same `id` with another student is 409 `id_conflict`. A student who is already out cannot be marked out again (409 `already_out`); at most `MAX_BATHROOM_OUT` (50) can be out in one room (409 `too_many_out`). Times are **server time** (`left_ms`, `back_ms`); when the offline outbox arrives (phase 2) the outbox will have to carry claimed times, like the timer commands.
+
+Every `RoomSnapshot` carries `students_out` (count, always right), `bathroom_out` (everyone out now, oldest first, at most 50) and `bathroom_back` (the `MAX_BATHROOM_BACK` = 20 most recent returns, oldest first). The staff room list and staff stream send the count but `[]` for both lists, same as clarifications. A change bumps that room's `version`, so it rides the existing SSE/polling path. Rows live in `bathroom_visits` (migration 0008), are loaded into memory at startup, and are deleted with the room on Empty. Display pages cannot log students. The admin Bathroom tab (all-rooms view, CSV) and the roster are marked "later" in the wireframe and are not built.
+
 ## 8. Client network behavior (invariant 2)
 
 Applies to every loop: clock sync, stream, polling, outbox flush.
@@ -274,6 +280,8 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `GET /api/staff/clarifications` | staff (admin/pm) | — | `{clarifications: [ClarificationAdmin]}` |
 | `POST /api/staff/clarifications` | staff (admin/pm) | `{body, room_ids \| null}` | `ClarificationAdmin` (201); 422 `unknown_room` |
 | `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden, room_id?}` or `{body}` | `ClarificationAdmin`; 404 `unknown_clarification`; 422 `empty` / `edit_limit` / `unknown_room` / `not_in_room` |
+| `POST /api/rooms/{room_id}/bathroom` | that room's proctor, or admin/PM | `{id (uuid), student_id}` | `RoomSnapshot` (0.10.0). Same `id` again = same visit, no new entry. 409 `already_out` / `id_conflict` / `too_many_out`; 422 empty or over 20 characters |
+| `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` | that room's proctor, or admin/PM | — | `RoomSnapshot`; already back = no change; 404 `unknown_visit` |
 | `GET /api/brand` | public | — | `{name, icon}` (0.9.0) |
 | `GET /api/auth/super-config` | public | — | `{google_client_id \| null}` |
 | `POST /api/auth/super-login` | public | `{credential}` (Google ID token) | `{email}`, sets `super_sid`; 401 `invalid_credentials`; 403 `not_allowed`; 503 `not_configured` |
@@ -303,6 +311,7 @@ Source of truth: `server/app/protocol/constants.py`.
 | `MAX_ADJUST_MS` | 10 800 000 | max \|delta\| per ADJUST (inclusive) |
 | `OFFLINE_RED_AFTER_S` | 300 | display goes red |
 | `MAX_LOGIN_ROOMS` / `MAX_STAFF_ROOMS` | 500 / 1000 | list bounds |
+| `MAX_BATHROOM_OUT` / `MAX_BATHROOM_BACK` | 50 / 20 | students out per room / recent returns per snapshot (0.10.0) |
 | `CLIENT_HEADER` | `X-Proctor-Client` | CSRF header |
 | cookie names | `display_sid`, `control_sid`, `staff_sid` | one per surface |
 | `STAFF_SESSION_TTL_H` | 24 | staff session lifetime |
@@ -330,3 +339,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.7.0 | 2026-10-02 | Clarification edit, per-room hide, delete. `PATCH /api/staff/clarifications/{id}` takes `{hidden, room_id?}` or `{body}` (was `{hidden}`); new `DELETE` (optional `room_id`); `ClarificationOut` gains `previous`, `edited_at_ms`; `ClarificationAdmin` gains `hidden_room_ids`, `removed_room_ids`. Bodies are Markdown + math. Migration 0004. |
 | 0.8.0 | 2026-10-02 | Clarification delete is soft: `DELETE` no longer wipes; new `POST /api/staff/clarifications/{id}/restore` and `/empty`, new `POST /api/staff/rooms/{id}/empty`. `ClarificationAdmin` gains `deleted`, `edited_room_ids`. `PATCH {body, room_id}` = per-room edit (returns the new copy). `GET /api/staff/stream?clarifications=1` adds a `clarifications` event; the staff stream sends `room_removed` after an Empty. Migration 0005. |
 | 0.9.0 | 2026-10-02 | Branding and super-admin. Added `GET /api/brand`, `GET /api/auth/super-config`, `POST /api/auth/super-login`, `POST /api/auth/super-logout`, `GET /api/super/me`, `GET/PATCH /api/super/settings`, `GET/POST /api/super/admins`, `DELETE /api/super/admins/{email}` (§7.6). Migration 0007 (`settings`, `super_admins`). |
+| 0.10.0 | 2026-10-02 | Bathroom log (proctor). Added `POST /api/rooms/{room_id}/bathroom` and `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` (§7.7). `RoomSnapshot` gains `students_out`, `bathroom_out`, `bathroom_back` (all required). Migration 0008 (`bathroom_visits`). |

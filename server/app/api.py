@@ -19,6 +19,7 @@ from app.protocol.constants import (
 from app.protocol.models import (
     ActorKind,
     AddSuperAdminRequest,
+    BathroomOutRequest,
     BrandResponse,
     ClarificationAdmin,
     ClarificationsResponse,
@@ -353,6 +354,54 @@ async def commands(cmd: Command, request: Request, _: Post) -> CommandResponse:
         return await store.apply(room, cmd, actor)
     except ValueError:
         raise err(409, "command_id_conflict", "command_id reused with different content") from None
+
+
+# --- bathroom log (0.10.0) ---
+
+
+def bathroom_room(request: Request, room_id: str):
+    """The room's own proctor page, or an admin. Display pages cannot log students."""
+    room = store.rooms.get(room_id)
+    if not room or room.deleted:
+        raise err(404, "unknown_room", "No such room.")
+    staff = session_for(request, "staff")
+    mine = session_for(request, "control")
+    if not (
+        (staff and staff.role in (StaffRole.ADMIN, StaffRole.PM))
+        or (mine and mine.room_id == room_id)
+    ):
+        raise err(403 if (staff or mine) else 401, "forbidden", "Not allowed.")
+    return room
+
+
+@router.post("/rooms/{room_id}/bathroom", response_model=RoomSnapshot)
+async def bathroom_out(
+    room_id: str, body: BathroomOutRequest, request: Request, _: Post
+) -> RoomSnapshot:
+    room = bathroom_room(request, room_id)
+    try:
+        await store.bathroom_out(room, body.id, body.student_id)
+    except ValueError:
+        raise err(
+            409, "id_conflict", "That request was already used for another student."
+        ) from None
+    except KeyError:
+        raise err(409, "already_out", f"{body.student_id} is already out.") from None
+    except OverflowError:
+        raise err(
+            409, "too_many_out", "Too many students are out. Mark some as back first."
+        ) from None
+    return store.snapshot(room)
+
+
+@router.post("/rooms/{room_id}/bathroom/{visit_id}/return", response_model=RoomSnapshot)
+async def bathroom_return(room_id: str, visit_id: UUID, request: Request, _: Post) -> RoomSnapshot:
+    room = bathroom_room(request, room_id)
+    try:
+        await store.bathroom_return(room, visit_id)
+    except KeyError:
+        raise err(404, "unknown_visit", "No such entry.") from None
+    return store.snapshot(room)
 
 
 # --- clarifications (0.6.0) ---

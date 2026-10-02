@@ -31,7 +31,7 @@ def migrate() -> None:
 async def reset() -> None:
     c = await asyncpg.connect(URL)
     await c.execute(
-        "DROP TABLE IF EXISTS super_admins, settings, clar_counter, clarifications, commands, rooms, alembic_version CASCADE"
+        "DROP TABLE IF EXISTS bathroom_visits, super_admins, settings, clar_counter, clarifications, commands, rooms, alembic_version CASCADE"
     )
     await c.close()
 
@@ -217,6 +217,34 @@ def test_settings_and_super_admins_survive_restart(monkeypatch):
         assert second.check_password("from-db", "ROOM_PASSWORD")  # the database beats .env
         assert not second.check_password("from-env", "ROOM_PASSWORD")
         assert list(second.supers) == ["helper@berkeley.mt"]
+        await pool.close()
+
+    asyncio.run(run())
+
+
+def test_bathroom_log_survives_restart_and_goes_with_its_room(monkeypatch):
+    monkeypatch.setenv("SEED_ROOMS", "Bath Seed")
+    asyncio.run(reset())
+    migrate()
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        first = Store()
+        await first.load(pool)
+        room = first.rooms["bath-seed"]
+        a, b = uuid.uuid4(), uuid.uuid4()
+        await first.bathroom_out(room, a, "054A")
+        await first.bathroom_out(room, b, "117C")
+        await first.bathroom_return(room, a)
+        second = Store()
+        await second.load(pool)  # a restart
+        snap = second.snapshot(second.rooms["bath-seed"])
+        assert [v.student_id for v in snap.bathroom_out] == ["117C"] and snap.students_out == 1
+        assert [v.student_id for v in snap.bathroom_back] == ["054A"]
+        assert snap.bathroom_back[0].back_ms is not None
+        await second.delete_room(second.rooms["bath-seed"])
+        await second.empty_room(second.rooms["bath-seed"])  # rows leave with the room
+        assert await db.load_visits(pool) == []
         await pool.close()
 
     asyncio.run(run())

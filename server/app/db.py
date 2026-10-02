@@ -178,3 +178,22 @@ async def insert_super_admin(pool: asyncpg.Pool, email: str, by: str, at_ms: int
 async def delete_super_admin(pool: asyncpg.Pool, email: str) -> None:
     async with pool.acquire() as c:
         await c.execute("DELETE FROM super_admins WHERE email=$1", email)
+
+
+# --- bathroom log (0.10.0) ---
+async def load_visits(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+    async with pool.acquire() as c:
+        return await c.fetch("SELECT * FROM bathroom_visits ORDER BY left_ms, id")
+
+
+async def insert_visit(pool: asyncpg.Pool, room_id: str, v) -> None:
+    async with pool.acquire() as c:
+        await c.execute(
+            "INSERT INTO bathroom_visits (id, room_id, student_id, left_ms) VALUES ($1,$2,$3,$4)",
+            v.id, room_id, v.student_id, v.left_ms,
+        )  # fmt: skip
+
+
+async def mark_visit_back(pool: asyncpg.Pool, vid, back_ms: int) -> None:
+    async with pool.acquire() as c:
+        await c.execute("UPDATE bathroom_visits SET back_ms=$2 WHERE id=$1", vid, back_ms)

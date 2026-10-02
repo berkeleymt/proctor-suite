@@ -19,11 +19,14 @@ from app import db
 from app.fold import SessionSpec, TimerEvent, fold
 from app.protocol.constants import (
     MAX_ADMIN_CLARIFICATIONS,
+    MAX_BATHROOM_BACK,
+    MAX_BATHROOM_OUT,
     MAX_CLARIFICATION_EDITS,
     MAX_ROOM_CLARIFICATIONS,
 )
 from app.protocol.models import (
     ActorKind,
+    BathroomVisit,
     ClarificationAdmin,
     ClarificationOut,
     CommandOutcome,
@@ -48,6 +51,19 @@ def _slug(name: str) -> str:
 
 
 @dataclass
+class Visit:
+    id: UUID
+    student_id: str
+    left_ms: int
+    back_ms: int | None = None
+
+    def out(self) -> BathroomVisit:
+        return BathroomVisit(
+            id=self.id, student_id=self.student_id, left_ms=self.left_ms, back_ms=self.back_ms
+        )
+
+
+@dataclass
 class Room:
     room_id: str
     name: str
@@ -59,6 +75,7 @@ class Room:
     deleted: bool = False  # soft delete: hidden from devices, restorable by an admin
     session_seq: int = 1  # bumped by an admin Reset: a fresh timer, old history kept in Postgres
     session_created_ms: int | None = None
+    bathroom: list[Visit] = field(default_factory=list)  # oldest first; kept for the whole day
     events: list[TimerEvent] = field(default_factory=list)
     seen: dict[UUID, tuple[tuple, CommandOutcome, RejectionReason | None]] = field(
         default_factory=dict
@@ -197,6 +214,11 @@ class Store:
                 RejectionReason(c["reason"]) if c["reason"] else None,
             )
         self.rooms = loaded
+        for v in await db.load_visits(pool):
+            if v["room_id"] in loaded:
+                loaded[v["room_id"]].bathroom.append(
+                    Visit(v["id"], v["student_id"], v["left_ms"], v["back_ms"])
+                )
         for c in await db.load_clarifications(pool):
             self.clars[c["id"]] = Clarification(
                 c["id"], c["body"], c["room_ids"], c["created_at_ms"], c["rev"], c["hidden"],
@@ -578,6 +600,41 @@ class Store:
         xs = sorted(self.clars.values(), key=lambda x: (x.created_at_ms, str(x.id)), reverse=True)
         return [x.admin() for x in xs[:MAX_ADMIN_CLARIFICATIONS]]
 
+    # --- bathroom log (commit first, then memory, then tell the room and staff) ---
+    async def bathroom_out(self, room: Room, vid: UUID, student_id: str) -> None:
+        """Log a student leaving. Same id again = same visit (a retry). Raises ValueError if
+        the id was used for another student, KeyError("already_out"), OverflowError (too many)."""
+        async with self.lock(room.room_id):
+            for v in room.bathroom:
+                if v.id == vid:
+                    if v.student_id != student_id:
+                        raise ValueError("id_conflict")
+                    return
+            open_ = [v for v in room.bathroom if v.back_ms is None]
+            if any(v.student_id == student_id for v in open_):
+                raise KeyError("already_out")
+            if len(open_) >= MAX_BATHROOM_OUT:
+                raise OverflowError("too_many")
+            v = Visit(vid, student_id, now_ms())
+            if self.pool:
+                await db.insert_visit(self.pool, room.room_id, v)
+            room.bathroom.append(v)
+            await self._commit(room)
+
+    async def bathroom_return(self, room: Room, vid: UUID) -> None:
+        """Mark a student back. Already back = no change (idempotent). KeyError if unknown."""
+        async with self.lock(room.room_id):
+            v = next((v for v in room.bathroom if v.id == vid), None)
+            if v is None:
+                raise KeyError("unknown_visit")
+            if v.back_ms is not None:
+                return
+            t = now_ms()
+            if self.pool:
+                await db.mark_visit_back(self.pool, vid, t)
+            v.back_ms = t
+            await self._commit(room)
+
     # --- snapshots ---
     def snapshot(self, room: Room, with_clar: bool = True) -> RoomSnapshot:
         t = now_ms()
@@ -596,6 +653,13 @@ class Store:
             deleted=room.deleted,
             doc_url=room.doc_url,
             clarifications=self.clarifications_for(room) if with_clar else [],
+            students_out=sum(1 for v in room.bathroom if v.back_ms is None),
+            bathroom_out=[v.out() for v in room.bathroom if v.back_ms is None] if with_clar else [],
+            bathroom_back=[v.out() for v in room.bathroom if v.back_ms is not None][
+                -MAX_BATHROOM_BACK:
+            ]
+            if with_clar
+            else [],
         )
 
     def version(self, room: Room) -> int:

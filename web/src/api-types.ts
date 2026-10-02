@@ -623,6 +623,23 @@ export interface components {
             type: "adjust";
         };
         /**
+         * BathroomVisit
+         * @description One student leaving the room. `back_ms` is null while they are out. Times are server time.
+         */
+        BathroomVisit: {
+            /** Back Ms */
+            back_ms?: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Left Ms */
+            left_ms: number;
+            /** Student Id */
+            student_id: string;
+        };
+        /**
          * BrandResponse
          * @description Public: what every page shows as its title and icon. Empty strings if not configured.
          */
@@ -952,6 +969,10 @@ export interface components {
          * @description Everything a room device needs to show and tick the timer. Sent in full every time.
          */
         RoomSnapshot: {
+            /** Bathroom Back */
+            bathroom_back: components["schemas"]["BathroomVisit"][];
+            /** Bathroom Out */
+            bathroom_out: components["schemas"]["BathroomVisit"][];
             /** Clarifications */
             clarifications: components["schemas"]["ClarificationOut"][];
             /** Deleted */
@@ -966,6 +987,8 @@ export interface components {
             server_time_ms: number;
             /** Session Id */
             session_id: string;
+            /** Students Out */
+            students_out: number;
             /** Test Name */
             test_name: string;
             timer: components["schemas"]["TimerSnapshot"];

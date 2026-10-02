@@ -7,6 +7,7 @@ import { FitText, useZoom, ZoomButtons } from "../components/FitText";
 import { Dot, Sheet } from "../components/ui";
 import { usePageTitle } from "../brand";
 import { DISPLAY_WINDOW } from "../fullscreen";
+import { BathroomLog } from "../components/BathroomLog";
 
 type Me = { room_id: string; room_name: string };
 
@@ -116,6 +117,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
               ? "The timer is finished. Only an admin can reset it."
               : "\u00a0"}
       </p>
+      <BathroomLog s={s} setData={setData} />
       {asking && (
         <Sheet title={`Pause the timer for ${s.room_name}?`} onClose={() => setAsking(false)}>
           <p className="muted">Students will see the clock stop.</p>

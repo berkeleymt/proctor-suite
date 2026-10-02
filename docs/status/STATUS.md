@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-02 (slice 12) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-02 (slice 13) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -10,12 +10,14 @@
 - The contract exists: [`docs/protocol.md`](../protocol.md) v0.1.0, `contracts/openapi.json`, 23 timer fixtures, Pydantic models, and a reference fold that passes all fixtures.
 - Decisions made today: D1–D12 approved; proctors cannot end early; staff can start on behalf; login is a room-name dropdown; no approval gate on contract changes (ADRs 0001–0003).
 
-**Phase 1 (Prototype): in progress. Slices 1-6 are pushed; slice 7 is pushed; slices 8-10 (clarifications; edit/delete/markdown/projector layout; soft delete + Empty, per-room edit, live admin list) are written, not pushed. Nothing is verified in a browser, and the Oct 5 demo gate has not been run.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
+**Phase 1 (Prototype): in progress. Slices 1-7 are pushed; slices 8-13 are not pushed. Slices 8-10 (clarifications; edit/delete/markdown/projector layout; soft delete + Empty, per-room edit, live admin list) are written, not pushed. Nothing is verified in a browser, and the Oct 5 demo gate has not been run.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
 
-- Built so far: login → proctor Start/Pause/Resume (+ zoom) → projector display (fits any screen, zoom) → admin timers table (add, rename, edit, delete/restore, filter, per-state actions incl. reset, bulk allow/start/+5/edit/delete, device presence). Server tests pass (86 with a real Postgres; 83 + 3 skipped without). UI not yet tried in a browser. Slice 4 added Postgres persistence (rooms and commands; sessions still in memory); slice 6 replaced polling with SSE (polling is the fallback). See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
+- Built so far: login → proctor Start/Pause/Resume (+ zoom) → projector display (fits any screen, zoom) → proctor bathroom log (slice 13), admin timers table (add, rename, edit, delete/restore, filter, per-state actions incl. reset, bulk allow/start/+5/edit/delete, device presence). Server tests pass (86 with a real Postgres; 83 + 3 skipped without). UI not yet tried in a browser. Slice 4 added Postgres persistence (rooms and commands; sessions still in memory); slice 6 replaced polling with SSE (polling is the fallback). See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
 - Scope ceiling is `docs/wireframe.html`. Chat, bathroom log, roster, super-admin need protocol additions first. There is no Deletion tab (ADR 0013).
 
 ## Next actions, in order
+
+-2. Slice 13 (bathroom log): deploy runs migration 0008. Try it on a phone and watch the admin Out column on a second device. Then the remaining small wireframe gaps: Preview display button, display Log drawer.
 
 -1. Slice 12: add `APP_NAME` / `APP_ICON` to prod `.env` (compose requires `APP_NAME`), do DNS and Google setup ([`setup-domain-and-google.md`](../setup-domain-and-google.md)), then deploy (migration 0007).
 

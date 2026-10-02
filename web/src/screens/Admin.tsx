@@ -223,6 +223,7 @@ export function Admin() {
   const everyone = data.rooms;
   const rooms = everyone.filter((r) => !r.deleted);
   const gone = everyone.filter((r) => r.deleted);
+  const out = rooms.reduce((n, r) => n + r.students_out, 0);
   const count = (st: string) => rooms.filter((r) => r.timer.status === st).length;
 
   const matches = (r: Snapshot, f: Filters) => {
@@ -438,7 +439,7 @@ export function Admin() {
       <AdminBar
         active="timers"
         online={online}
-        summary={`${rooms.length} rooms · ${count("RUNNING")} running · ${count("NOT_PERMITTED") + count("PERMITTED")} not started · ${count("ENDED")} finished`}
+        summary={`${rooms.length} rooms · ${count("RUNNING")} running · ${count("NOT_PERMITTED") + count("PERMITTED")} not started · ${count("ENDED")} finished · ${out} student${out === 1 ? "" : "s"} out`}
         deleted={{ count: gone.length, shown: showDeleted, toggle: () => setShowDeleted(!showDeleted) }}
       >
         <button className="primary" onClick={() => setAdding(true)}>
@@ -494,6 +495,7 @@ export function Admin() {
           <span>Status</span>
           <span>Remaining</span>
           <span>Duration</span>
+          <span>Out</span>
           <span>Pages open</span>
           <span>Actions</span>
         </div>
@@ -523,6 +525,7 @@ export function Admin() {
               </option>
             ))}
           </select>
+          <span />
           <select aria-label="Filter by pages open" value={filters.dev} onChange={(e) => setFilter({ ...filters, dev: e.target.value })}>
             <option value="">All</option>
             <option value="no-proctor">No proctor page</option>
@@ -545,6 +548,7 @@ export function Admin() {
               </span>
               <span className="mono">{fmt(st === "ENDED" ? 0 : remainingMs(s, serverNow()))}</span>
               <span className="mono">{mins(s)}m</span>
+              <span className="mono">{s.students_out || "–"}</span>
               <span className="devs">
                 <Dev name="Proctor" p={p?.control} />
                 <Dev name="Display" p={p?.display} />
@@ -559,6 +563,7 @@ export function Admin() {
             <span>{s.room_name}</span>
             <span className="muted">{s.test_name}</span>
             <span className="muted">Deleted</span>
+            <span />
             <span />
             <span />
             <span />

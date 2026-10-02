@@ -85,7 +85,7 @@ button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
 .admin .bar h1 { font-size: 22px; }
 .admin .bar .muted { flex: 1; font-size: 14px; }
 .admin .error { margin: 12px 20px; }
-.table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; display: grid; grid-template-columns: max-content minmax(max-content, 1.2fr) minmax(max-content, 1fr) max-content max-content max-content max-content max-content; column-gap: 12px; }
+.table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; display: grid; grid-template-columns: max-content minmax(max-content, 1.2fr) minmax(max-content, 1fr) max-content max-content max-content max-content max-content max-content; column-gap: 12px; }
 .tr { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
 .tr:first-child { border-top: 0; }
 .th { color: var(--muted); font-size: 13px; }
@@ -214,3 +214,17 @@ button.bad { color: var(--bad); }
 .who button { min-height: 36px; padding: 0 12px; }
 .check-row { display: flex; gap: 10px; align-items: center; font-size: 15px; color: var(--text); }
 .gsi { display: flex; justify-content: center; min-height: 44px; color-scheme: light; }
+
+/* Proctor · Bathroom log: same card look as the rest, rows rise in like the admin list. */
+.bath { background: var(--card); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.bath h2 { font-size: 17px; }
+.bath-in input { flex: 1; min-width: 0; text-transform: uppercase; }
+.bath-in input::placeholder { text-transform: none; }
+.bath-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.bath-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); animation: row-in 240ms var(--ease); }
+.bath-list .when { flex: 1; font-size: 14px; color: var(--muted); transition: color 200ms var(--ease); }
+.bath-list .when[data-late="true"] { color: var(--warn); font-weight: 600; }
+.bath-list button { min-height: 40px; }
+.bath details { font-size: 14px; color: var(--muted); }
+.bath summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.bath details p { margin: 4px 0 0; line-height: 1.6; }

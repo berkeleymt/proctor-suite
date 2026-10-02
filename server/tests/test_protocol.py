@@ -62,6 +62,9 @@ SNAPSHOT = {
     "deleted": False,
     "doc_url": None,
     "clarifications": [],
+    "students_out": 0,
+    "bathroom_out": [],
+    "bathroom_back": [],
     "timer": {
         "status": "RUNNING",
         "duration_ms": 600000,

@@ -91,6 +91,42 @@
         "title": "AdjustCommand",
         "type": "object"
       },
+      "BathroomVisit": {
+        "description": "One student leaving the room. `back_ms` is null while they are out. Times are server time.",
+        "properties": {
+          "back_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Back Ms"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "left_ms": {
+            "title": "Left Ms",
+            "type": "integer"
+          },
+          "student_id": {
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "student_id",
+          "left_ms"
+        ],
+        "title": "BathroomVisit",
+        "type": "object"
+      },
       "BrandResponse": {
         "description": "Public: what every page shows as its title and icon. Empty strings if not configured.",
         "properties": {
@@ -922,6 +958,22 @@
       "RoomSnapshot": {
         "description": "Everything a room device needs to show and tick the timer. Sent in full every time.",
         "properties": {
+          "bathroom_back": {
+            "items": {
+              "$ref": "#/components/schemas/BathroomVisit"
+            },
+            "maxItems": 20,
+            "title": "Bathroom Back",
+            "type": "array"
+          },
+          "bathroom_out": {
+            "items": {
+              "$ref": "#/components/schemas/BathroomVisit"
+            },
+            "maxItems": 50,
+            "title": "Bathroom Out",
+            "type": "array"
+          },
           "clarifications": {
             "items": {
               "$ref": "#/components/schemas/ClarificationOut"
@@ -960,6 +1012,11 @@
             "title": "Session Id",
             "type": "string"
           },
+          "students_out": {
+            "minimum": 0.0,
+            "title": "Students Out",
+            "type": "integer"
+          },
           "test_name": {
             "title": "Test Name",
             "type": "string"
@@ -982,7 +1039,10 @@
           "timer",
           "deleted",
           "doc_url",
-          "clarifications"
+          "clarifications",
+          "students_out",
+          "bathroom_out",
+          "bathroom_back"
         ],
         "title": "RoomSnapshot",
         "type": "object"
@@ -1629,7 +1689,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.9.0"
+    "version": "0.10.0"
   },
   "openapi": "3.1.0",
   "paths": {

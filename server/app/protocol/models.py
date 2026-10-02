@@ -15,7 +15,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.protocol.constants import MAX_LOGIN_ROOMS, MAX_STAFF_ROOMS
+from app.protocol.constants import (
+    MAX_BATHROOM_BACK,
+    MAX_BATHROOM_OUT,
+    MAX_LOGIN_ROOMS,
+    MAX_STAFF_ROOMS,
+)
 
 # ---------------------------------------------------------------- enums
 
@@ -161,6 +166,27 @@ class UpdateClarificationRequest(BaseModel):
         return self
 
 
+class BathroomVisit(BaseModel):
+    """One student leaving the room. `back_ms` is null while they are out. Times are server time."""
+
+    id: UUID
+    student_id: str
+    left_ms: int
+    back_ms: int | None = None
+
+
+class BathroomOutRequest(BaseModel):
+    id: UUID  # client-generated, so a retry never logs the student twice (invariant 3)
+    student_id: str
+
+    @model_validator(mode="after")
+    def _clean(self):
+        self.student_id = " ".join(self.student_id.split()).upper()
+        if not 1 <= len(self.student_id) <= 20:
+            raise ValueError("Enter the student's ID (up to 20 characters).")
+        return self
+
+
 class RoomSnapshot(BaseModel):
     """Everything a room device needs to show and tick the timer. Sent in full every time."""
 
@@ -176,6 +202,11 @@ class RoomSnapshot(BaseModel):
     # Visible clarifications for this room, oldest first, at most 50. Always [] in the staff
     # room list and staff stream (staff read /api/staff/clarifications instead).
     clarifications: list[ClarificationOut]
+    # Bathroom log (0.10.0). `students_out` is always right; the two lists are only filled for
+    # the room's own devices and the staff stream/list sends []. Bounded (invariant 8).
+    students_out: int = Field(ge=0)
+    bathroom_out: list[BathroomVisit] = Field(max_length=MAX_BATHROOM_OUT)
+    bathroom_back: list[BathroomVisit] = Field(max_length=MAX_BATHROOM_BACK)
 
 
 # ---------------------------------------------------------------- commands

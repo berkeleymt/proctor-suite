@@ -28,6 +28,8 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 
 - [?] Super-admin page (slice 12): Google sign-in (token check tested with a fake; real Google not tried), name, icon, passwords, super-admin list. Server tests pass incl. Postgres; not tried in a browser
 
+- [?] Proctor Bathroom log (slice 13): ID field, Mark out, Currently out (live time, highlight at 10 min), Returned, Recently returned; admin Timers has the Out column and "N students out". Server tests pass incl. restart with Postgres; not tried in a browser. Not built (wireframe says Later): admin Bathroom tab, Roster. Not built: display "Log" drawer, projector mirror.
+
 ## Deploy and demo
 - [ ] Deployed to AWS via `deploy.sh`
 - [ ] Oct 5 demo run; evidence recorded here (date, devices, outcome)
@@ -37,6 +39,7 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 13 (2026-10-02): proctor bathroom log + admin Out column; protocol 0.10.0, migration 0008, ADR 0015, `log/2026-10-02-claude-slice13-bathroom-log.md`.
 - Slice 12 (2026-10-02): name/icon from config, projector window full screen, super-admin page (Google sign-in, passwords, super-admins), DNS and Google setup guide; protocol 0.9.0, migration 0007, ADR 0014, `log/2026-10-02-claude-slice12-branding-super-admin.md`.
 - Slice 11 (2026-10-02): mobile admin header (shared `AdminBar`, ☰ menu under 1040 px), contract regenerated, stale test fixed, `log/2026-10-02-claude-slice11-admin-header-mobile.md`.
 - Slice 10 (2026-10-02): auto size, heading, clarifications header, live admin list, soft delete + Restore + Empty (clarifications and rooms), per-room edit, Deletion tab cancelled; protocol 0.8.0, migration 0005, ADR 0013, `log/2026-10-02-claude-slice10-soft-delete-per-room-edit.md`.
