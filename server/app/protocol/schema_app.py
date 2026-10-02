@@ -31,7 +31,6 @@ from app.protocol.models import (
     RoomIdentity,
     RoomLoginRequest,
     RoomSnapshot,
-    RosterImportRequest,
     RosterImportResponse,
     RosterResponse,
     StaffIdentity,
@@ -350,17 +349,6 @@ def build_schema_app() -> FastAPI:
     @app.get("/api/staff/roster", response_model=RosterResponse, tags=["staff"], responses=_ERRORS)
     async def staff_roster(room: str | None = None, q: str | None = None):
         """Admin: the imported roster, filtered by room name (`room=` for no room) or search."""
-        _stub()
-
-    @app.post(
-        "/api/staff/roster/import",
-        response_model=RosterImportResponse,
-        tags=["staff"],
-        responses={**_ERRORS, 422: {"model": ErrorResponse, "description": "bad_csv"}},
-    )
-    async def staff_roster_import(body: RosterImportRequest):
-        """Admin: replace the roster with a CSV (headers: ID, Name or First/Last, School, Team,
-        Room, Contact). 0.11.0."""
         _stub()
 
     @app.post(

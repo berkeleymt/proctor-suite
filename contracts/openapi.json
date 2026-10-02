@@ -1243,22 +1243,6 @@
         "title": "RoomSnapshot",
         "type": "object"
       },
-      "RosterImportRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "csv": {
-            "maxLength": 2000000,
-            "minLength": 1,
-            "title": "Csv",
-            "type": "string"
-          }
-        },
-        "required": [
-          "csv"
-        ],
-        "title": "RosterImportRequest",
-        "type": "object"
-      },
       "RosterImportResponse": {
         "properties": {
           "count": {
@@ -1763,6 +1747,14 @@
             "title": "App Name",
             "type": "string"
           },
+          "contestdojo_event_id": {
+            "title": "Contestdojo Event Id",
+            "type": "string"
+          },
+          "contestdojo_token": {
+            "title": "Contestdojo Token",
+            "type": "string"
+          },
           "room_password": {
             "title": "Room Password",
             "type": "string"
@@ -1772,7 +1764,9 @@
           "app_name",
           "app_icon",
           "room_password",
-          "admin_password"
+          "admin_password",
+          "contestdojo_token",
+          "contestdojo_event_id"
         ],
         "title": "SuperSettings",
         "type": "object"
@@ -2019,6 +2013,30 @@
               }
             ],
             "title": "App Name"
+          },
+          "contestdojo_event_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contestdojo Event Id"
+          },
+          "contestdojo_token": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contestdojo Token"
           },
           "log_out_old": {
             "default": false,
@@ -4706,88 +4724,6 @@
           }
         },
         "summary": "Staff Roster Clear",
-        "tags": [
-          "staff"
-        ]
-      }
-    },
-    "/api/staff/roster/import": {
-      "post": {
-        "description": "Admin: replace the roster with a CSV (headers: ID, Name or First/Last, School, Team,\nRoom, Contact). 0.11.0.",
-        "operationId": "staff_roster_import_api_staff_roster_import_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RosterImportRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RosterImportResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unauthenticated / invalid_credentials"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unknown_room / unknown_session"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "bad_csv"
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "rate_limited"
-          }
-        },
-        "summary": "Staff Roster Import",
         "tags": [
           "staff"
         ]

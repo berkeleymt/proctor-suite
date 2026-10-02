@@ -40,7 +40,6 @@ from app.protocol.models import (
     RoomLoginRequest,
     RoomPresence,
     RoomSnapshot,
-    RosterImportRequest,
     RosterImportResponse,
     RosterResponse,
     RosterStudent,
@@ -61,7 +60,7 @@ from app.protocol.models import (
     UpdateRoomRequest,
     UpdateSettingsRequest,
 )
-from app.roster import RosterError, Student, fetch_contestdojo, norm_id, parse_csv
+from app.roster import RosterError, Student, fetch_contestdojo, norm_id
 from app.store import ClarError, Session, Store, now_ms
 from app.stream import frames
 
@@ -490,32 +489,19 @@ async def staff_roster(
     )
 
 
-@router.post("/staff/roster/import", response_model=RosterImportResponse)
-async def staff_roster_import(
-    body: RosterImportRequest, request: Request, _: Post
-) -> RosterImportResponse:
-    admin_only(request)
-    try:
-        students, notes = parse_csv(body.csv)
-    except RosterError as e:
-        raise err(422, "bad_csv", str(e)) from None
-    await store.replace_roster(students, "csv")
-    return RosterImportResponse(count=len(students), notes=notes[:6])
-
-
 @router.post("/staff/roster/clear", response_model=RosterImportResponse)
 async def staff_roster_clear(request: Request, _: Post) -> RosterImportResponse:
     """Wipe the roster (0.12.0): names and contacts of minors shouldn't outlive the event."""
     admin_only(request)
     n = len(store.roster)
-    await store.replace_roster([], "csv")
+    await store.replace_roster([], "contestdojo")
     return RosterImportResponse(count=n, notes=[])
 
 
 def _contestdojo() -> tuple[str, str, str, str] | None:
     s = store.setting
     cfg = (
-        s("CONTESTDOJO_API_URL"),
+        s("CONTESTDOJO_API_URL", "https://api.contestdojo.com"),
         s("CONTESTDOJO_API_TOKEN"),
         s("CONTESTDOJO_EVENT_ID"),
         s("CONTESTDOJO_ROOM_KEY"),
@@ -528,7 +514,11 @@ async def staff_roster_sync(request: Request, _: Post) -> RosterImportResponse:
     admin_only(request)
     cfg = _contestdojo()
     if not cfg:
-        raise err(503, "not_configured", "ContestDojo isn't set up here. Import a CSV instead.")
+        raise err(
+            503,
+            "not_configured",
+            "Add the ContestDojo token and event ID on the /super page first.",
+        )
     try:  # a blocking HTTP call, so it runs in a thread and never stalls the timers
         students = await asyncio.to_thread(fetch_contestdojo, *cfg)
     except RosterError as e:
@@ -705,6 +695,8 @@ def settings_out() -> SuperSettings:
         app_icon=store.setting("APP_ICON"),
         room_password=store.setting("ROOM_PASSWORD"),
         admin_password=store.setting("ADMIN_PASSWORD"),
+        contestdojo_token=store.setting("CONTESTDOJO_API_TOKEN"),
+        contestdojo_event_id=store.setting("CONTESTDOJO_EVENT_ID"),
     )
 
 
@@ -722,12 +714,14 @@ async def update_settings(body: UpdateSettingsRequest, request: Request, _: Post
         "app_icon": "APP_ICON",
         "room_password": "ROOM_PASSWORD",
         "admin_password": "ADMIN_PASSWORD",
+        "contestdojo_token": "CONTESTDOJO_API_TOKEN",
+        "contestdojo_event_id": "CONTESTDOJO_EVENT_ID",
     }
     changes = {}
     for field, env in names.items():
         value = getattr(body, field)
         if value is not None:
-            changes[env] = value.strip() if field in ("app_name", "app_icon") else value
+            changes[env] = value if field.endswith("password") else value.strip()
     changes = {k: v for k, v in changes.items() if v != store.setting(k)}
     revoke: set[str] = set()
     if body.log_out_old:

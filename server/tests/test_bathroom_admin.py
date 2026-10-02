@@ -11,12 +11,19 @@ from tests.test_api import H, mk
 from tests.test_bathroom import out, proctor
 from tests.test_room_management import make_room, staff
 
-CSV = (
-    "Student ID,First Name,Last Name,School,Team,Room,Parent / Coach Contact\n"
-    "054a,Ada,Lovelace,Moor High,Moor A,Evans 10,coach@moor.org\n"
-    "117C,Alan,Turing,Bletchley Prep,B1,Soda 306,parent@bp.org\n"
-    "140D,Grace,Hopper,Moor High,Moor B,,\n"
-)
+STUDENTS = [
+    roster.Student("054A", "Ada Lovelace", "Moor High", "Moor A", "Evans 10", "coach@moor.org"),
+    roster.Student("117C", "Alan Turing", "Bletchley Prep", "B1", "Soda 306", "parent@bp.org"),
+    roster.Student("140D", "Grace Hopper", "Moor High", "Moor B", "", ""),
+]
+
+
+def load(admin, monkeypatch, students=None):
+    """Sync a roster the way production does, with ContestDojo's answer faked."""
+    monkeypatch.setenv("CONTESTDOJO_API_TOKEN", "t")
+    monkeypatch.setenv("CONTESTDOJO_EVENT_ID", "ev1")
+    monkeypatch.setattr(api, "fetch_contestdojo", lambda *cfg: students or STUDENTS)
+    return admin.post("/api/staff/roster/sync", headers=H)
 
 
 def act(admin, action, ids=None, all_=False):
@@ -132,7 +139,7 @@ def test_roster_import_lookup_and_names(monkeypatch):
     p = proctor(monkeypatch, a)
     lk = lambda c, i: c.get("/api/roster/lookup", params={"id": i}).json()
     assert lk(p, "054A") == {"roster_loaded": False, "student": None}  # nothing imported yet
-    r = admin.post("/api/staff/roster/import", json={"csv": CSV}, headers=H)
+    r = load(admin, monkeypatch)
     assert r.status_code == 200 and r.json() == {"count": 3, "notes": []}
     got = lk(p, " 054a ")
     assert got["roster_loaded"] and got["student"] == {
@@ -163,15 +170,15 @@ def test_roster_import_lookup_and_names(monkeypatch):
 def test_roster_list_filters_status_and_permissions(monkeypatch):
     admin, (a,) = setup(monkeypatch, "Evans 10")
     p = proctor(monkeypatch, a)
-    admin.post("/api/staff/roster/import", json={"csv": CSV}, headers=H)
+    load(admin, monkeypatch)
     out(p, a, "054A")
     r = admin.get("/api/staff/roster").json()
     assert (r["total"], r["matching"], r["out_now"], r["source"], r["sync_available"]) == (
         3,
         3,
         1,
-        "csv",
-        False,
+        "contestdojo",
+        True,
     )
     assert r["rooms"] == ["Evans 10", "Soda 306"] and r["synced_at_ms"] > 0
     assert [s["name"] for s in r["students"]] == ["Ada Lovelace", "Alan Turing", "Grace Hopper"]
@@ -188,28 +195,14 @@ def test_roster_list_filters_status_and_permissions(monkeypatch):
     ] == ["140D"]
     assert admin.get("/api/staff/roster", params={"q": "bletchley"}).json()["matching"] == 1
     assert p.get("/api/staff/roster").status_code == 401
-    assert p.post("/api/staff/roster/import", json={"csv": CSV}, headers=H).status_code == 401
     assert p.post("/api/staff/roster/sync", headers=H).status_code == 401
-
-
-def test_roster_import_errors_and_replace(monkeypatch):
-    admin, _ = setup(monkeypatch, "Evans 10")
-    imp = lambda c: admin.post("/api/staff/roster/import", json={"csv": c}, headers=H)
-    bad = imp("foo,bar\n1,2\n")
-    assert bad.status_code == 422 and "student ID" in bad.json()["detail"]["message"]
-    assert imp("id,name\n   \n").status_code == 422  # headers but nobody
-    r = imp(
-        "\ufeffID;Name\n 054a ;A\n054A;A again\n;nobody\n2;B\n"
-    ).json()  # BOM, semicolons, dupes
-    assert r["count"] == 2 and len(r["notes"]) == 2
-    imp("id,name\n9,Z\n")  # a new import replaces, not merges
-    assert [s["id"] for s in admin.get("/api/staff/roster").json()["students"]] == ["9"]
+    assert p.post("/api/staff/roster/sync", headers=H).status_code == 401
 
 
 def test_roster_clear(monkeypatch):
     admin, (a,) = setup(monkeypatch, "Evans 10")
     p = proctor(monkeypatch, a)
-    admin.post("/api/staff/roster/import", json={"csv": CSV}, headers=H)
+    load(admin, monkeypatch)
     assert p.post("/api/staff/roster/clear", headers=H).status_code == 401  # admins only
     assert admin.post("/api/staff/roster/clear").status_code == 400  # CSRF header needed
     r = admin.post("/api/staff/roster/clear", headers=H)
@@ -219,13 +212,6 @@ def test_roster_clear(monkeypatch):
         "roster_loaded": False,
         "student": None,
     }
-
-
-def test_parse_csv_header_spellings():
-    s, _ = roster.parse_csv(
-        "Number\tFull Name\tOrganization\tRoom Assignment\n12b\tX Y\tSchool\tR1\n"
-    )
-    assert s == [roster.Student("12B", "X Y", "School", "", "R1", "")]
 
 
 def test_sync_not_configured_then_configured(monkeypatch):
@@ -285,11 +271,28 @@ def test_fetch_contestdojo_maps_students_teams_orgs(monkeypatch):
 
     monkeypatch.setattr(roster.requests, "get", fake_get)
     got = roster.fetch_contestdojo("https://cd.test/", "tok", "ev1", "test")
-    assert got == [roster.Student("054A", "Ada L", "Moor High", "Moor A", "Evans 10", "a@x.org")]
+    assert got == [
+        roster.Student("054A", "Ada L", "Moor High", "Moor A", "Evans 10", "a@x.org"),
+        roster.Student("ROW2", "No Number", "", "", "", ""),  # no number: still imported
+    ]
     assert calls[0] == ("/events/ev1/students/", "Bearer tok")
     assert (
         roster.fetch_contestdojo("https://cd.test", "tok", "ev1")[0].room == ""
     )  # no key, no room
+
+
+def test_fetch_contestdojo_imports_everything_even_without_numbers_or_orgs(monkeypatch):
+    def fake_get(url, headers, timeout):
+        if url.endswith("/students/"):
+            return FakeResp(200, [
+                {"id": "u1", "fname": "A", "lname": "B", "customFields": {"school": "Fallback HS"}},
+                {"id": "u2", "fname": "C", "lname": "D"},
+            ])  # fmt: skip
+        return FakeResp(404, {})  # orgs and teams unavailable
+
+    monkeypatch.setattr(roster.requests, "get", fake_get)
+    got = roster.fetch_contestdojo("https://cd.test", "tok", "ev1")
+    assert [(s.id, s.school) for s in got] == [("U1", "Fallback HS"), ("U2", "")]
 
 
 @pytest.mark.parametrize(("status", "words"), [(401, "refused"), (404, "event"), (500, "500")])

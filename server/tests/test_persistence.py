@@ -267,7 +267,8 @@ def test_bathroom_delete_and_roster_survive_restart(monkeypatch):
             await first.bathroom_out(room, vid, who)
         await first.bathroom_return(room, a)
         await first.replace_roster(
-            [Student("117C", "B. Student", "Moor High", "T1", "Admin Seed", "c@x.org")], "csv"
+            [Student("117C", "B. Student", "Moor High", "T1", "Admin Seed", "c@x.org")],
+            "contestdojo",
         )
         assert await first.bathroom_action("delete", {a, b}) == (2, 0)
         assert await first.bathroom_action("empty", {c}) == (0, 0)  # c is live: empty ignores it
@@ -277,7 +278,7 @@ def test_bathroom_delete_and_roster_survive_restart(monkeypatch):
         snap = second.snapshot(second.rooms["admin-seed"])
         assert [v.student_id for v in snap.bathroom_out] == ["140D"] and snap.students_out == 1
         assert snap.bathroom_back == []  # a was deleted
-        assert second.roster["117C"].school == "Moor High" and second.roster_source == "csv"
+        assert second.roster["117C"].school == "Moor High" and second.roster_source == "contestdojo"
         entries, counts, _ = second.bathroom_list("all", None, None, True)
         assert counts == {"out_now": 1, "returned": 0, "deleted": 2}
         assert [e.deleted for e in entries] == [False, True, True]

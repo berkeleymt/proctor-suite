@@ -361,6 +361,8 @@ class SuperSettings(BaseModel):
     app_icon: str
     room_password: str
     admin_password: str
+    contestdojo_token: str
+    contestdojo_event_id: str
 
 
 def _icon_ok(v: str | None) -> str | None:
@@ -383,6 +385,8 @@ class UpdateSettingsRequest(BaseModel):
     app_icon: str | None = Field(default=None, max_length=500)  # "" removes the icon
     room_password: str | None = Field(default=None, min_length=8, max_length=100)
     admin_password: str | None = Field(default=None, min_length=8, max_length=100)
+    contestdojo_token: str | None = Field(default=None, max_length=200)
+    contestdojo_event_id: str | None = Field(default=None, max_length=100)
     log_out_old: bool = False
 
     _check_icon = field_validator("app_icon")(_icon_ok)
@@ -590,11 +594,6 @@ class RosterResponse(BaseModel):
     synced_at_ms: int | None
     source: str | None  # "csv" or "contestdojo"
     sync_available: bool  # CONTESTDOJO_* is configured on the server
-
-
-class RosterImportRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    csv: str = Field(min_length=1, max_length=2_000_000)
 
 
 class RosterImportResponse(BaseModel):

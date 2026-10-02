@@ -563,27 +563,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/staff/roster/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Staff Roster Import
-         * @description Admin: replace the roster with a CSV (headers: ID, Name or First/Last, School, Team,
-         *     Room, Contact). 0.11.0.
-         */
-        post: operations["staff_roster_import_api_staff_roster_import_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/staff/roster/sync": {
         parameters: {
             query?: never;
@@ -1211,11 +1190,6 @@ export interface components {
             /** Version */
             version: number;
         };
-        /** RosterImportRequest */
-        RosterImportRequest: {
-            /** Csv */
-            csv: string;
-        };
         /** RosterImportResponse */
         RosterImportResponse: {
             /** Count */
@@ -1401,6 +1375,10 @@ export interface components {
             app_icon: string;
             /** App Name */
             app_name: string;
+            /** Contestdojo Event Id */
+            contestdojo_event_id: string;
+            /** Contestdojo Token */
+            contestdojo_token: string;
             /** Room Password */
             room_password: string;
         };
@@ -1486,6 +1464,10 @@ export interface components {
             app_icon?: string | null;
             /** App Name */
             app_name?: string | null;
+            /** Contestdojo Event Id */
+            contestdojo_event_id?: string | null;
+            /** Contestdojo Token */
+            contestdojo_token?: string | null;
             /**
              * Log Out Old
              * @default false
@@ -3500,75 +3482,6 @@ export interface operations {
                 };
             };
             /** @description invalid_request */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description rate_limited */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    staff_roster_import_api_staff_roster_import_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RosterImportRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RosterImportResponse"];
-                };
-            };
-            /** @description unauthenticated / invalid_credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description unknown_room / unknown_session */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description bad_csv */
             422: {
                 headers: {
                     [name: string]: unknown;

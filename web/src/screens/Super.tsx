@@ -97,6 +97,7 @@ function Panel({ email, out }: { email: string; out: () => void }) {
       <div className="super">
         {s && <Site s={s} setS={setS} fail={fail} />}
         {s && <Passwords s={s} setS={setS} fail={fail} />}
+        {s && <ContestDojo s={s} setS={setS} fail={fail} />}
         <Admins admins={admins} setAdmins={setAdmins} me={email} fail={fail} />
       </div>
     </main>
@@ -140,6 +141,42 @@ function Site({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSettings) =>
       <p className="error" role="alert" hidden={!err}>{err}</p>
       <div className="row">
         <button className="primary" disabled={!dirty || !name.trim()} onClick={save}>Save</button>
+        {saved && !dirty && <span className="muted">Saved.</span>}
+      </div>
+    </section>
+  );
+}
+
+function ContestDojo({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSettings) => void; fail: Fail }) {
+  const [token, setToken] = useState(s.contestdojo_token);
+  const [ev, setEv] = useState(s.contestdojo_event_id);
+  const [err, setErr] = useState("");
+  const [saved, setSaved] = useState(false);
+  const dirty = token.trim() !== s.contestdojo_token || ev.trim() !== s.contestdojo_event_id;
+  const save = async () => {
+    setErr("");
+    try {
+      setS((await patch<SuperSettings>("/api/super/settings", { contestdojo_token: token, contestdojo_event_id: ev }))!);
+      setSaved(true);
+    } catch (e) {
+      fail(e, setErr);
+    }
+  };
+  return (
+    <section className="block">
+      <h2>ContestDojo</h2>
+      <p className="muted">Used by Admin → Roster → Sync. Saved here, they replace CONTESTDOJO_API_TOKEN and CONTESTDOJO_EVENT_ID in .env.</p>
+      <label>
+        API token
+        <input type="password" autoComplete="off" value={token} maxLength={200} onChange={(e) => (setToken(e.target.value), setSaved(false))} />
+      </label>
+      <label>
+        Event ID
+        <input value={ev} maxLength={100} onChange={(e) => (setEv(e.target.value), setSaved(false))} />
+      </label>
+      <p className="error" role="alert" hidden={!err}>{err}</p>
+      <div className="row">
+        <button className="primary" disabled={!dirty} onClick={save}>Save</button>
         {saved && !dirty && <span className="muted">Saved.</span>}
       </div>
     </section>
