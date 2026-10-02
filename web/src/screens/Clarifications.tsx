@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, del, patch, post, type Clar, type Snapshot } from "../api";
+import { dropRoom, mergeRooms, useLive } from "../hooks";
 import { go } from "../main";
-import { AdminTabs, Popover, Sheet } from "../components/ui";
+import { AdminTabs, Dot, LogoutButton, Popover, Sheet } from "../components/ui";
 import { ClarItem } from "../components/ClarList";
 
-type Rooms = { rooms: Snapshot[] };
+type Rooms = { rooms: Snapshot[]; version?: number };
 type Room = { id: string; name: string; test: string };
 type Group = { label: string; ids: string[] };
-type Dialog = { kind: "hide" | "delete" | "edit"; c: Clar; room?: string; draft?: string };
+type Dialog = { kind: "hide" | "delete" | "edit" | "empty"; c: Clar; room?: string; draft?: string };
 
 const hhmm = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const buildingOf = (name: string) => name.match(/^(.*?)\s+\d[\w-]*$/)?.[1] ?? name.split(" ")[0]; // "Wheeler Hall 150" -> "Wheeler Hall"
@@ -25,7 +26,7 @@ function groupsOf(rooms: Room[]): Group[] {
 
 /** Where a post goes, in a few words: never one pill per room (there are 200+). */
 function describe(c: Clar, rooms: Room[], groups: Group[], names: Map<string, string>): string {
-  const gone = new Set(c.removed_room_ids);
+  const gone = new Set([...c.removed_room_ids, ...c.edited_room_ids]);
   const t = (c.room_ids ?? rooms.map((r) => r.id)).filter((id) => !gone.has(id));
   if (t.length === 0) return "No rooms";
   if (c.room_ids === null) return gone.size ? `All rooms except ${gone.size}` : "All rooms";
@@ -76,17 +77,20 @@ function RoomPicker({ rooms, groups, sel, setSel }: { rooms: Room[]; groups: Gro
   );
 }
 
-/** Where a posted clarification is showing: a short summary, and a scrollable per-room list with Hide / Delete. */
-function Where({ c, rooms, groups, names, onHide, onDelete }: { c: Clar; rooms: Room[]; groups: Group[]; names: Map<string, string>; onHide: (room: string, hidden: boolean) => void; onDelete: (room: string) => void }) {
+/** Where a posted clarification is showing: a short summary, and a scrollable per-room list with Edit / Hide / Delete. */
+function Where({ c, rooms, groups, names, on }: { c: Clar; rooms: Room[]; groups: Group[]; names: Map<string, string>; on: { edit: (room: string) => void; hide: (room: string, hidden: boolean) => void; del: (room: string) => void; restore: (room: string) => void } }) {
   const [q, setQ] = useState("");
-  const gone = new Set(c.removed_room_ids);
+  const removed = new Set(c.removed_room_ids);
+  const edited = new Set(c.edited_room_ids);
   const hereHidden = new Set(c.hidden_room_ids);
-  const ids = [...new Set([...(c.room_ids ?? rooms.map((r) => r.id)), ...c.removed_room_ids])];
+  const ids = [...new Set([...(c.room_ids ?? rooms.map((r) => r.id)), ...c.removed_room_ids, ...c.edited_room_ids])];
   const name = (id: string) => names.get(id) ?? id;
+  const away = (id: string) => removed.has(id) || edited.has(id);
   const rows = ids
     .filter((id) => name(id).toLowerCase().includes(q.trim().toLowerCase()))
-    .sort((a, b) => Number(gone.has(a)) - Number(gone.has(b)) || name(a).localeCompare(name(b), undefined, { numeric: true }));
-  const status = [c.hidden && "Hidden everywhere", hereHidden.size > 0 && `Hidden in ${hereHidden.size}`, c.room_ids !== null && gone.size > 0 && `Deleted from ${gone.size}`].filter(Boolean).join(" · ");
+    .sort((a, b) => Number(away(a)) - Number(away(b)) || name(a).localeCompare(name(b), undefined, { numeric: true }));
+  const status = [c.hidden && "Hidden everywhere", hereHidden.size > 0 && `Hidden in ${hereHidden.size}`, removed.size > 0 && `Deleted from ${removed.size}`, edited.size > 0 && `Edited in ${edited.size}`].filter(Boolean).join(" · ");
+  const state = (id: string) => (removed.has(id) ? "Deleted here" : edited.has(id) ? "Has its own edited copy" : c.hidden ? "Hidden" : hereHidden.has(id) ? "Hidden here" : "Showing");
   return (
     <div className="where">
       <span className="pill">{describe(c, rooms, groups, names)}</span>
@@ -98,11 +102,13 @@ function Where({ c, rooms, groups, names, onHide, onDelete }: { c: Clar; rooms: 
           {rows.map((id) => (
             <div className="roomrow" key={id}>
               <span className="nm">{name(id)}</span>
-              <span className="muted">{gone.has(id) ? "Deleted here" : c.hidden ? "Hidden" : hereHidden.has(id) ? "Hidden here" : "Showing"}</span>
-              {!gone.has(id) && (
+              <span className="muted">{state(id)}</span>
+              {removed.has(id) && <button onClick={() => on.restore(id)}>Restore</button>}
+              {!away(id) && (
                 <>
-                  <button disabled={c.hidden} onClick={() => onHide(id, !hereHidden.has(id))}>{hereHidden.has(id) ? "Unhide" : "Hide"}</button>
-                  <button className="bad" onClick={() => onDelete(id)}>Delete…</button>
+                  <button onClick={() => on.edit(id)}>Edit…</button>
+                  <button disabled={c.hidden} onClick={() => on.hide(id, !hereHidden.has(id))}>{hereHidden.has(id) ? "Unhide" : "Hide"}</button>
+                  <button className="bad" onClick={() => on.del(id)}>Delete…</button>
                 </>
               )}
             </div>
@@ -114,13 +120,17 @@ function Where({ c, rooms, groups, names, onHide, onDelete }: { c: Clar; rooms: 
   );
 }
 
-/** Edit: the old wording stays on screen, crossed out, so the preview shows exactly what students will see. */
-function EditSheet({ c, draft: first, onClose, onSave }: { c: Clar; draft?: string; onClose: () => void; onSave: (body: string) => void }) {
+/** Edit: the old wording stays on screen, crossed out, so the preview shows exactly what students will see.
+ *  With `room`, only that room gets the new wording (it moves to its own copy); other rooms keep the original. */
+function EditSheet({ c, room, draft: first, onClose, onSave }: { c: Clar; room?: string; draft?: string; onClose: () => void; onSave: (body: string) => void }) {
   const [draft, setDraft] = useState(first ?? c.body);
   const same = !draft.trim() || draft.trim() === c.body;
   return (
-    <Sheet title="Edit clarification" onClose={onClose} onSubmit={() => !same && onSave(draft)}>
-      <p className="muted">Students keep seeing the old wording, crossed out, with your new text after it.</p>
+    <Sheet title={room ? `Edit it in ${room}` : "Edit clarification"} onClose={onClose} onSubmit={() => !same && onSave(draft)}>
+      <p className="muted">
+        {room ? `Only students in ${room} see the new wording. Every other room keeps the original. ` : ""}
+        Students keep seeing the old wording, crossed out, with your new text after it.
+      </p>
       <label>
         New wording
         <textarea autoFocus rows={4} maxLength={2000} value={draft} onChange={(e) => setDraft(e.target.value)} />
@@ -137,27 +147,33 @@ function EditSheet({ c, draft: first, onClose, onSave }: { c: Clar; draft?: stri
   );
 }
 
-/** Admin · Clarifications (wireframe): composer with preview, room picker, posted list. */
+/** Admin · Clarifications (wireframe): composer with preview, room picker, posted list. Updates live. */
 export function Clarifications() {
-  const [rooms, setRooms] = useState<Room[] | null>(null);
-  const [list, setList] = useState<Clar[]>([]);
   const [body, setBody] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  // The list rides the staff stream (a `clarifications` event on connect and after every change); polling only while it is down.
+  const { data, setData, online, unauthorized } = useLive<{ clarifications: Clar[]; version?: number }>("/api/staff/clarifications", "/api/staff/stream?clarifications=1", (prev) => prev, 4000, {
+    clarifications: (_prev, d) => d,
+  });
 
   const fail = (e: unknown) => (e instanceof ApiError && e.status === 401 ? go("/login") : setErr(e instanceof Error ? e.message : "Something went wrong."));
-  const load = () =>
-    Promise.all([api<Rooms>("/api/staff/rooms"), api<{ clarifications: Clar[] }>("/api/staff/clarifications")])
-      .then(([r, c]) => {
-        setRooms(r!.rooms.filter((x) => !x.deleted).map((x) => ({ id: x.room_id, name: x.room_name, test: x.test_name })));
-        setList(c!.clarifications);
-      })
-      .catch(fail);
-  useEffect(() => void load(), []);
-  if (!rooms) return <main className="center" />;
+  const reload = () => api<{ clarifications: Clar[]; version?: number }>("/api/staff/clarifications").then((c) => c && setData(c)).catch(fail);
+  // Rooms ride the same staff stream, so a room added, renamed, deleted or emptied elsewhere shows up here at once.
+  const live = useLive<Rooms>("/api/staff/rooms", "/api/staff/stream", mergeRooms, 4000, { room_removed: dropRoom });
+  useEffect(() => {
+    if (unauthorized || live.unauthorized) go("/login");
+  }, [unauthorized, live.unauthorized]);
+  if (!live.data || !data) return <main className="center" />;
+  const rooms: Room[] = live.data.rooms.filter((x) => !x.deleted).map((x) => ({ id: x.room_id, name: x.room_name, test: x.test_name }));
 
+  const picked = rooms.filter((r) => sel.has(r.id)).length;
+  const all = data.clarifications;
+  const list = all.filter((c) => !c.deleted);
+  const gone = all.filter((c) => c.deleted);
   const names = new Map(rooms.map((r) => [r.id, r.name]));
   const groups = groupsOf(rooms);
   const act = async (f: () => Promise<unknown>) => {
@@ -165,7 +181,7 @@ export function Clarifications() {
     setDialog(null);
     try {
       await f();
-      await load();
+      await reload();
     } catch (e) {
       fail(e);
     }
@@ -173,15 +189,20 @@ export function Clarifications() {
   const url = (c: Clar) => `/api/staff/clarifications/${c.id}`;
   const hide = (c: Clar, hidden: boolean, room?: string) => act(() => patch(url(c), { hidden, ...(room ? { room_id: room } : {}) }));
   const wipe = (c: Clar, room?: string) => act(() => del(`${url(c)}${room ? `?room_id=${encodeURIComponent(room)}` : ""}`));
+  const restore = (c: Clar, room?: string) => act(() => post(`${url(c)}/restore${room ? `?room_id=${encodeURIComponent(room)}` : ""}`));
+  const empty = (c: Clar) => act(() => post(`${url(c)}/empty`));
 
   const submit = async () => {
     setBusy(true);
     setErr("");
     try {
-      const all = sel.size === rooms.length; // everyone selected = "All rooms" (new rooms get it too)
-      await post<Clar>("/api/staff/clarifications", { body, room_ids: all ? null : [...sel] });
+      const here = new Set(rooms.map((r) => r.id));
+      const pick = [...sel].filter((id) => here.has(id)); // a room emptied while you typed is dropped
+      if (pick.length === 0) throw new Error("Pick at least one room.");
+      const everyone = pick.length === rooms.length; // everyone selected = "All rooms" (new rooms get it too)
+      await post<Clar>("/api/staff/clarifications", { body, room_ids: everyone ? null : pick });
       setBody("");
-      await load();
+      await reload();
     } catch (e) {
       fail(e);
     } finally {
@@ -194,6 +215,19 @@ export function Clarifications() {
     <main className="admin">
       <header className="bar">
         <AdminTabs active="clarifications" />
+        <span className="muted">
+          {list.length} posted · {list.filter((c) => !c.hidden).length} showing · {list.filter((c) => c.hidden).length} hidden
+          {gone.length > 0 && (
+            <>
+              {" · "}
+              <button className="link" onClick={() => setShowDeleted(!showDeleted)}>
+                {showDeleted ? "Hide" : "Show"} deleted ({gone.length})
+              </button>
+            </>
+          )}
+        </span>
+        <Dot online={online && live.online} />
+        <LogoutButton />
       </header>
       <section className="stack composer">
         <div className="compose-grid">
@@ -209,11 +243,11 @@ export function Clarifications() {
         </div>
         <div className="stack">
           <RoomPicker rooms={rooms} groups={groups} sel={sel} setSel={setSel} />
-          <p className="muted">{sel.size === 0 ? "Pick at least one room." : `Will post to ${sel.size} of ${rooms.length} rooms`}</p>
+          <p className="muted">{picked === 0 ? "Pick at least one room." : `Will post to ${picked} of ${rooms.length} rooms`}</p>
         </div>
         {err && <p className="error" role="alert">{err}</p>}
         <div className="row">
-          <button className="primary" disabled={busy || !body.trim() || sel.size === 0} onClick={submit}>Post</button>
+          <button className="primary" disabled={busy || !body.trim() || picked === 0} onClick={submit}>Post</button>
         </div>
       </section>
       <section className="posted">
@@ -222,7 +256,18 @@ export function Clarifications() {
         {list.map((c) => (
           <article key={c.id} className={`post ${c.hidden ? "off" : ""}`}>
             <time className="muted mono">{hhmm(c.created_at_ms)}</time>
-            <Where c={c} rooms={rooms} groups={groups} names={names} onHide={(room, h) => (h ? setDialog({ kind: "hide", c, room }) : hide(c, false, room))} onDelete={(room) => setDialog({ kind: "delete", c, room })} />
+            <Where
+              c={c}
+              rooms={rooms}
+              groups={groups}
+              names={names}
+              on={{
+                edit: (room) => setDialog({ kind: "edit", c, room }),
+                hide: (room, h) => (h ? setDialog({ kind: "hide", c, room }) : hide(c, false, room)),
+                del: (room) => setDialog({ kind: "delete", c, room }),
+                restore: (room) => restore(c, room),
+              }}
+            />
             <div className="text"><ClarItem c={c} /></div>
             <div className="actions">
               <button onClick={() => setDialog({ kind: "edit", c })}>Edit</button>
@@ -231,29 +276,55 @@ export function Clarifications() {
             </div>
           </article>
         ))}
+        {showDeleted &&
+          gone.map((c) => (
+            <article key={c.id} className="post gone">
+              <time className="muted mono">{hhmm(c.created_at_ms)}</time>
+              <div className="where">
+                <span className="pill">{describe(c, rooms, groups, names)}</span>
+                <span className="muted">Deleted</span>
+              </div>
+              <div className="text"><ClarItem c={c} /></div>
+              <div className="actions">
+                <button onClick={() => restore(c)}>Restore</button>
+                <button className="bad" onClick={() => setDialog({ kind: "empty", c })}>Empty…</button>
+              </div>
+            </article>
+          ))}
       </section>
-      {dialog?.kind === "edit" && <EditSheet c={dialog.c} draft={dialog.draft} onClose={() => setDialog(null)} onSave={(b) => act(() => patch(url(dialog.c), { body: b }))} />}
+      {dialog?.kind === "edit" && (
+        <EditSheet c={dialog.c} room={where(dialog) ?? undefined} draft={dialog.draft} onClose={() => setDialog(null)} onSave={(b) => act(() => patch(url(dialog.c), { body: b, ...(dialog.room ? { room_id: dialog.room } : {}) }))} />
+      )}
       {dialog?.kind === "hide" && (
         <Sheet title={dialog.room ? `Hide it in ${where(dialog)}?` : "Hide this clarification?"} onClose={() => setDialog(null)}>
           <p className="muted">
             {dialog.room ? "Students there may already have read it, and hiding just removes it from their screen with no sign it was taken back." : "Students may already have read it. Hiding makes it vanish from their screens with no sign it was taken back."}{" "}
-            If you are retracting it, edit it instead: they will see the old text crossed out and your note after it. Editing changes it in every room it was posted to.
+            If you are retracting it, edit it instead: they will see the old text crossed out and your note after it. {dialog.room ? "" : "Editing changes it in every room it was posted to."}
           </p>
           <div className="row end">
             <button onClick={() => setDialog(null)}>Cancel</button>
             <button className="danger" onClick={() => hide(dialog.c, true, dialog.room)}>Hide anyway</button>
-            <button className="primary" autoFocus onClick={() => setDialog({ kind: "edit", c: dialog.c, draft: RETRACTED })}>Edit instead</button>
+            <button className="primary" autoFocus onClick={() => setDialog({ kind: "edit", c: dialog.c, room: dialog.room, draft: RETRACTED })}>Edit instead</button>
           </div>
         </Sheet>
       )}
       {dialog?.kind === "delete" && (
         <Sheet title={dialog.room ? `Delete it from ${where(dialog)}?` : "Delete this clarification?"} onClose={() => setDialog(null)}>
           <p className="muted">
-            {dialog.room ? `It is wiped from ${where(dialog)} for good and stays in the other rooms.` : "This will wipe it from every room and from the system for good."} You can&apos;t undo this, and students leave no trace of it. Use Hide if you might want it back, or Edit if students already saw it.
+            {dialog.room ? `It disappears from ${where(dialog)} and stays in the other rooms.` : "It disappears from every room."} Students get no sign it was taken back. You can restore it from &ldquo;{dialog.room ? "Rooms" : "Show deleted"}&rdquo;. If students already saw it, edit it instead.
           </p>
           <div className="row end">
             <button onClick={() => setDialog(null)}>Cancel</button>
             <button className="danger" onClick={() => wipe(dialog.c, dialog.room)}>Delete</button>
+          </div>
+        </Sheet>
+      )}
+      {dialog?.kind === "empty" && (
+        <Sheet title="Empty this clarification?" onClose={() => setDialog(null)}>
+          <p className="muted">This wipes it from the database for good. You can&apos;t undo this. Use Restore if you might need it.</p>
+          <div className="row end">
+            <button onClick={() => setDialog(null)}>Cancel</button>
+            <button className="danger" onClick={() => empty(dialog.c)}>Empty</button>
           </div>
         </Sheet>
       )}

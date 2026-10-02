@@ -2,7 +2,7 @@ import type { components } from "./api-types";
 
 export type Snapshot = components["schemas"]["RoomSnapshot"];
 export type Command = components["schemas"]["CommandResponse"];
-export type Clar = components["schemas"]["ClarificationAdmin"];
+export type Clar = components["schemas"]["ClarificationAdmin"] & { deleted: boolean; edited_room_ids: string[] }; // 0.8.0
 export type RoomPresence = components["schemas"]["RoomPresence"];
 export type SurfacePresence = components["schemas"]["SurfacePresence"];
 export type RoomOption = components["schemas"]["LoginRoomOption"];

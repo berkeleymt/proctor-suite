@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { post } from "../api";
 import { go } from "../main";
 
 /** Admin page switcher (wireframe: tabs). Only the tabs that exist so far. */
@@ -13,6 +14,20 @@ export function AdminTabs({ active }: { active: "timers" | "clarifications" }) {
       {tab("timers", "Timers", "/admin")}
       {tab("clarifications", "Clarifications", "/admin/clarifications")}
     </nav>
+  );
+}
+
+/** Log out, same button on every admin screen. */
+export function LogoutButton() {
+  return (
+    <button
+      onClick={async () => {
+        await post("/api/auth/logout?surface=staff").catch(() => {});
+        go("/login");
+      }}
+    >
+      Log out
+    </button>
   );
 }
 

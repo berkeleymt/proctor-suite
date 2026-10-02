@@ -171,7 +171,12 @@ def test_clarification_edit_per_room_and_delete_survive_restart(monkeypatch):
         await first.edit_clarification(x.id, "Corrected")
         await first.hide_clarification(x.id, True, "clar-one")
         await first.delete_clarification(x.id, "clar-two")
-        await first.delete_clarification(gone.id)  # highest rev lives only in clar_counter now
+        await first.delete_clarification(gone.id)  # soft: still in the database
+        soft = await first.post_clarification("Soft", None)
+        await first.delete_clarification(soft.id)
+        mine = await first.post_clarification("For both", None)
+        copy = await first.edit_clarification(mine.id, "For both, fixed", "clar-one")
+        await first.empty_clarification(gone.id)  # highest rev lives only in clar_counter now
         want = first.version(first.rooms["clar-one"])
 
         second = Store()
@@ -181,6 +186,10 @@ def test_clarification_edit_per_room_and_delete_survive_restart(monkeypatch):
         assert back.edited_at_ms is not None
         assert (back.hidden_room_ids, back.removed_room_ids) == (["clar-one"], ["clar-two"])
         assert gone.id not in second.clars
+        assert second.clars[soft.id].deleted
+        assert second.clars[mine.id].edited_room_ids == ["clar-one"]
+        assert second.clars[copy.id].room_ids == ["clar-one"]
+        assert second.clars[copy.id].previous == ["For both"]
         assert second.version(second.rooms["clar-one"]) == want  # no step backwards after delete
         await pool.close()
 

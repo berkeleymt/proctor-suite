@@ -1308,7 +1308,7 @@ details.a-disclosure[open] > summary::before {
     <ul>
       <li>a room dropdown on the login screen, replacing swire's namespace + username login</li>
       <li>a room picker for sending clarifications, replacing swire's comma-separated text field</li>
-      <li>a proper deletion screen</li>
+      <li>deleted rooms and clarifications stay recoverable: “Show deleted” on the same tab, with Restore and Empty (no separate Deletion tab)</li>
       <li>a bathroom log for proctors and admins</li>
       <li>a ContestDojo roster</li>
       <li>a super-admin screen for passwords</li>
@@ -1347,7 +1347,7 @@ details.a-disclosure[open] > summary::before {
         <tr data-status="kept"><td>Create room/timer</td><td>Room, duration (default 180 min), optional doc URL</td><td>Add rooms with a specified duration</td><td>Admin · Timers</td><td><span class="tag tag--kept">From swire</span></td></tr>
         <tr data-status="changed"><td>Clarification targeting</td><td>Free-text comma-separated rooms; blank = all</td><td>Pick a subset of rooms; make it intuitive</td><td>Admin · Clarifications</td><td><span class="tag tag--changed">Changed</span></td></tr>
         <tr data-status="kept"><td>Edit / hide clarification, preview projector</td><td>Edit via prompt, Hide/Unhide, “Preview Projector Mode” link</td><td>—</td><td>Admin · Clarifications</td><td><span class="tag tag--kept">From swire</span></td></tr>
-        <tr data-status="new"><td>Delete rooms &amp; clarifications</td><td>Soft “hide” only; running timers can't be hidden; Shift skips confirm</td><td>Deletion screen with confirmation window</td><td>Admin · Deletion</td><td><span class="tag tag--new">New</span></td></tr>
+        <tr data-status="new"><td>Delete rooms &amp; clarifications</td><td>Soft “hide” only; running timers can't be hidden; Shift skips confirm</td><td>Soft delete on the same tab; “Show deleted” lists them with Restore and Empty (permanent)</td><td>Admin · Timers, Admin · Clarifications</td><td><span class="tag tag--new">New</span></td></tr>
         <tr data-status="new"><td>Bathroom log (proctor)</td><td>—</td><td>Enter student ID, mark gone, “came back” button</td><td>Proctor · Control</td><td><span class="tag tag--new">New</span></td></tr>
         <tr data-status="later"><td>Bathroom log (admin)</td><td>—</td><td>Timestamped log across rooms</td><td>Admin · Bathroom log</td><td><span class="tag tag--later">Later</span></td></tr>
         <tr data-status="later"><td>Roster</td><td>—</td><td>Per-room students + contacts via ContestDojo</td><td>Admin · Roster</td><td><span class="tag tag--later">Later</span></td></tr>
@@ -1506,7 +1506,6 @@ details.a-disclosure[open] > summary::before {
     <div class="a-tabs">
       <button type="button" class="a-btn" id="tab-a-timers" role="tab" aria-controls="panel-a-timers" aria-selected="true">Timers</button>
       <button type="button" class="a-btn" id="tab-a-clars" role="tab" aria-controls="panel-a-clars" aria-selected="false">Clarifications</button>
-      <button type="button" class="a-btn" id="tab-a-delete" role="tab" aria-controls="panel-a-delete" aria-selected="false">Deletion</button>
       <button type="button" class="a-btn" id="tab-a-bath" role="tab" aria-controls="panel-a-bath" aria-selected="false">Bathroom log</button>
       <button type="button" class="a-btn" id="tab-a-roster" role="tab" aria-controls="panel-a-roster" aria-selected="false">Roster</button>
     </div>
@@ -1517,7 +1516,7 @@ details.a-disclosure[open] > summary::before {
     <div class="wf-layout">
       <div class="wf" role="img" aria-label="Admin timers wireframe: summary counts, add room form, table of rooms with status, remaining time and per-row actions, and a messages rail">
         <div class="wf-chrome">swire.berkeley.mt/admin/timers</div>
-        <div class="wf-nav"><span class="is-on">Timers</span><span>Clarifications</span><span>Deletion</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span><span style="margin-left:auto">Show hidden ☐ · Log out</span></div>
+        <div class="wf-nav"><span class="is-on">Timers</span><span>Clarifications</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span><span style="margin-left:auto">Show hidden ☐ · Log out</span></div>
         <div class="wf-body wf-stack">
           <div class="wf-row wf-row--between">
             <div class="wf-row"><span class="wf-mark">1</span><span class="wf-small">12 rooms · <strong>8 running</strong> · 3 not started · 1 finished · 2 students out</span></div>
@@ -1554,7 +1553,7 @@ details.a-disclosure[open] > summary::before {
     <div class="wf-layout">
       <div class="wf" role="img" aria-label="Admin clarifications wireframe: composer with markdown text box and room picker made of toggle chips grouped by building, target count, and a list of posted clarifications with edit and hide actions">
         <div class="wf-chrome">swire.berkeley.mt/admin/clarifications</div>
-        <div class="wf-nav"><span>Timers</span><span class="is-on">Clarifications</span><span>Deletion</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span></div>
+        <div class="wf-nav"><span>Timers</span><span class="is-on">Clarifications</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span><span style="margin-left:auto">5 posted · 4 showing · 1 hidden · Show deleted (2) · ● Log out</span></div>
         <div class="wf-body wf-stack">
           <div class="wf-box">
             <div class="wf-row wf-box__label"><span class="wf-mark">1</span> New clarification</div>
@@ -1596,56 +1595,7 @@ details.a-disclosure[open] > summary::before {
         <li><span class="wf-mark">1</span><div><span class="tag tag--kept">From swire</span><strong>Composer</strong><p>Markdown with MathJax, same as swire's last version.</p></div></li>
         <li><span class="wf-mark">2</span><div><span class="tag tag--changed">Changed</span><strong>Room picker</strong><p>Covers the spec's “make selecting certain rooms intuitive”. Rooms are toggle chips, with shortcuts for all, clear, by building (from the room name prefix), and by test. The live count guards against posting to the wrong set. Swire used a comma-separated text field. Try the chips.</p></div></li>
         <li><span class="wf-mark">3</span><div><span class="tag tag--kept">From swire</span><strong>Preview</strong><p>Swire's “Preview Projector Mode” link, updated to preview the display screen for the first selected room.</p></div></li>
-        <li><span class="wf-mark">4</span><div><span class="tag tag--kept">From swire</span><strong>Posted list</strong><p>Edit and Hide/Unhide work as in swire. One post targeted at several rooms shows as one row with several room pills; swire stored and listed a separate copy per room. Permanent delete is on the Deletion tab.</p></div></li>
-      </ol>
-    </div>
-  </div>
-
-  <!-- Deletion -->
-  <div id="panel-a-delete" class="a-print-reveal" role="tabpanel" aria-labelledby="tab-a-delete" tabindex="0" hidden>
-    <div class="wf-layout">
-      <div class="wf" role="img" aria-label="Admin deletion wireframe: list of rooms with checkboxes where running rooms are disabled, a panel to pick a room and delete its clarifications, and a confirmation dialog overlay">
-        <div class="wf-chrome">swire.berkeley.mt/admin/delete</div>
-        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span class="is-on">Deletion</span><span class="is-later">Bathroom log</span><span class="is-later">Roster</span></div>
-        <div class="wf-body">
-          <div class="wf-split">
-            <div class="wf-box">
-              <div class="wf-row wf-box__label"><span class="wf-mark">1</span> Delete rooms</div>
-              <table class="wf-table">
-                <tbody>
-                  <tr><td>☐</td><td>Dwinelle 145</td><td class="wf-muted">not started</td></tr>
-                  <tr><td class="wf-muted">—</td><td class="wf-muted">Evans 10</td><td class="wf-muted">running · reset first</td></tr>
-                  <tr><td>☑</td><td>Wheeler 150</td><td class="wf-muted">finished</td></tr>
-                  <tr><td>☑</td><td>Soda 405</td><td class="wf-muted">finished</td></tr>
-                </tbody>
-              </table>
-              <button class="wf-btn wf-btn--danger" type="button" style="margin-top:8px">Delete 2 rooms…</button>
-            </div>
-            <div class="wf-box">
-              <div class="wf-row wf-box__label"><span class="wf-mark">2</span> Delete clarifications</div>
-              <div class="wf-input">Room: Evans 10 ▾</div>
-              <table class="wf-table" style="margin-top:6px">
-                <tbody>
-                  <tr><td>Problem 12: diagram not to scale</td><td><button class="wf-btn wf-btn--danger" type="button">Delete</button></td></tr>
-                  <tr><td class="wf-muted">Calculators not allowed <span class="wf-small">(All rooms)</span></td><td><button class="wf-btn wf-btn--danger" type="button">Delete…</button></td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="wf-modal-wrap">
-            <div class="wf-modal wf-stack">
-              <div class="wf-row"><span class="wf-mark">3</span><span class="wf-h">Delete 2 rooms?</span></div>
-              <div class="wf-small">Wheeler 150, Soda 405. This permanently removes their timers, clarifications and bathroom log. Proctors signed in to these rooms will be logged out.</div>
-              <div class="wf-input">Type DELETE to confirm</div>
-              <div class="wf-row" style="justify-content:flex-end"><button class="wf-btn" type="button">Cancel</button><button class="wf-btn wf-btn--danger" type="button">Delete rooms</button></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <ol class="notes" aria-label="Deletion annotations">
-        <li><span class="wf-mark">1</span><div><span class="tag tag--new">New</span><strong>Delete rooms</strong><p>Multi-select. Running rooms are disabled, following swire's rule that an in-progress timer can't be hidden.</p></div></li>
-        <li><span class="wf-mark">2</span><div><span class="tag tag--new">New</span><strong>Per-room clarifications</strong><p>Pick a room and delete its clarifications. Deleting an “All rooms” clarification from one room raises a choice: remove it everywhere, or only here.</p></div></li>
-        <li><span class="wf-mark">3</span><div><span class="tag tag--new">New</span><strong>Confirmation window</strong><p>Required by the spec. Room deletion requires typing DELETE, which is stronger than swire's <code>confirm()</code>, and Shift doesn't bypass it here. Deleting a single clarification only needs a simple confirm.</p></div></li>
+        <li><span class="wf-mark">4</span><div><span class="tag tag--kept">From swire</span><strong>Posted list</strong><p>Edit and Hide/Unhide work as in swire. One post targeted at several rooms shows as one row with several room pills; swire stored and listed a separate copy per room. Delete is soft, like deleted rooms: “Show deleted” in the header lists them in this same tab with Restore and Empty (Empty removes the record from the database for good). Edit can also be done for one room: that room gets its own edited copy and the rest keep the original.</p></div></li>
       </ol>
     </div>
   </div>
@@ -1655,7 +1605,7 @@ details.a-disclosure[open] > summary::before {
     <div class="wf-layout">
       <div class="wf" role="img" aria-label="Admin bathroom log wireframe: filters for room and status, a table of timestamped entries with student, room, time out, time back and duration">
         <div class="wf-chrome">swire.berkeley.mt/admin/bathroom</div>
-        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span>Deletion</span><span class="is-on">Bathroom log</span><span class="is-later">Roster</span></div>
+        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span class="is-on">Bathroom log</span><span class="is-later">Roster</span></div>
         <div class="wf-body wf-stack">
           <div class="wf-row"><span class="wf-mark">1</span><div class="wf-input">Room: All ▾</div><button class="wf-btn" type="button" aria-pressed="true">Out now</button><button class="wf-btn" type="button" aria-pressed="false">Returned</button><div class="wf-input wf-input--grow">Search student ID / name</div><button class="wf-btn" type="button">Export CSV</button></div>
           <div class="wf-scroll">
@@ -1682,7 +1632,7 @@ details.a-disclosure[open] > summary::before {
     <div class="wf-layout">
       <div class="wf" role="img" aria-label="Admin roster wireframe: room selector and sync button, table of students with name, ID, school, coach contact, and presence status">
         <div class="wf-chrome">swire.berkeley.mt/admin/roster</div>
-        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span>Deletion</span><span class="is-later">Bathroom log</span><span class="is-on">Roster</span></div>
+        <div class="wf-nav"><span>Timers</span><span>Clarifications</span><span class="is-later">Bathroom log</span><span class="is-on">Roster</span></div>
         <div class="wf-body wf-stack">
           <div class="wf-row wf-row--between"><div class="wf-row"><span class="wf-mark">1</span><div class="wf-input">Room: Evans 10 ▾</div><span class="wf-small">32 students · 2 out</span></div><div class="wf-row"><span class="wf-mark">2</span><span class="wf-small wf-muted">Synced from ContestDojo 10:15</span><button class="wf-btn" type="button">Sync</button></div></div>
           <div class="wf-scroll">

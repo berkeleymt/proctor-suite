@@ -163,10 +163,13 @@ async def snapshot(request: Request, room_id: str, since_version: int = -1) -> R
 
 
 def sse(
-    room_id: str | None, surface: str | None = None, cid: str | None = None
+    room_id: str | None,
+    surface: str | None = None,
+    cid: str | None = None,
+    clars: bool = False,
 ) -> StreamingResponse:
     return StreamingResponse(
-        frames(store, room_id, surface=surface, cid=cid),
+        frames(store, room_id, surface=surface, cid=cid, clars=clars),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -198,10 +201,10 @@ async def close_room_stream(room_id: str, cid: str, _: Post) -> Response:
 
 
 @router.get("/staff/stream")
-async def staff_stream(request: Request) -> StreamingResponse:
+async def staff_stream(request: Request, clarifications: bool = False) -> StreamingResponse:
     if not session_for(request, "staff"):
         raise err(401, "unauthenticated", "Staff login required.")
-    return sse(None)
+    return sse(None, clars=clarifications)
 
 
 @router.get("/staff/rooms", response_model=StaffRoomsResponse)
@@ -307,6 +310,17 @@ async def restore_room(room_id: str, request: Request, _: Post) -> RoomSnapshot:
     return store.snapshot(room)
 
 
+@router.post("/staff/rooms/{room_id}/empty", status_code=204)
+async def empty_room(room_id: str, request: Request, _: Post) -> Response:
+    """Wipe a deleted room and its history for good (0.8.0)."""
+    room = admin_room(request, room_id)
+    try:
+        await store.empty_room(room)
+    except PermissionError:
+        raise err(409, "not_deleted", "Delete the room first, then empty it.") from None
+    return Response(status_code=204)
+
+
 @router.post("/commands", response_model=CommandResponse)
 async def commands(cmd: Command, request: Request, _: Post) -> CommandResponse:
     staff = session_for(request, "staff")
@@ -364,6 +378,8 @@ CLAR_ERRORS = {
     "unknown_room": "That room doesn't exist.",
     "not_in_room": "This clarification isn't posted to that room.",
     "edit_limit": "This clarification has been edited too many times. Post a new one instead.",
+    "deleted": "That clarification is deleted. Restore it first.",
+    "not_deleted": "Delete it first, then empty it.",
 }
 
 
@@ -375,7 +391,7 @@ async def update_clarification(
     admin_only(request)
     try:
         if body.body is not None:
-            x = await store.edit_clarification(clarification_id, body.body)
+            x = await store.edit_clarification(clarification_id, body.body, body.room_id)
         else:
             x = await store.hide_clarification(clarification_id, bool(body.hidden), body.room_id)
     except KeyError:
@@ -389,10 +405,38 @@ async def update_clarification(
 async def delete_clarification(
     clarification_id: UUID, request: Request, _: Post, room_id: str | None = None
 ) -> Response:
-    """Wipe a clarification for good, everywhere or (room_id) from one room only."""
+    """Delete (restorable) everywhere or from one room; "empty" wipes it for good."""
     admin_only(request)
     try:
         await store.delete_clarification(clarification_id, room_id)
+    except KeyError:
+        raise err(404, "unknown_clarification", "No such clarification.") from None
+    except ClarError as e:
+        raise err(422, e.code, CLAR_ERRORS[e.code]) from None
+    return Response(status_code=204)
+
+
+@router.post("/staff/clarifications/{clarification_id}/restore", response_model=ClarificationAdmin)
+async def restore_clarification(
+    clarification_id: UUID, request: Request, _: Post, room_id: str | None = None
+) -> ClarificationAdmin:
+    """Undo a delete, everywhere or (room_id) in one room (0.8.0)."""
+    admin_only(request)
+    try:
+        x = await store.restore_clarification(clarification_id, room_id)
+    except KeyError:
+        raise err(404, "unknown_clarification", "No such clarification.") from None
+    except ClarError as e:
+        raise err(422, e.code, CLAR_ERRORS[e.code]) from None
+    return x.admin()
+
+
+@router.post("/staff/clarifications/{clarification_id}/empty", status_code=204)
+async def empty_clarification(clarification_id: UUID, request: Request, _: Post) -> Response:
+    """Wipe a deleted clarification from the database for good (0.8.0)."""
+    admin_only(request)
+    try:
+        await store.empty_clarification(clarification_id)
     except KeyError:
         raise err(404, "unknown_clarification", "No such clarification.") from None
     except ClarError as e:

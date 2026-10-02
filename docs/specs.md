@@ -112,6 +112,7 @@ This is flagged as an open design area — see Section 10 for the specific unres
 **Clarifications (Test Organizer-owned):**
 - Written and tied to a specific Test (not a room), so all rooms currently running that test see the same clarification.
 - Because different buildings/zones can run different tests simultaneously, clarifications only ever reach rooms currently on the matching test — never a blanket broadcast.
+- Deleting a clarification (or a room) is soft: it stays under "Show deleted" on the same admin tab, where it can be restored or emptied (permanently removed). There is no separate Deletion screen (ADR 0013). An edit can target one room, which then gets its own edited copy.
 - TO has full control: can issue, edit, and retract clarifications after the fact. Every version change is timestamped and logged (Section 3, `Clarification.version/edit history`) for audit purposes.
 - Clarifications appear on the projector/student screen automatically (per test-instance) — no proctor action needed to display them, since students should see them "at the earliest time possible."
 

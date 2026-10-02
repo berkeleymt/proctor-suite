@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, del, fmt, patch, post, remainingMs, sendCommand, serverNow, type RoomPresence, type Snapshot, type SurfacePresence } from "../api";
-import { AdminTabs, Dot, Sheet } from "../components/ui";
-import { mergePresence, mergeRooms, useClock, useLive, useTick } from "../hooks";
+import { AdminTabs, Dot, LogoutButton, Sheet } from "../components/ui";
+import { dropRoom, mergePresence, mergeRooms, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
 
@@ -199,13 +199,14 @@ function DeleteSheet({ rooms, onConfirm, onClose }: { rooms: Snapshot[]; onConfi
 export function Admin() {
   useClock();
   useTick();
-  const { data, setData, online, unauthorized } = useLive<Rooms>("/api/staff/rooms", "/api/staff/stream", mergeRooms, 2000, { presence: mergePresence });
+  const { data, setData, online, unauthorized } = useLive<Rooms>("/api/staff/rooms", "/api/staff/stream", mergeRooms, 2000, { presence: mergePresence, room_removed: dropRoom });
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Snapshot | null>(null);
   const [bulkEditing, setBulkEditing] = useState(false);
   const [deleting, setDeleting] = useState<Snapshot[] | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [emptying, setEmptying] = useState<Snapshot | null>(null);
   const [fresh, setFresh] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<Filters>(NO_FILTER);
@@ -290,6 +291,17 @@ export function Admin() {
   }
   const act = async (s: Snapshot, kinds: Kind[]) => setErr(await runRoom(s, kinds));
   const reset = (s: Snapshot) => call(() => post<Snapshot>(`/api/staff/rooms/${s.room_id}/reset`, { session_id: s.session_id }));
+  /** Empty = wipe a deleted room from the database for good. */
+  const empty = async (s: Snapshot) => {
+    setEmptying(null);
+    setErr("");
+    try {
+      await post(`/api/staff/rooms/${s.room_id}/empty`);
+      setData((d) => (d ? { ...d, rooms: d.rooms.filter((x) => x.room_id !== s.room_id) } : d));
+    } catch (e) {
+      setErr(why(e));
+    }
+  };
   const restore = (s: Snapshot) => call(() => post<Snapshot>(`/api/staff/rooms/${s.room_id}/restore`));
 
   async function finish(job: Promise<{ done: Snapshot[]; fails: string[] }>) {
@@ -438,14 +450,7 @@ export function Admin() {
         <button className="primary" onClick={() => setAdding(true)}>
           Add room
         </button>
-        <button
-          onClick={async () => {
-            await post("/api/auth/logout?surface=staff").catch(() => {});
-            go("/login");
-          }}
-        >
-          Log out
-        </button>
+        <LogoutButton />
       </header>
       {chosen.length > 0 && (
         <div className="bulk" role="toolbar" aria-label="Selected rooms">
@@ -566,6 +571,9 @@ export function Admin() {
             <span />
             <span className="row">
               <button onClick={() => restore(s)}>Restore</button>
+              <button className="bad" onClick={() => setEmptying(s)}>
+                Empty…
+              </button>
             </span>
           </div>
         ))}
@@ -585,6 +593,17 @@ export function Admin() {
               }}
             >
               {confirm.confirm}
+            </button>
+          </div>
+        </Sheet>
+      )}
+      {emptying && (
+        <Sheet title={`Empty ${emptying.room_name}?`} onClose={() => setEmptying(null)}>
+          <p className="muted">This wipes the room and its timer history from the database for good. You can&apos;t undo this. Use Restore if you might need it.</p>
+          <div className="row end">
+            <button onClick={() => setEmptying(null)}>Cancel</button>
+            <button className="danger" onClick={() => empty(emptying)}>
+              Empty
             </button>
           </div>
         </Sheet>

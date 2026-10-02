@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-02 (slice 9) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-02 (slice 10) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -10,16 +10,17 @@
 - The contract exists: [`docs/protocol.md`](../protocol.md) v0.1.0, `contracts/openapi.json`, 23 timer fixtures, Pydantic models, and a reference fold that passes all fixtures.
 - Decisions made today: D1–D12 approved; proctors cannot end early; staff can start on behalf; login is a room-name dropdown; no approval gate on contract changes (ADRs 0001–0003).
 
-**Phase 1 (Prototype): in progress. Slices 1-6 are pushed; slice 7 is pushed; slices 8-9 (clarifications, then edit/delete/markdown/projector layout) are written, not pushed. Nothing is verified in a browser, and the Oct 5 demo gate has not been run.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
+**Phase 1 (Prototype): in progress. Slices 1-6 are pushed; slice 7 is pushed; slices 8-10 (clarifications; edit/delete/markdown/projector layout; soft delete + Empty, per-room edit, live admin list) are written, not pushed. Nothing is verified in a browser, and the Oct 5 demo gate has not been run.** Demo target Mon Oct 5. Checklist in [`phase-1.md`](phase-1.md).
 
 - Built so far: login → proctor Start/Pause/Resume (+ zoom) → projector display (fits any screen, zoom) → admin timers table (add, rename, edit, delete/restore, filter, per-state actions incl. reset, bulk allow/start/+5/edit/delete, device presence). Server tests pass (86 with a real Postgres; 83 + 3 skipped without). UI not yet tried in a browser. Slice 4 added Postgres persistence (rooms and commands; sessions still in memory); slice 6 replaced polling with SSE (polling is the fallback). See ADR 0004 and `log/2026-10-01-claude-slice1.md`.
-- Scope ceiling is `docs/wireframe.html`. Chat, clarifications, bathroom log, roster, deletion, super-admin need protocol additions first.
+- Scope ceiling is `docs/wireframe.html`. Chat, bathroom log, roster, super-admin need protocol additions first. There is no Deletion tab (ADR 0013).
 
 ## Next actions, in order
 
-1. Push slices 8-9 (migrations 0003, 0004) and run `deploy.sh` (README). Open `/display` on a real projector or a resized window and click through login, Add room, filters, bulk actions on 2 devices. **Browser verification is the biggest open risk.**
+0. Regenerate the contract (could not be run in the sandbox): `cd server && uv run python -m scripts.export_openapi`, then `cd web && npm run gen`; commit `contracts/openapi.json` and `web/src/api-types.ts`. Then run `uv run pytest` (new tests unrun) and `npm run build`.
+1. Push slices 8-10 (migrations 0003-0005) and run `deploy.sh` (README). Open `/display` on a real projector or a resized window and click through login, Add room, filters, bulk actions on 2 devices. **Browser verification is the biggest open risk.**
 2. After deploy: `/readyz` says `ready`; restart the app container and confirm rooms and running timers survive.
-3. Slice 9 is done except the Preview-display button and the Deletion tab (ADR 0012). Check a Google Doc embed on a real display.
+3. Slices 9-10 are done except the Preview-display button (ADR 0012, 0013); the Deletion tab was cancelled. Check a Google Doc embed on a real display.
 
 ## Open, non-blocking
 

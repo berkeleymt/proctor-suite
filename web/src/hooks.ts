@@ -138,6 +138,11 @@ export function mergePresence<T extends { presence?: RoomPresence[] }>(prev: T |
   return { ...prev, presence: [...(prev.presence ?? []).filter((x) => x.room_id !== p.room_id), p] };
 }
 
+/** Staff stream `room_removed` event: a deleted room was emptied for good (0.8.0). */
+export function dropRoom<T extends { rooms: Snapshot[] }>(prev: T | null, d: { room_id: string }): T | null {
+  return prev ? { ...prev, rooms: prev.rooms.filter((r) => r.room_id !== d.room_id) } : prev;
+}
+
 /** Staff stream: one snapshot per room; replace that room, keep the list sorted by name. */
 export function mergeRooms(prev: { rooms: Snapshot[] } | null, snap: Snapshot) {
   const rooms = prev?.rooms ?? [];

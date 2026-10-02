@@ -31,6 +31,9 @@ class Sub:
         self.dirty: set[str] = set()
         self.dirty_presence: set[str] = set()
         self.wake = asyncio.Event()
+        self.clars = False  # staff admin list: also wants `clarifications` events
+        self.dirty_clar = False
+        self.removed: set[str] = set()  # staff: rooms emptied for good (0.8.0)
 
 
 class Hub:
@@ -72,9 +75,14 @@ class Hub:
                 sub.wake.set()
 
     def subscribe(
-        self, room_id: str | None, surface: str | None = None, cid: str | None = None
+        self,
+        room_id: str | None,
+        surface: str | None = None,
+        cid: str | None = None,
+        clars: bool = False,
     ) -> Sub:
         sub = Sub(room_id, surface, cid)
+        sub.clars = clars and room_id is None
         self._subs.add(sub)
         if room_id and surface:
             self._touch(room_id, surface, +1)
@@ -85,6 +93,20 @@ class Hub:
             self._subs.discard(sub)
             if sub.room_id and sub.surface:
                 self._touch(sub.room_id, sub.surface, -1)
+
+    def notify_removed(self, room_id: str) -> None:
+        """A room was emptied for good: staff pages drop it without a reload (0.8.0)."""
+        for sub in self._subs:
+            if sub.room_id is None:
+                sub.removed.add(room_id)
+                sub.wake.set()
+
+    def notify_clar(self) -> None:
+        """The clarification list changed: tell admin pages that asked (0.8.0)."""
+        for sub in self._subs:
+            if sub.clars:
+                sub.dirty_clar = True
+                sub.wake.set()
 
     def notify(self, room_id: str) -> None:
         """Called after a change is committed and applied in memory (invariant 5)."""
@@ -99,18 +121,26 @@ def _frame(event: str, data: str, version: int | None = None) -> str:
     return f"{head}data: {data}\n\n"
 
 
+def _clar_frame(store) -> str:
+    from app.protocol.models import ClarificationsResponse
+
+    body = ClarificationsResponse(clarifications=store.clarifications_admin())
+    return _frame("clarifications", body.model_dump_json())
+
+
 async def frames(
     store,
     room_id: str | None,
     heartbeat_s: float = HEARTBEAT_INTERVAL_S,
     surface: str | None = None,
     cid: str | None = None,
+    clars: bool = False,
 ) -> AsyncIterator[str]:
     """Initial snapshot(s), then one per change; a heartbeat after each quiet interval.
     A room stream ends when its room is deleted (the device then re-authenticates and is refused).
     """
     hub: Hub = store.hub
-    sub = hub.subscribe(room_id, surface, cid)  # subscribe first so nothing is lost
+    sub = hub.subscribe(room_id, surface, cid, clars)  # subscribe first so nothing is lost
     try:
         for rid in [room_id] if room_id else sorted(store.rooms):
             room = store.rooms.get(rid)
@@ -120,6 +150,9 @@ async def frames(
         if room_id is None:
             for p in hub.presence_all():
                 yield _frame("presence", json.dumps(p))
+        if sub.clars:
+            sub.dirty_clar = False
+            yield _clar_frame(store)
         while True:
             try:
                 await asyncio.wait_for(sub.wake.wait(), heartbeat_s)
@@ -131,6 +164,9 @@ async def frames(
                 return
             dirty, sub.dirty = sorted(sub.dirty), set()
             pres, sub.dirty_presence = sorted(sub.dirty_presence), set()
+            if sub.dirty_clar:
+                sub.dirty_clar = False
+                yield _clar_frame(store)
             for rid in dirty:
                 room = store.rooms.get(rid)
                 if not room:
@@ -141,5 +177,8 @@ async def frames(
                 yield _frame("snapshot", snap.model_dump_json(), snap.version)
             for rid in pres:
                 yield _frame("presence", json.dumps(hub.presence(rid)))
+            gone, sub.removed = sorted(sub.removed), set()
+            for rid in gone:
+                yield _frame("room_removed", json.dumps({"room_id": rid}))
     finally:
         hub.unsubscribe(sub)

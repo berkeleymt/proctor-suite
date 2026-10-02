@@ -124,7 +124,11 @@ class ClarificationAdmin(ClarificationOut):
     room_ids: list[str] | None  # null = all rooms
     hidden: bool  # hidden everywhere
     hidden_room_ids: list[str]  # hidden only in these rooms (0.7.0)
-    removed_room_ids: list[str]  # permanently deleted from only these rooms (0.7.0)
+    # Deleted from only these rooms (0.7.0). Restorable until the clarification is emptied (0.8.0).
+    removed_room_ids: list[str]
+    deleted: bool  # deleted everywhere, restorable; only "empty" wipes the row (0.8.0)
+    # Rooms that got their own edited copy; they no longer show this one (0.8.0).
+    edited_room_ids: list[str]
 
 
 class ClarificationsResponse(BaseModel):
@@ -141,7 +145,8 @@ class CreateClarificationRequest(BaseModel):
 
 class UpdateClarificationRequest(BaseModel):
     """Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,
-    struck out). `room_id` limits a hide/unhide to one room; it is not allowed with `body`."""
+    struck out). `room_id` limits the action to one room. A per-room edit moves that room to
+    a new copy with the edited text and returns the copy (0.8.0)."""
 
     model_config = ConfigDict(extra="forbid")
     hidden: bool | None = None
@@ -152,8 +157,6 @@ class UpdateClarificationRequest(BaseModel):
     def _one_action(self):
         if (self.hidden is None) == (self.body is None):
             raise ValueError("send exactly one of hidden or body")
-        if self.body is not None and self.room_id is not None:
-            raise ValueError("room_id only goes with hidden")
         return self
 
 

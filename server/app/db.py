@@ -66,24 +66,68 @@ async def load_clarifications(pool: asyncpg.Pool) -> list[asyncpg.Record]:
         return await c.fetch("SELECT * FROM clarifications ORDER BY created_at_ms, id")
 
 
+_CLAR_COLS = (
+    "id, body, room_ids, hidden, created_at_ms, rev, previous, edited_at_ms,"
+    " hidden_room_ids, removed_room_ids, deleted, edited_room_ids"
+)
+_CLAR_ARGS = "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12"
+
+
+def _clar_values(x) -> tuple:
+    return (
+        x.id, x.body, x.room_ids, x.hidden, x.created_at_ms, x.rev, x.previous, x.edited_at_ms,
+        x.hidden_room_ids, x.removed_room_ids, x.deleted, x.edited_room_ids,
+    )  # fmt: skip
+
+
 async def insert_clarification(pool: asyncpg.Pool, x) -> None:
     async with pool.acquire() as c:
         await c.execute(
-            "INSERT INTO clarifications (id, body, room_ids, hidden, created_at_ms, rev)"
-            " VALUES ($1,$2,$3,$4,$5,$6)",
-            x.id, x.body, x.room_ids, x.hidden, x.created_at_ms, x.rev,
-        )  # fmt: skip
+            f"INSERT INTO clarifications ({_CLAR_COLS}) VALUES ({_CLAR_ARGS})", *_clar_values(x)
+        )
+
+
+_CLAR_UPDATE = (
+    "UPDATE clarifications SET body=$2, hidden=$3, previous=$4, edited_at_ms=$5,"
+    " hidden_room_ids=$6, removed_room_ids=$7, rev=$8, room_ids=$9, deleted=$10,"
+    " edited_room_ids=$11 WHERE id=$1"
+)
+
+
+def _clar_update_args(x) -> tuple:
+    return (
+        x.id, x.body, x.hidden, x.previous, x.edited_at_ms, x.hidden_room_ids,
+        x.removed_room_ids, x.rev, x.room_ids, x.deleted, x.edited_room_ids,
+    )  # fmt: skip
 
 
 async def save_clarification(pool: asyncpg.Pool, x) -> None:
-    """Edit, hide/unhide, per-room hide/delete: one UPDATE of everything that can change."""
+    """Edit, hide/unhide, delete/restore, per-room changes: one UPDATE of everything that can change."""
     async with pool.acquire() as c:
+        await c.execute(_CLAR_UPDATE, *_clar_update_args(x))
+
+
+async def fork_clarification(pool: asyncpg.Pool, orig, copy) -> None:
+    """Per-room edit: the changed original and its new copy commit together or not at all."""
+    async with pool.acquire() as c, c.transaction():
+        await c.execute(_CLAR_UPDATE, *_clar_update_args(orig))
         await c.execute(
-            "UPDATE clarifications SET body=$2, hidden=$3, previous=$4, edited_at_ms=$5,"
-            " hidden_room_ids=$6, removed_room_ids=$7, rev=$8 WHERE id=$1",
-            x.id, x.body, x.hidden, x.previous, x.edited_at_ms,
-            x.hidden_room_ids, x.removed_room_ids, x.rev,
-        )  # fmt: skip
+            f"INSERT INTO clarifications ({_CLAR_COLS}) VALUES ({_CLAR_ARGS})", *_clar_values(copy)
+        )
+
+
+async def empty_room(pool: asyncpg.Pool, room_id: str, fixes: list, rev: int) -> None:
+    """Wipe a deleted room, its commands, and its mentions in clarifications, in one transaction."""
+    async with pool.acquire() as c, c.transaction():
+        for x in fixes:
+            await c.execute(_CLAR_UPDATE, *_clar_update_args(x))
+        await c.execute("DELETE FROM commands WHERE room_id=$1", room_id)
+        await c.execute("DELETE FROM rooms WHERE room_id=$1", room_id)
+        await c.execute(
+            "INSERT INTO clar_counter (id, rev) VALUES (1, $1)"
+            " ON CONFLICT (id) DO UPDATE SET rev = GREATEST(clar_counter.rev, $1)",
+            rev,
+        )
 
 
 async def delete_clarification(pool: asyncpg.Pool, cid, rev: int) -> None:

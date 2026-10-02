@@ -69,6 +69,10 @@ def test_validation_and_permissions(monkeypatch):
     assert c.post("/api/staff/clarifications", json={"body": "x"}, headers=H).status_code == 401
 
 
+def listed(c):
+    return c.get("/api/staff/clarifications").json()["clarifications"]
+
+
 def clar(c, body, rooms=None):
     j = {"body": body} if rooms is None else {"body": body, "room_ids": rooms}
     r = c.post("/api/staff/clarifications", json=j, headers=H)
@@ -115,9 +119,22 @@ def test_delete_everywhere_and_version_never_drops(monkeypatch):
     assert c.delete(f"/api/staff/clarifications/{cid}", headers=H).status_code == 204
     s = snap(c, a)
     assert mine(c, a, cid) == [] and s["version"] > v
-    assert all(x["id"] != cid for x in c.get("/api/staff/clarifications").json()["clarifications"])
-    assert c.delete(f"/api/staff/clarifications/{cid}", headers=H).status_code == 404
+    row = next(x for x in listed(c) if x["id"] == cid)
+    assert row["deleted"] is True  # soft, like a room: still listed for the admin
     assert c.delete(f"/api/staff/clarifications/{cid}").status_code == 400  # header required
+    # a deleted clarification can't be edited or hidden until it is restored
+    url = f"/api/staff/clarifications/{cid}"
+    for j in ({"body": "x"}, {"hidden": True}):
+        r = c.patch(url, json=j, headers=H)
+        assert r.status_code == 422 and r.json()["detail"]["error"] == "deleted"
+    assert c.post(url + "/restore", headers=H).json()["deleted"] is False
+    assert len(mine(c, a, cid)) == 1
+    # emptying needs a delete first, then it is gone from the database
+    assert c.post(url + "/empty", headers=H).json()["detail"]["error"] == "not_deleted"
+    c.delete(url, headers=H)
+    assert c.post(url + "/empty", headers=H).status_code == 204
+    assert all(x["id"] != cid for x in listed(c))
+    assert c.post(url + "/empty", headers=H).status_code == 404
 
 
 def test_per_room_hide_and_delete(monkeypatch):
@@ -151,8 +168,59 @@ def test_per_room_hide_and_delete(monkeypatch):
     assert row["removed_room_ids"] == [a] and row["room_ids"] is None
     again = c.delete(url(everyone) + f"?room_id={a}", headers=H)
     assert again.json()["detail"]["error"] == "not_in_room"
-    # removing the last targeted room wipes the whole clarification
-    c.delete(url(some) + f"?room_id={a}", headers=H)
-    c.delete(url(some) + f"?room_id={b}", headers=H)
-    listed = [x["id"] for x in c.get("/api/staff/clarifications").json()["clarifications"]]
-    assert some not in listed and everyone in listed
+    # restoring it in that room brings it back there
+    r = c.post(url(everyone) + f"/restore?room_id={a}", headers=H)
+    assert r.status_code == 200 and r.json()["removed_room_ids"] == []
+    assert len(mine(c, a, *ids)) == 2
+    assert c.post(url(everyone) + f"/restore?room_id={a}", headers=H).status_code == 422
+
+
+def test_per_room_edit_makes_a_copy_for_that_room(monkeypatch):
+    c = staff(monkeypatch)
+    a, b, z = (make_room(c, n)["room_id"] for n in ("Fk A", "Fk B", "Fk Z"))
+    url = lambda cid: f"/api/staff/clarifications/{cid}"
+    everyone = clar(c, "P3: n is an integer")
+    some = clar(c, "P4: x > 0", [a, b])
+    va = snap(c, a)["version"]
+    # one room of an "All rooms" post gets the edited wording; the others are untouched
+    r = c.patch(url(everyone), json={"body": "P3: n is a positive integer", "room_id": a}, headers=H)
+    assert r.status_code == 200
+    copy = r.json()
+    assert copy["id"] != everyone and copy["room_ids"] == [a]
+    assert copy["previous"] == ["P3: n is an integer"]
+    assert snap(c, a)["version"] > va
+    (xa,) = mine(c, a, everyone, copy["id"])
+    assert xa["id"] == copy["id"] and xa["body"] == "P3: n is a positive integer"
+    (xb,) = mine(c, b, everyone, copy["id"])
+    assert xb["id"] == everyone and xb["body"] == "P3: n is an integer" and xb["previous"] == []
+    row = next(x for x in listed(c) if x["id"] == everyone)
+    assert row["room_ids"] is None and row["edited_room_ids"] == [a]
+    # a post to a list loses that room; with a single room left it is a plain edit, no copy
+    r = c.patch(url(some), json={"body": "P4: x >= 1", "room_id": b}, headers=H)
+    assert r.json()["room_ids"] == [b]
+    assert next(x for x in listed(c) if x["id"] == some)["room_ids"] == [a]
+    n = len(listed(c))
+    r = c.patch(url(some), json={"body": "P4: x >= 2", "room_id": a}, headers=H)
+    assert r.json()["id"] == some and len(listed(c)) == n
+    # not-a-target and unchanged text
+    bad = c.patch(url(everyone), json={"body": "zzz", "room_id": a}, headers=H)
+    assert bad.json()["detail"]["error"] == "not_in_room"
+    same = c.patch(url(everyone), json={"body": "P3: n is an integer", "room_id": z}, headers=H)
+    assert same.json()["id"] == everyone and len(listed(c)) == n
+
+
+def test_empty_room_wipes_it_and_forgets_it(monkeypatch):
+    c = staff(monkeypatch)
+    a, b = (make_room(c, n)["room_id"] for n in ("Em A", "Em B"))
+    only_a = clar(c, "just A", [a])
+    both = clar(c, "A and B", [a, b])
+    url = f"/api/staff/rooms/{a}"
+    assert c.post(url + "/empty", headers=H).json()["detail"]["error"] == "not_deleted"
+    c.delete(url, headers=H)
+    assert c.post(url + "/empty", headers=H).status_code == 204
+    assert a not in [r["room_id"] for r in c.get("/api/staff/rooms").json()["rooms"]]
+    assert c.post(url + "/empty", headers=H).status_code == 404
+    rows = {x["id"]: x for x in listed(c)}
+    assert rows[both]["room_ids"] == [b] and rows[only_a]["deleted"] is True
+    make_room(c, "Em A")  # the name is free again and starts clean
+    assert snap(c, a)["timer"]["status"] == "NOT_PERMITTED"

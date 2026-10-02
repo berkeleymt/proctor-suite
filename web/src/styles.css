@@ -141,6 +141,7 @@ button.bad { color: var(--bad); }
 .row.end { justify-content: flex-end; }
 .post { display: grid; grid-template-columns: 56px 1fr auto; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--line); animation: row-in 200ms var(--ease); transition: opacity 200ms var(--ease); }
 .post.off .text { opacity: 0.5; }
+.post.gone { opacity: 0.6; }
 .post .where { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
 .post .where .menu button { min-height: 30px; padding: 0 12px; font-size: 13px; }
 .post .text { grid-column: 2; }
@@ -162,5 +163,6 @@ button.bad { color: var(--bad); }
 .display.has-clars { grid-template-rows: auto minmax(0, 24vh) minmax(0, 1fr) auto; }
 .clars { overflow: hidden; min-height: 0; line-height: 1.25; font-weight: 600; text-align: left; border-top: 2px solid var(--line); padding: 1.2vh 1vw 0; margin-top: 0.5vh; }
 .clars.manual { overflow-y: auto; }
+.clars-h { font-size: clamp(18px, 3.4vh, 40px); font-weight: 600; letter-spacing: 0; color: var(--muted); margin: 0 0 0.5vh; } /* describes the list; quiet on purpose */
 .display iframe.doc { width: 100%; height: 100%; min-height: 0; border: 0; border-top: 2px solid var(--line); background: #fff; }
 .ctl { display: inline-flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }

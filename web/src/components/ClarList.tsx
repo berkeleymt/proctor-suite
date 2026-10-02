@@ -31,6 +31,13 @@ export function ClarItem({ c }: { c: Item }) {
 const STEPS_VH = [2.5, 3.5, 4.5, 6, 8, 10, 12, 15]; // manual sizes, as % of screen height
 const AUTO_MAX_VH = 11; // Auto never goes bigger than this, so one short line isn't absurd
 const AUTO_MIN_PX = 14;
+const AUTO_BACK_STEPS = 3; // Auto lands where three ¶− clicks from the largest size that fits would (PM, 2026-10-02)
+
+/** The manual step closest to a pixel size. */
+const nearestStep = (px: number) => {
+  const vh = (px / window.innerHeight) * 100;
+  return STEPS_VH.reduce((best, v, i) => (Math.abs(v - vh) < Math.abs(STEPS_VH[best] - vh) ? i : best), 0);
+};
 const KEY = "clarsize:display";
 
 /** Projector clarification size: "auto" (largest that fits) or a fixed step. Remembered per device. */
@@ -54,8 +61,7 @@ export function useClarSize() {
   };
   const from = () => {
     if (step !== "auto") return step;
-    const vh = (lastPx.current / window.innerHeight) * 100;
-    return STEPS_VH.reduce((best, v, i) => (Math.abs(v - vh) < Math.abs(STEPS_VH[best] - vh) ? i : best), 0);
+    return nearestStep(lastPx.current);
   };
   const move = (d: number) => set(Math.max(0, Math.min(STEPS_VH.length - 1, from() + d)));
   return { step, lastPx, auto: () => set("auto"), smaller: () => move(-1), bigger: () => move(1), canSmaller: step === "auto" || step > 0, canBigger: step === "auto" || step < STEPS_VH.length - 1 };
@@ -97,11 +103,15 @@ export function FitList({ items, z }: { items: Item[]; z: ReturnType<typeof useC
       if (el.scrollHeight > el.clientHeight + 1) hi = mid;
       else lo = mid;
     }
-    el.style.fontSize = `${Math.floor(lo)}px`;
-    z.lastPx.current = Math.floor(lo);
+    // Largest size that fits, then three steps down (never bigger than what fits).
+    const fit = Math.floor(lo);
+    const px = Math.min(fit, Math.round((STEPS_VH[Math.max(0, nearestStep(fit) - AUTO_BACK_STEPS)] * window.innerHeight) / 100));
+    el.style.fontSize = `${px}px`;
+    z.lastPx.current = px;
   }, [items, z.step, tick]);
   return (
     <div className={`clars ${z.step === "auto" ? "" : "manual"}`} ref={box} aria-live="polite">
+      <h2 className="clars-h">Clarifications</h2>
       {items.map((c) => (
         <ClarItem key={c.id} c={c} />
       ))}

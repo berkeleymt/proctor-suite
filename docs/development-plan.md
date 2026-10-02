@@ -497,6 +497,8 @@ Each phase ends with a **gate**. We don't start the next phase's feature work un
 
 **Progress against this table (2026-10-01; live detail in [`status/STATUS.md`](status/STATUS.md)):** Phase 0 done. Phase 1 is mostly written but unverified: room login, permit/start/pause/resume, admin +5 min, display and control screens, a staff dashboard well beyond "bare" (add/rename/edit/delete rooms, reset, filters, bulk actions, device presence, which also pulls part of §3's presence feature forward), clock sync, and Postgres persistence with Alembic run by `deploy.sh`. Two deliberate deviations from the plan: transport is SSE with automatic polling fallback (slice 6; first-class SSE over real Caddy not yet verified), and Phase 1 pulled in staff dashboard items the plan put in Phase 3 (batch select). The Oct 5 demo gate (3+ devices on AWS, C1/C6/C11) has **not** been run. Nothing from Phases 2-3b has started (outbox, Service Worker, clarifications, bathroom log, export, chaos tests, load gate).
 
+**Decision (2026-10-02, ADR 0013):** there is no separate Deletion tab. Deleted rooms and clarifications stay on their own tab behind "Show deleted", with Restore and Empty (permanent).
+
 **Stretch goals if the Oct 5 prototype lands early:** pull clarifications into Phase 1, and start Practice Mode and messages in Phase 3.
 
 **Decision point on Oct 24:** if the must-pass chaos set or the load gate isn't green by then, we **cut scope** (e.g. drop CSV filtering, keep bare export), and the Nov 14 plan uses the software for timers and display only, with clarifications by radio. We decide this on Oct 24, not on Nov 13.

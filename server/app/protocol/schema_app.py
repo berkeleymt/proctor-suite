@@ -241,13 +241,14 @@ def build_schema_app() -> FastAPI:
             404: {"model": ErrorResponse, "description": "unknown_clarification"},
             422: {
                 "model": ErrorResponse,
-                "description": "empty, unknown_room, not_in_room, edit_limit",
+                "description": "empty, unknown_room, not_in_room, edit_limit, deleted",
             },
         },
     )
     async def update_clarification(clarification_id: str, body: UpdateClarificationRequest):
         """Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one
-        room with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0."""
+        room with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0. With
+        `body` and `room_id` (0.8.0) that room moves to a new edited copy, which is returned."""
         _stub()
 
     @app.delete(
@@ -261,13 +262,57 @@ def build_schema_app() -> FastAPI:
         },
     )
     async def delete_clarification(clarification_id: str, room_id: str | None = None):
-        """Admin wipes a clarification from the system, or (`room_id`) from one room only.
-        Not undoable. Added in 0.7.0."""
+        """Admin deletes a clarification, or (`room_id`) from one room only. Soft since 0.8.0:
+        restorable until emptied. Added in 0.7.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/clarifications/{clarification_id}/restore",
+        response_model=ClarificationAdmin,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            404: {"model": ErrorResponse, "description": "unknown_clarification"},
+            422: {"model": ErrorResponse, "description": "unknown_room, not_in_room"},
+        },
+    )
+    async def restore_clarification(clarification_id: str, room_id: str | None = None):
+        """Admin undoes a delete, everywhere or (`room_id`) in one room. Added in 0.8.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/clarifications/{clarification_id}/empty",
+        status_code=204,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            404: {"model": ErrorResponse, "description": "unknown_clarification"},
+            422: {"model": ErrorResponse, "description": "not_deleted"},
+        },
+    )
+    async def empty_clarification(clarification_id: str):
+        """Admin wipes a deleted clarification from the database for good. Added in 0.8.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/rooms/{room_id}/empty",
+        status_code=204,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            409: {"model": ErrorResponse, "description": "not_deleted"},
+        },
+    )
+    async def empty_room(room_id: str):
+        """Admin wipes a deleted room and its history from the database for good. 0.8.0."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)
-    async def staff_stream():
-        """SSE: a snapshot per room on connect, then every change in any room, plus heartbeats."""
+    async def staff_stream(clarifications: bool = False):
+        """SSE: a snapshot per room on connect, then every change in any room, plus heartbeats.
+        With `?clarifications=1` (0.8.0) also a `clarifications` event (the admin list, same body
+        as GET /api/staff/clarifications) on connect and after every clarification change.
+        A `room_removed` event (`{room_id}`, 0.8.0) follows an Empty of a deleted room."""
         _stub()
 
     return app

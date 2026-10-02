@@ -88,13 +88,17 @@ class Clarification:
     previous: list[str] = field(default_factory=list)  # earlier wordings, oldest first
     edited_at_ms: int | None = None
     hidden_room_ids: list[str] = field(default_factory=list)  # reversible, per room
-    removed_room_ids: list[str] = field(default_factory=list)  # permanent, per room
+    removed_room_ids: list[str] = field(default_factory=list)  # deleted here; restorable
+    deleted: bool = False  # deleted everywhere; restorable until emptied (like a room)
+    edited_room_ids: list[str] = field(default_factory=list)  # these rooms got their own copy
 
     def shows_in(self, room_id: str) -> bool:
         return (
             not self.hidden
+            and not self.deleted
             and room_id not in self.hidden_room_ids
             and room_id not in self.removed_room_ids
+            and room_id not in self.edited_room_ids
             and (self.room_ids is None or room_id in self.room_ids)
         )
 
@@ -108,6 +112,7 @@ class Clarification:
         return ClarificationAdmin(
             **self.out().model_dump(), room_ids=self.room_ids, hidden=self.hidden,
             hidden_room_ids=self.hidden_room_ids, removed_room_ids=self.removed_room_ids,
+            deleted=self.deleted, edited_room_ids=self.edited_room_ids,
         )  # fmt: skip
 
 
@@ -182,6 +187,7 @@ class Store:
                 c["id"], c["body"], c["room_ids"], c["created_at_ms"], c["rev"], c["hidden"],
                 list(c["previous"]), c["edited_at_ms"],
                 list(c["hidden_room_ids"]), list(c["removed_room_ids"]),
+                c["deleted"], list(c["edited_room_ids"]),
             )  # fmt: skip
             self.clar_rev = max(self.clar_rev, c["rev"])
         # Deleted rows are gone, so the counter is kept in its own row (never goes backwards).
@@ -281,6 +287,40 @@ class Store:
             if room.deleted:
                 await self._commit(room, deleted=False)
 
+    async def empty_room(self, room: Room) -> None:
+        """Wipe a deleted room and its history for good (the admin's "Empty"). Only when deleted.
+        Clarifications forget the room; one left with no rooms at all is deleted (restorable)."""
+        async with self._admin_lock, self.lock(room.room_id):
+            if not room.deleted:
+                raise PermissionError("not_deleted")
+            rid = room.room_id
+            fixes: list[Clarification] = []
+            rev = self.clar_rev
+            for x in self.clars.values():
+                mentions = [*(x.room_ids or []), *x.hidden_room_ids, *x.removed_room_ids]
+                if rid not in mentions + x.edited_room_ids:
+                    continue
+                rev += 1
+                ids = None if x.room_ids is None else [r for r in x.room_ids if r != rid]
+                fixes.append(replace(
+                    x, rev=rev, room_ids=ids, deleted=x.deleted or ids == [],
+                    hidden_room_ids=[r for r in x.hidden_room_ids if r != rid],
+                    removed_room_ids=[r for r in x.removed_room_ids if r != rid],
+                    edited_room_ids=[r for r in x.edited_room_ids if r != rid],
+                ))  # fmt: skip
+            if self.pool:
+                await db.empty_room(self.pool, rid, fixes, rev)
+            for x in fixes:
+                self.clars[x.id] = x
+            self.clar_rev = rev
+            del self.rooms[rid]
+            self._locks.pop(rid, None)
+            for tok in [t for t, s in self.sessions.items() if s.room_id == rid]:
+                del self.sessions[tok]
+            if fixes:
+                self.hub.notify_clar()
+            self.hub.notify_removed(rid)
+
     async def reset_room(self, room: Room, session_id: str) -> None:
         """Fresh not-started timer (new session); only from PAUSED or ENDED. History is kept."""
         async with self.lock(room.room_id):
@@ -321,6 +361,7 @@ class Store:
             self.clars[x.id] = x
             self.clar_rev = x.rev
             self._notify_targets(x)
+            self.hub.notify_clar()
             return x
 
     async def _change(self, x: Clarification, **ch) -> Clarification:
@@ -331,13 +372,18 @@ class Store:
             await db.save_clarification(self.pool, new)
         self.clars[x.id] = new
         self.clar_rev = rev
+        self.hub.notify_clar()
         return new
 
     def _in_scope(self, x: Clarification, room_id: str) -> None:
         room = self.rooms.get(room_id)
         if not room or room.deleted:
             raise ClarError("unknown_room")
+        if x.deleted:
+            raise ClarError("deleted")
         if (x.room_ids is not None and room_id not in x.room_ids) or room_id in x.removed_room_ids:
+            raise ClarError("not_in_room")
+        if room_id in x.edited_room_ids:
             raise ClarError("not_in_room")
 
     async def hide_clarification(
@@ -345,6 +391,8 @@ class Store:
     ) -> Clarification:
         async with self._admin_lock:
             x = self.clars[cid]  # KeyError -> 404
+            if x.deleted:
+                raise ClarError("deleted")
             if room_id is None:
                 if x.hidden == hidden:
                     return x
@@ -363,44 +411,100 @@ class Store:
             self.hub.notify(room_id)
             return new
 
-    async def edit_clarification(self, cid: UUID, body: str) -> Clarification:
-        """Never replaces silently: the old wording is kept and shown struck out (protocol §7.5)."""
+    async def edit_clarification(
+        self, cid: UUID, body: str, room_id: str | None = None
+    ) -> Clarification:
+        """Never replaces silently: the old wording is kept and shown struck out (protocol §7.5).
+        With `room_id` on a post that reaches other rooms too, only that room changes: it moves
+        to a new copy carrying the edited text; the other rooms keep the original (0.8.0)."""
         body = body.strip()
         if not body:
             raise ClarError("empty")
         async with self._admin_lock:
             x = self.clars[cid]
+            if x.deleted:
+                raise ClarError("deleted")
+            if room_id is not None:
+                self._in_scope(x, room_id)
             if body == x.body:
                 return x
             if len(x.previous) >= MAX_CLARIFICATION_EDITS:
                 raise ClarError("edit_limit")
-            new = await self._change(
-                x, body=body, previous=[*x.previous, x.body], edited_at_ms=now_ms()
-            )
-            self._notify_targets(new)
-            return new
+            prev = [*x.previous, x.body]
+            if room_id is None or x.room_ids == [room_id]:  # it only reaches that room anyway
+                new = await self._change(x, body=body, previous=prev, edited_at_ms=now_ms())
+                self._notify_targets(new)
+                return new
+            rev = self.clar_rev + 1
+            copy = Clarification(
+                uuid4(), body, [room_id], x.created_at_ms, rev,
+                hidden=x.hidden or room_id in x.hidden_room_ids,
+                previous=prev, edited_at_ms=now_ms(),
+            )  # fmt: skip
+            orig = replace(
+                x, rev=rev,
+                room_ids=None if x.room_ids is None else [r for r in x.room_ids if r != room_id],
+                edited_room_ids=sorted({*x.edited_room_ids, room_id}) if x.room_ids is None else x.edited_room_ids,
+                hidden_room_ids=[r for r in x.hidden_room_ids if r != room_id],
+            )  # fmt: skip
+            if self.pool:
+                await db.fork_clarification(self.pool, orig, copy)
+            self.clars[x.id], self.clars[copy.id] = orig, copy
+            self.clar_rev = rev
+            self.hub.notify(room_id)
+            self.hub.notify_clar()
+            return copy
 
     async def delete_clarification(self, cid: UUID, room_id: str | None = None) -> None:
-        """Wipe it from the system: everywhere, or (room_id) from one room only."""
+        """Soft delete, like a room: gone from students at once, restorable until emptied."""
         async with self._admin_lock:
             x = self.clars[cid]
             if room_id is not None:
                 self._in_scope(x, room_id)
-                gone = sorted({*x.removed_room_ids, room_id})
-                if x.room_ids is None or not set(x.room_ids) <= set(gone):
-                    await self._change(
-                        x,
-                        removed_room_ids=gone,
-                        hidden_room_ids=[r for r in x.hidden_room_ids if r != room_id],
-                    )
-                    self.hub.notify(room_id)
-                    return
+                await self._change(
+                    x,
+                    removed_room_ids=sorted({*x.removed_room_ids, room_id}),
+                    hidden_room_ids=[r for r in x.hidden_room_ids if r != room_id],
+                )
+                self.hub.notify(room_id)
+                return
+            if x.deleted:
+                return
+            self._notify_targets(await self._change(x, deleted=True))
+
+    async def restore_clarification(self, cid: UUID, room_id: str | None = None) -> Clarification:
+        """Undo a delete: everywhere, or (room_id) in one room. Hidden stays hidden."""
+        async with self._admin_lock:
+            x = self.clars[cid]
+            if room_id is None:
+                if not x.deleted:
+                    return x
+                new = await self._change(x, deleted=False)
+                self._notify_targets(new)
+                return new
+            room = self.rooms.get(room_id)
+            if not room or room.deleted:
+                raise ClarError("unknown_room")
+            if room_id not in x.removed_room_ids:
+                raise ClarError("not_in_room")
+            new = await self._change(
+                x, removed_room_ids=[r for r in x.removed_room_ids if r != room_id]
+            )
+            self.hub.notify(room_id)
+            return new
+
+    async def empty_clarification(self, cid: UUID) -> None:
+        """Wipe a deleted clarification from the database for good (the admin's "Empty")."""
+        async with self._admin_lock:
+            x = self.clars[cid]
+            if not x.deleted:
+                raise ClarError("not_deleted")
             rev = self.clar_rev + 1
             if self.pool:
                 await db.delete_clarification(self.pool, cid, rev)
             del self.clars[cid]
             self.clar_rev = rev
-            self._notify_targets(x)
+            self.hub.notify_clar()
 
     def clarifications_for(self, room: Room) -> list[ClarificationOut]:
         mine = [x for x in self.clars.values() if x.shows_in(room.room_id)]
