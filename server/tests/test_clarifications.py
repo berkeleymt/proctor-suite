@@ -104,7 +104,7 @@ def test_edit_keeps_old_wording_visible(monkeypatch):
     assert c.patch(url, json={"body": "   "}, headers=H).status_code == 422
     assert c.patch(url, json={}, headers=H).status_code == 422
     assert c.patch(url, json={"body": "x", "hidden": True}, headers=H).status_code == 422
-    assert c.patch(url, json={"body": "x", "room_id": a}, headers=H).status_code == 422
+    # {body, room_id} is a per-room edit since 0.8.0 (see test_per_room_edit_makes_a_copy...)
     for i in range(9):  # 10 edits is the cap
         assert c.patch(url, json={"body": f"v{i}"}, headers=H).status_code == 200
     over = c.patch(url, json={"body": "one too many"}, headers=H)

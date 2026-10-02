@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, del, fmt, patch, post, remainingMs, sendCommand, serverNow, type RoomPresence, type Snapshot, type SurfacePresence } from "../api";
-import { AdminTabs, Dot, LogoutButton, Sheet } from "../components/ui";
+import { AdminBar, Sheet } from "../components/ui";
 import { dropRoom, mergePresence, mergeRooms, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
@@ -433,25 +433,16 @@ export function Admin() {
 
   return (
     <main className="admin">
-      <header className="bar">
-        <AdminTabs active="timers" />
-        <span className="muted">
-          {rooms.length} rooms · {count("RUNNING")} running · {count("NOT_PERMITTED") + count("PERMITTED")} not started · {count("ENDED")} finished
-          {gone.length > 0 && (
-            <>
-              {" · "}
-              <button className="link" onClick={() => setShowDeleted(!showDeleted)}>
-                {showDeleted ? "Hide" : "Show"} deleted ({gone.length})
-              </button>
-            </>
-          )}
-        </span>
-        <Dot online={online} />
+      <AdminBar
+        active="timers"
+        online={online}
+        summary={`${rooms.length} rooms · ${count("RUNNING")} running · ${count("NOT_PERMITTED") + count("PERMITTED")} not started · ${count("ENDED")} finished`}
+        deleted={{ count: gone.length, shown: showDeleted, toggle: () => setShowDeleted(!showDeleted) }}
+      >
         <button className="primary" onClick={() => setAdding(true)}>
           Add room
         </button>
-        <LogoutButton />
-      </header>
+      </AdminBar>
       {chosen.length > 0 && (
         <div className="bulk" role="toolbar" aria-label="Selected rooms">
           <strong>{chosen.length} selected</strong>

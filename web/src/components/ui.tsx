@@ -31,9 +31,58 @@ export function LogoutButton() {
   );
 }
 
+const TAB_LABEL = { timers: "Timers", clarifications: "Clarifications" } as const;
+
+/**
+ * The admin header, one component for every admin tab. Wide screens: tabs, summary, light and
+ * buttons in one row. Narrow screens: a menu button, the current tab, and the light; the menu
+ * opens over the page (nothing shifts) with everything stacked in the same order, minus the light.
+ */
+export function AdminBar({ active, online, summary, deleted, children }: { active: keyof typeof TAB_LABEL; online: boolean; summary: ReactNode; deleted?: { count: number; shown: boolean; toggle: () => void }; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <header className={`bar abar ${open ? "open" : ""}`} ref={box}>
+      <button className="burger" aria-label="Menu" aria-expanded={open} aria-controls="admin-menu" onClick={() => setOpen(!open)}>
+        <i /><i /><i />
+      </button>
+      <span className="cur">{TAB_LABEL[active]}</span>
+      <div className="abar-menu" id="admin-menu" onClick={(e) => (e.target as HTMLElement).closest("button, a") && setOpen(false)}>
+        <AdminTabs active={active} />
+        <span className="muted">
+          <span>{summary}</span>
+          {deleted && deleted.count > 0 && (
+            <>
+              <span className="sep"> · </span>
+              <button className="link" onClick={deleted.toggle}>
+                {deleted.shown ? "Hide" : "Show"} deleted ({deleted.count})
+              </button>
+            </>
+          )}
+        </span>
+        <Dot online={online} className="desk-only" />
+        {children}
+        <LogoutButton />
+      </div>
+      <Dot online={online} className="mob-only" />
+    </header>
+  );
+}
+
 /** The connection light. Same look and position on every screen (green = connected). */
-export function Dot({ online }: { online: boolean }) {
-  return <span className={`dot ${online ? "ok" : "bad"}`} role="img" aria-label={online ? "Connected" : "Offline"} title={online ? "Connected" : "Offline: retrying"} />;
+export function Dot({ online, className = "" }: { online: boolean; className?: string }) {
+  return <span className={`dot ${online ? "ok" : "bad"} ${className}`} role="img" aria-label={online ? "Connected" : "Offline"} title={online ? "Connected" : "Offline: retrying"} />;
 }
 
 /** Every dialog in the app: slides up, Esc or a click outside closes it, same title and button layout. */

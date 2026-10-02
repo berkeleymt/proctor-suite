@@ -35,6 +35,7 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 11 (2026-10-02): mobile admin header (shared `AdminBar`, ☰ menu under 1040 px), contract regenerated, stale test fixed, `log/2026-10-02-claude-slice11-admin-header-mobile.md`.
 - Slice 10 (2026-10-02): auto size, heading, clarifications header, live admin list, soft delete + Restore + Empty (clarifications and rooms), per-room edit, Deletion tab cancelled; protocol 0.8.0, migration 0005, ADR 0013, `log/2026-10-02-claude-slice10-soft-delete-per-room-edit.md`.
 - Slice 9 (2026-10-02): clarification edit, delete, per-room hide/delete, Markdown + KaTeX, projector layout and ¶ size, doc iframe, navbar tabs; protocol 0.7.0, migration 0004, ADR 0012, `log/2026-10-02-claude-slice9-clarification-edit-delete.md`.
 - Slice 8 (2026-10-01): clarifications: post to all/some rooms, hide/unhide, projector list; protocol 0.6.0, migration 0003, ADR 0011, `log/2026-10-01-claude-slice8-clarifications.md`.

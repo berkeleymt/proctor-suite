@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError, del, patch, post, type Clar, type Snapshot } from "../api";
 import { dropRoom, mergeRooms, useLive } from "../hooks";
 import { go } from "../main";
-import { AdminTabs, Dot, LogoutButton, Popover, Sheet } from "../components/ui";
+import { AdminBar, Popover, Sheet } from "../components/ui";
 import { ClarItem } from "../components/ClarList";
 
 type Rooms = { rooms: Snapshot[]; version?: number };
@@ -213,22 +213,12 @@ export function Clarifications() {
   const where = (d: Dialog) => (d.room ? (names.get(d.room) ?? d.room) : null);
   return (
     <main className="admin">
-      <header className="bar">
-        <AdminTabs active="clarifications" />
-        <span className="muted">
-          {list.length} posted · {list.filter((c) => !c.hidden).length} showing · {list.filter((c) => c.hidden).length} hidden
-          {gone.length > 0 && (
-            <>
-              {" · "}
-              <button className="link" onClick={() => setShowDeleted(!showDeleted)}>
-                {showDeleted ? "Hide" : "Show"} deleted ({gone.length})
-              </button>
-            </>
-          )}
-        </span>
-        <Dot online={online && live.online} />
-        <LogoutButton />
-      </header>
+      <AdminBar
+        active="clarifications"
+        online={online && live.online}
+        summary={`${list.length} posted · ${list.filter((c) => !c.hidden).length} showing · ${list.filter((c) => c.hidden).length} hidden`}
+        deleted={{ count: gone.length, shown: showDeleted, toggle: () => setShowDeleted(!showDeleted) }}
+      />
       <section className="stack composer">
         <div className="compose-grid">
           <label>

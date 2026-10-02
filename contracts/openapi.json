@@ -86,6 +86,10 @@
             "title": "Created At Ms",
             "type": "integer"
           },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
           "edited_at_ms": {
             "anyOf": [
               {
@@ -96,6 +100,13 @@
               }
             ],
             "title": "Edited At Ms"
+          },
+          "edited_room_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Edited Room Ids",
+            "type": "array"
           },
           "hidden": {
             "title": "Hidden",
@@ -151,7 +162,9 @@
           "room_ids",
           "hidden",
           "hidden_room_ids",
-          "removed_room_ids"
+          "removed_room_ids",
+          "deleted",
+          "edited_room_ids"
         ],
         "title": "ClarificationAdmin",
         "type": "object"
@@ -1201,7 +1214,7 @@
       },
       "UpdateClarificationRequest": {
         "additionalProperties": false,
-        "description": "Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,\nstruck out). `room_id` limits a hide/unhide to one room; it is not allowed with `body`.",
+        "description": "Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,\nstruck out). `room_id` limits the action to one room. A per-room edit moves that room to\na new copy with the edited text and returns the copy (0.8.0).",
         "properties": {
           "body": {
             "anyOf": [
@@ -1324,7 +1337,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2333,7 +2346,7 @@
     },
     "/api/staff/clarifications/{clarification_id}": {
       "delete": {
-        "description": "Admin wipes a clarification from the system, or (`room_id`) from one room only.\nNot undoable. Added in 0.7.0.",
+        "description": "Admin deletes a clarification, or (`room_id`) from one room only. Soft since 0.8.0:\nrestorable until emptied. Added in 0.7.0.",
         "operationId": "delete_clarification_api_staff_clarifications__clarification_id__delete",
         "parameters": [
           {
@@ -2423,7 +2436,7 @@
         ]
       },
       "patch": {
-        "description": "Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one\nroom with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0.",
+        "description": "Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one\nroom with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0. With\n`body` and `room_id` (0.8.0) that room moves to a new edited copy, which is returned.",
         "operationId": "update_clarification_api_staff_clarifications__clarification_id__patch",
         "parameters": [
           {
@@ -2495,7 +2508,7 @@
                 }
               }
             },
-            "description": "empty, unknown_room, not_in_room, edit_limit"
+            "description": "empty, unknown_room, not_in_room, edit_limit, deleted"
           },
           "429": {
             "content": {
@@ -2509,6 +2522,181 @@
           }
         },
         "summary": "Update Clarification",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/clarifications/{clarification_id}/empty": {
+      "post": {
+        "description": "Admin wipes a deleted clarification from the database for good. Added in 0.8.0.",
+        "operationId": "empty_clarification_api_staff_clarifications__clarification_id__empty_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clarification_id",
+            "required": true,
+            "schema": {
+              "title": "Clarification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_clarification"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_deleted"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Empty Clarification",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/clarifications/{clarification_id}/restore": {
+      "post": {
+        "description": "Admin undoes a delete, everywhere or (`room_id`) in one room. Added in 0.8.0.",
+        "operationId": "restore_clarification_api_staff_clarifications__clarification_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clarification_id",
+            "required": true,
+            "schema": {
+              "title": "Clarification Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Room Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClarificationAdmin"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_clarification"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room, not_in_room"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Restore Clarification",
         "tags": [
           "staff"
         ]
@@ -2870,6 +3058,92 @@
         ]
       }
     },
+    "/api/staff/rooms/{room_id}/empty": {
+      "post": {
+        "description": "Admin wipes a deleted room and its history from the database for good. 0.8.0.",
+        "operationId": "empty_room_api_staff_rooms__room_id__empty_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_deleted"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Empty Room",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
     "/api/staff/rooms/{room_id}/reset": {
       "post": {
         "description": "Admin: fresh not-started timer for a PAUSED or ENDED room. Added in 0.4.0.",
@@ -3058,8 +3332,20 @@
     },
     "/api/staff/stream": {
       "get": {
-        "description": "SSE: a snapshot per room on connect, then every change in any room, plus heartbeats.",
+        "description": "SSE: a snapshot per room on connect, then every change in any room, plus heartbeats.\nWith `?clarifications=1` (0.8.0) also a `clarifications` event (the admin list, same body\nas GET /api/staff/clarifications) on connect and after every clarification change.\nA `room_removed` event (`{room_id}`, 0.8.0) follows an Empty of a deleted room.",
         "operationId": "staff_stream_api_staff_stream_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "clarifications",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Clarifications",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {

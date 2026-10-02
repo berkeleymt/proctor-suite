@@ -221,8 +221,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Clarification
-         * @description Admin wipes a clarification from the system, or (`room_id`) from one room only.
-         *     Not undoable. Added in 0.7.0.
+         * @description Admin deletes a clarification, or (`room_id`) from one room only. Soft since 0.8.0:
+         *     restorable until emptied. Added in 0.7.0.
          */
         delete: operations["delete_clarification_api_staff_clarifications__clarification_id__delete"];
         options?: never;
@@ -230,9 +230,50 @@ export interface paths {
         /**
          * Update Clarification
          * @description Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one
-         *     room with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0.
+         *     room with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0. With
+         *     `body` and `room_id` (0.8.0) that room moves to a new edited copy, which is returned.
          */
         patch: operations["update_clarification_api_staff_clarifications__clarification_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/clarifications/{clarification_id}/empty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Empty Clarification
+         * @description Admin wipes a deleted clarification from the database for good. Added in 0.8.0.
+         */
+        post: operations["empty_clarification_api_staff_clarifications__clarification_id__empty_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/clarifications/{clarification_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Clarification
+         * @description Admin undoes a delete, everywhere or (`room_id`) in one room. Added in 0.8.0.
+         */
+        post: operations["restore_clarification_api_staff_clarifications__clarification_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/staff/rooms": {
@@ -281,6 +322,26 @@ export interface paths {
          * @description Admin edits duration (before start only) and/or test label. Added in 0.3.0.
          */
         patch: operations["update_room_api_staff_rooms__room_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/rooms/{room_id}/empty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Empty Room
+         * @description Admin wipes a deleted room and its history from the database for good. 0.8.0.
+         */
+        post: operations["empty_room_api_staff_rooms__room_id__empty_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/staff/rooms/{room_id}/reset": {
@@ -333,6 +394,9 @@ export interface paths {
         /**
          * Staff Stream
          * @description SSE: a snapshot per room on connect, then every change in any room, plus heartbeats.
+         *     With `?clarifications=1` (0.8.0) also a `clarifications` event (the admin list, same body
+         *     as GET /api/staff/clarifications) on connect and after every clarification change.
+         *     A `room_removed` event (`{room_id}`, 0.8.0) follows an Empty of a deleted room.
          */
         get: operations["staff_stream_api_staff_stream_get"];
         put?: never;
@@ -403,8 +467,12 @@ export interface components {
             body: string;
             /** Created At Ms */
             created_at_ms: number;
+            /** Deleted */
+            deleted: boolean;
             /** Edited At Ms */
             edited_at_ms: number | null;
+            /** Edited Room Ids */
+            edited_room_ids: string[];
             /** Hidden */
             hidden: boolean;
             /** Hidden Room Ids */
@@ -843,7 +911,8 @@ export interface components {
         /**
          * UpdateClarificationRequest
          * @description Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,
-         *     struck out). `room_id` limits a hide/unhide to one room; it is not allowed with `body`.
+         *     struck out). `room_id` limits the action to one room. A per-room edit moves that room to
+         *     a new copy with the edited text and returns the copy (0.8.0).
          */
         UpdateClarificationRequest: {
             /** Body */
@@ -1749,7 +1818,141 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description empty, unknown_room, not_in_room, edit_limit */
+            /** @description empty, unknown_room, not_in_room, edit_limit, deleted */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    empty_clarification_api_staff_clarifications__clarification_id__empty_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clarification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_clarification */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_deleted */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restore_clarification_api_staff_clarifications__clarification_id__restore_post: {
+        parameters: {
+            query?: {
+                room_id?: string | null;
+            };
+            header?: never;
+            path: {
+                clarification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationAdmin"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_clarification */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room, not_in_room */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -2068,6 +2271,80 @@ export interface operations {
             };
         };
     };
+    empty_room_api_staff_rooms__room_id__empty_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_deleted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     reset_room_api_staff_rooms__room_id__reset_post: {
         parameters: {
             query?: never;
@@ -2217,7 +2494,9 @@ export interface operations {
     };
     staff_stream_api_staff_stream_get: {
         parameters: {
-            query?: never;
+            query?: {
+                clarifications?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;

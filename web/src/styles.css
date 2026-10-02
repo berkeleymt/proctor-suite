@@ -166,3 +166,29 @@ button.bad { color: var(--bad); }
 .clars-h { font-size: clamp(18px, 3.4vh, 40px); font-weight: 600; letter-spacing: 0; color: var(--muted); margin: 0 0 0.5vh; } /* describes the list; quiet on purpose */
 .display iframe.doc { width: 100%; height: 100%; min-height: 0; border: 0; border-top: 2px solid var(--line); background: #fff; }
 .ctl { display: inline-flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Admin header on narrow screens: ☰, current tab, light. The menu opens over the page (no layout shift). */
+.burger, .cur, .mob-only { display: none; }
+.abar-menu { display: contents; }
+@media (max-width: 1040px) {
+  .abar { gap: 12px; z-index: 8; }
+  .burger, .cur, .mob-only { display: flex; }
+  .desk-only { display: none; }
+  .abar.open .mob-only { display: none; }  /* the light is not part of the open menu */
+  .cur { flex: 1; min-width: 0; font-weight: 700; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .abar-menu { display: none; }
+  .abar.open .abar-menu { display: grid; gap: 14px; position: absolute; left: 0; right: 0; top: 100%; padding: 12px 20px 20px; background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: 0 12px 30px rgb(0 0 0 / 0.14); animation: rise 160ms var(--ease); max-height: calc(100dvh - 61px); overflow-y: auto; }
+  .abar .tabs { flex-direction: column; gap: 0; margin: 0; align-self: auto; }
+  .abar .tab { padding: 12px 0 12px 12px; margin: 0; border-bottom: 0; border-left: 2px solid transparent; }
+  .abar .tab[aria-current="page"] { border-left-color: var(--text); }
+  .admin .abar .muted { flex: none; display: grid; gap: 6px; }
+  .abar .muted .sep { display: none; }
+  .abar .muted .link { justify-self: start; min-height: 32px; }
+  .abar-menu > button { width: 100%; }
+}
+/* ☰ becomes ✕ while open: transform/opacity only. */
+.burger { flex: none; width: 48px; padding: 0; margin-left: -8px; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-color: transparent; background: transparent; }
+.burger i { display: block; width: 20px; height: 2px; border-radius: 1px; background: var(--text); transition: transform 200ms var(--ease), opacity 150ms var(--ease); }
+.abar.open .burger i:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.abar.open .burger i:nth-child(2) { opacity: 0; }
+.abar.open .burger i:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }

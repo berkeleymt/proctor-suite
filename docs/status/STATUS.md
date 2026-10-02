@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-02 (slice 10) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-02 (slice 11) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -17,7 +17,7 @@
 
 ## Next actions, in order
 
-0. Regenerate the contract (could not be run in the sandbox): `cd server && uv run python -m scripts.export_openapi`, then `cd web && npm run gen`; commit `contracts/openapi.json` and `web/src/api-types.ts`. Then run `uv run pytest` (new tests unrun) and `npm run build`.
+0. *(Done in slice 11)* Contract regenerated; pytest 98 passed with Postgres, `npm run build` passes.
 1. Push slices 8-10 (migrations 0003-0005) and run `deploy.sh` (README). Open `/display` on a real projector or a resized window and click through login, Add room, filters, bulk actions on 2 devices. **Browser verification is the biggest open risk.**
 2. After deploy: `/readyz` says `ready`; restart the app container and confirm rooms and running timers survive.
 3. Slices 9-10 are done except the Preview-display button (ADR 0012, 0013); the Deletion tab was cancelled. Check a Google Doc embed on a real display.
