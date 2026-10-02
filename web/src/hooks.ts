@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { api, ApiError, backoff, syncClock, type Snapshot } from "./api";
+import { api, ApiError, backoff, syncClock, type RoomPresence, type Snapshot } from "./api";
 
 /** Re-renders every 250 ms (protocol TIMER_TICK_MS). Time is derived, never decremented. */
 export function useTick() {
@@ -47,6 +47,7 @@ export function useLive<T extends { version?: number }>(
   streamPath: string,
   merge: (prev: T | null, snap: Snapshot) => T | null,
   everyMs = 2000,
+  extra: Record<string, (prev: T | null, data: any) => T | null> = {}, // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Poll<T> {
   const [data, setData] = useState<T | null>(null);
   const [live, setLive] = useState(false);
@@ -54,6 +55,8 @@ export function useLive<T extends { version?: number }>(
   const [unauthorized, setUnauthorized] = useState(false);
   const mergeRef = useRef(merge);
   mergeRef.current = merge;
+  const extraRef = useRef(extra);
+  extraRef.current = extra;
 
   useEffect(() => {
     let stop = false;
@@ -81,6 +84,12 @@ export function useLive<T extends { version?: number }>(
         setData((prev) => mergeRef.current(prev, JSON.parse((e as MessageEvent).data)));
       });
       es.addEventListener("heartbeat", alive);
+      for (const name of Object.keys(extraRef.current)) {
+        es.addEventListener(name, (e) => {
+          alive();
+          setData((prev) => extraRef.current[name](prev, JSON.parse((e as MessageEvent).data)));
+        });
+      }
       es.onerror = fail;
     };
     open();
@@ -107,6 +116,12 @@ export function useLive<T extends { version?: number }>(
 /** Whole-room stream: keep the newest version of one room. */
 export const mergeRoom = (prev: Snapshot | null, snap: Snapshot): Snapshot =>
   prev && prev.version > snap.version ? prev : snap;
+
+/** Staff stream `presence` event: who has each room's pages open. */
+export function mergePresence<T extends { presence?: RoomPresence[] }>(prev: T | null, p: RoomPresence): T | null {
+  if (!prev) return prev;
+  return { ...prev, presence: [...(prev.presence ?? []).filter((x) => x.room_id !== p.room_id), p] };
+}
 
 /** Staff stream: one snapshot per room; replace that room, keep the list sorted by name. */
 export function mergeRooms(prev: { rooms: Snapshot[] } | null, snap: Snapshot) {
@@ -140,7 +155,7 @@ export function usePoll<T extends { version?: number }>(path: string, everyMs = 
         fails = 0;
         setOnline(true);
       } catch (e) {
-        if (e instanceof ApiError && e.status === 401) {
+        if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {  // signed out, or the room was deleted
           setUnauthorized(true);
           return;
         }

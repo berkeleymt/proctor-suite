@@ -5,7 +5,7 @@ server (app.main). When the real routers exist, the export script should switch 
 from them (and this file goes away); the contract test will fail if the two ever disagree.
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, Path, Query, Response
 from fastapi.openapi.utils import get_openapi
@@ -19,6 +19,7 @@ from app.protocol.models import (
     ErrorResponse,
     Identity,
     LoginOptionsResponse,
+    ResetRoomRequest,
     RoomIdentity,
     RoomLoginRequest,
     RoomSnapshot,
@@ -40,7 +41,7 @@ _ERRORS: dict[int | str, dict[str, Any]] = {
 
 _SSE: dict[int | str, dict[str, Any]] = {
     200: {
-        "description": "text/event-stream. Frames are SnapshotMessage and HeartbeatMessage.",
+        "description": "text/event-stream. Frames are SnapshotMessage, HeartbeatMessage and (staff stream only) PresenceMessage.",
         "content": {
             "text/event-stream": {
                 "schema": {
@@ -118,7 +119,10 @@ def build_schema_app() -> FastAPI:
         _stub()
 
     @app.get("/api/rooms/{room_id}/stream", tags=["rooms"], responses=_SSE)
-    async def room_stream(room_id: Annotated[str, Path()]):
+    async def room_stream(
+        room_id: Annotated[str, Path()],
+        surface: Annotated[Literal["control", "display"] | None, Query()] = None,
+    ):
         """SSE: current snapshot immediately, then every change, plus heartbeats."""
         _stub()
 
@@ -153,6 +157,42 @@ def build_schema_app() -> FastAPI:
     )
     async def update_room(room_id: str, body: UpdateRoomRequest):
         """Admin edits duration (before start only) and/or test label. Added in 0.3.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/rooms/{room_id}/reset",
+        response_model=RoomSnapshot,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            409: {
+                "model": ErrorResponse,
+                "description": "not_resettable | stale_session | room_deleted",
+            },
+        },
+    )
+    async def reset_room(room_id: str, body: ResetRoomRequest):
+        """Admin: fresh not-started timer for a PAUSED or ENDED room. Added in 0.4.0."""
+        _stub()
+
+    @app.delete(
+        "/api/staff/rooms/{room_id}",
+        response_model=RoomSnapshot,
+        tags=["staff"],
+        responses={**_ERRORS, 409: {"model": ErrorResponse, "description": "room_in_progress"}},
+    )
+    async def delete_room(room_id: str):
+        """Admin: soft delete (hide). Not while RUNNING or PAUSED. Signs the room out. 0.4.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/rooms/{room_id}/restore",
+        response_model=RoomSnapshot,
+        tags=["staff"],
+        responses=_ERRORS,
+    )
+    async def restore_room(room_id: str):
+        """Admin: undo a soft delete. Added in 0.4.0."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)

@@ -2,6 +2,8 @@ import type { components } from "./api-types";
 
 export type Snapshot = components["schemas"]["RoomSnapshot"];
 export type Command = components["schemas"]["CommandResponse"];
+export type RoomPresence = components["schemas"]["RoomPresence"];
+export type SurfacePresence = components["schemas"]["SurfacePresence"];
 export type RoomOption = components["schemas"]["LoginRoomOption"];
 export type Identity = components["schemas"]["RoomIdentity"] | components["schemas"]["StaffIdentity"];
 
@@ -19,7 +21,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T | null> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  const post = init.method === "POST" || init.method === "PATCH";
+  const post = ["POST", "PATCH", "DELETE"].includes(init.method ?? "GET");
   try {
     const r = await fetch(path, {
       ...init,
@@ -42,6 +44,8 @@ export const post = <T>(path: string, body?: unknown) =>
   api<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 
 export const patch = <T>(path: string, body: unknown) => api<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+
+export const del = <T>(path: string) => api<T>(path, { method: "DELETE" });
 
 export const backoff = (attempt: number) => Math.random() * Math.min(BACKOFF_CAP_S, BACKOFF_BASE_S * 2 ** attempt) * 1000;
 

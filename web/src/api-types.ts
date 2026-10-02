@@ -198,7 +198,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Room
+         * @description Admin: soft delete (hide). Not while RUNNING or PAUSED. Signs the room out. 0.4.0.
+         */
+        delete: operations["delete_room_api_staff_rooms__room_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -206,6 +210,46 @@ export interface paths {
          * @description Admin edits duration (before start only) and/or test label. Added in 0.3.0.
          */
         patch: operations["update_room_api_staff_rooms__room_id__patch"];
+        trace?: never;
+    };
+    "/api/staff/rooms/{room_id}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Room
+         * @description Admin: fresh not-started timer for a PAUSED or ENDED room. Added in 0.4.0.
+         */
+        post: operations["reset_room_api_staff_rooms__room_id__reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/rooms/{room_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Room
+         * @description Admin: undo a soft delete. Added in 0.4.0.
+         */
+        post: operations["restore_room_api_staff_rooms__room_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/staff/stream": {
@@ -305,6 +349,8 @@ export interface components {
          * @description Admin adds a room (wireframe: Admin · Timers). Duration defaults to 180 minutes.
          */
         CreateRoomRequest: {
+            /** Doc Url */
+            doc_url?: string | null;
             /**
              * Duration Min
              * @default 180
@@ -450,6 +496,15 @@ export interface components {
          * @enum {string}
          */
         RejectionReason: "claimed_at_out_of_bounds" | "session_ended" | "already_permitted" | "not_permitted" | "already_started" | "not_running" | "not_paused" | "not_started" | "adjust_out_of_range" | "stale_session";
+        /**
+         * ResetRoomRequest
+         * @description Admin resets a paused or finished room to a fresh, not-started timer. `session_id` is the
+         *     session the admin was looking at, so two admins can't reset twice by accident.
+         */
+        ResetRoomRequest: {
+            /** Session Id */
+            session_id: string;
+        };
         /** ResumeCommand */
         ResumeCommand: {
             /** Claimed At Ms */
@@ -510,10 +565,24 @@ export interface components {
             surface: "display" | "control";
         };
         /**
+         * RoomPresence
+         * @description Who has this room's pages open (staff stream only). `control` = proctor page.
+         */
+        RoomPresence: {
+            control: components["schemas"]["SurfacePresence"];
+            display: components["schemas"]["SurfacePresence"];
+            /** Room Id */
+            room_id: string;
+        };
+        /**
          * RoomSnapshot
          * @description Everything a room device needs to show and tick the timer. Sent in full every time.
          */
         RoomSnapshot: {
+            /** Deleted */
+            deleted: boolean;
+            /** Doc Url */
+            doc_url: string | null;
             /** Room Id */
             room_id: string;
             /** Room Name */
@@ -567,6 +636,8 @@ export interface components {
         StaffRole: "admin" | "pm" | "to";
         /** StaffRoomsResponse */
         StaffRoomsResponse: {
+            /** Presence */
+            presence?: components["schemas"]["RoomPresence"][];
             /** Rooms */
             rooms: components["schemas"]["RoomSnapshot"][];
         };
@@ -603,6 +674,13 @@ export interface components {
          * @enum {string}
          */
         Surface: "display" | "control" | "staff";
+        /** SurfacePresence */
+        SurfacePresence: {
+            /** Last Seen Ms */
+            last_seen_ms?: number | null;
+            /** Online */
+            online: number;
+        };
         /** TimeResponse */
         TimeResponse: {
             /** Server Time Ms */
@@ -638,8 +716,12 @@ export interface components {
          *     Duration can only change before the timer starts; use `adjust` (+/- time) once running.
          */
         UpdateRoomRequest: {
+            /** Doc Url */
+            doc_url?: string | null;
             /** Duration Min */
             duration_min?: number | null;
+            /** Name */
+            name?: string | null;
             /** Test Name */
             test_name?: string | null;
         };
@@ -1136,7 +1218,9 @@ export interface operations {
     };
     room_stream_api_rooms__room_id__stream_get: {
         parameters: {
-            query?: never;
+            query?: {
+                surface?: ("control" | "display") | null;
+            };
             header?: never;
             path: {
                 room_id: string;
@@ -1145,7 +1229,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description text/event-stream. Frames are SnapshotMessage and HeartbeatMessage. */
+            /** @description text/event-stream. Frames are SnapshotMessage, HeartbeatMessage and (staff stream only) PresenceMessage. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1345,6 +1429,82 @@ export interface operations {
             };
         };
     };
+    delete_room_api_staff_rooms__room_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description room_in_progress */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     update_room_api_staff_rooms__room_id__patch: {
         parameters: {
             query?: never;
@@ -1425,6 +1585,153 @@ export interface operations {
             };
         };
     };
+    reset_room_api_staff_rooms__room_id__reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_resettable | stale_session | room_deleted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restore_room_api_staff_rooms__room_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     staff_stream_api_staff_stream_get: {
         parameters: {
             query?: never;
@@ -1434,7 +1741,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description text/event-stream. Frames are SnapshotMessage and HeartbeatMessage. */
+            /** @description text/event-stream. Frames are SnapshotMessage, HeartbeatMessage and (staff stream only) PresenceMessage. */
             200: {
                 headers: {
                     [name: string]: unknown;

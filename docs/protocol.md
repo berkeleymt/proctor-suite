@@ -54,7 +54,7 @@ All auth endpoints are served by the server itself (invariant 6: no email, no OA
 |---|---|---|---|
 | `display_sid` | yes | no | no |
 | `control_sid` | yes | start, pause, resume (own room only) | no |
-| `staff_sid` (admin, pm) | any room | permit, start, end, adjust (any room) | yes |
+| `staff_sid` (admin, pm) | any room | permit, start, pause, resume, end, adjust (any room) | yes |
 | `staff_sid` (to) | any room | none | yes (read) |
 
 ## 4. Clock sync
@@ -140,7 +140,7 @@ One endpoint: `POST /api/commands`, one command per request. Requires the cookie
 |---|---|---|---|---|
 | `permit` (grant permission to start) | no | yes | yes | no |
 | `start` | yes (own room; valid only if PERMITTED) | yes (**on behalf of the room**) | yes (**on behalf**) | no |
-| `pause`, `resume` | yes | no | no | no |
+| `pause`, `resume` | yes | yes (0.4.0) | yes | no |
 | `end` (end early) | **no: proctors cannot end a test early** | yes | yes | no |
 | `adjust` | no | yes | yes | no |
 
@@ -181,7 +181,7 @@ For each command: authenticate → authorize → lock the room → check `comman
 
 ### 7.1 RoomSnapshot
 
-`{room_id, room_name, test_name, session_id, version, server_time_ms, timer: TimerSnapshot}`. Always sent whole, so a client can never hold a half-updated state. About 2 KB.
+`{room_id, room_name, test_name, session_id, version, server_time_ms, timer: TimerSnapshot, deleted, doc_url}`. `deleted` rooms are only ever sent to staff. Always sent whole, so a client can never hold a half-updated state. About 2 KB.
 
 ### 7.2 Server-Sent Events
 
@@ -198,6 +198,8 @@ event: heartbeat
 data: {"server_time_ms": 1760000000000}
 ```
 
+- **Presence (0.4.0).** `GET /api/rooms/{room_id}/stream?surface=control|display` says which page is listening; it counts only if that surface's own login is valid for the room (a staff preview never counts). The staff stream also carries `event: presence` with `RoomPresence` (`control`/`display`: `online` = streams open now, `last_seen_ms` = last connect or disconnect, null = never since the server started): once per room with data on connect, then on every change. In memory only. A device that vanishes without closing is noticed within about one heartbeat.
+- A room stream ends when its room is deleted; the device's next request gets 404 and it goes to login.
 - A `heartbeat` is sent on every open stream every `HEARTBEAT_INTERVAL_S` (15 s).
 - `id` equals the room version. Resuming with `Last-Event-ID` is not needed, since every frame is a full snapshot.
 - Responses must not be buffered or compressed in a way that delays frames (Caddy is configured with `flush_interval -1`).
@@ -246,7 +248,10 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `POST /api/commands` | room or staff | `Command` | `CommandResponse` |
 | `GET /api/staff/rooms` | staff | — | `StaffRoomsResponse` |
 | `POST /api/staff/rooms` | admin/PM | `CreateRoomRequest` | `RoomSnapshot` (201); 409 `room_exists` |
-| `PATCH /api/staff/rooms/{room_id}` | admin/PM | `UpdateRoomRequest` | `RoomSnapshot`; 409 `room_started` if changing duration after start |
+| `PATCH /api/staff/rooms/{room_id}` | admin/PM | `UpdateRoomRequest` (name, duration, test label, doc link) | `RoomSnapshot`; 409 `room_started` (duration after start), 409 `room_exists` (name taken), 409 `room_deleted` |
+| `POST /api/staff/rooms/{room_id}/reset` | admin/PM | `ResetRoomRequest` (`session_id` the admin saw) | `RoomSnapshot` with a **new session**, status NOT_PERMITTED. 409 `not_resettable` unless PAUSED or ENDED; 409 `stale_session` |
+| `DELETE /api/staff/rooms/{room_id}` | admin/PM | | `RoomSnapshot` with `deleted: true` (soft delete). 409 `room_in_progress` while RUNNING or PAUSED. Signs the room's devices out |
+| `POST /api/staff/rooms/{room_id}/restore` | admin/PM | | `RoomSnapshot` with `deleted: false` |
 | `GET /api/staff/stream` | staff | — | SSE |
 
 `/readyz` touches Postgres and is for monitoring only. Room devices never call it (invariant 1).
@@ -281,7 +286,7 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 ## 13. Open questions (decide by adding a changelog entry)
 
 1. **Adding time after expiry.** Today, once the timer reaches zero the session is over and staff cannot add time (§5.5.6). If a proctor ends up needing "give them 30 more seconds" after a timer hit zero, a future `reopen` command would be needed. Decide before Oct 24 whether that is a Tier 1 need.
-2. **Staff pause/resume.** Staff cannot pause or resume a room in v0 (the spec only gives them permit, start-on-behalf, end, adjust). If a room is offline during a disruption, staff can only end or adjust. Decide whether to add it.
+2. ~~**Staff pause/resume.**~~ Resolved in 0.4.0: admins and PMs can pause and resume any room.
 3. **Dropdown size.** `GET /api/auth/rooms` is public and lists every room name (≤ 500). Accepted for v0 because the event password protects access, but it does reveal the room list to anyone who can reach the server.
 
 ## 14. Changelog
@@ -291,3 +296,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.1.0 | 2026-10-01 | First version: auth with room dropdown, time, timer fold and merge rules, commands (permit, start, pause, resume, end, adjust), SSE, polling fallback, constants. Proctors cannot end early; staff can start on behalf of a room. |
 | 0.2.0 | 2026-10-01 | Added `POST /api/staff/rooms` (admin creates a room: name, `duration_min` default 180, 1-720). New in-memory rooms get one current session. No change to existing endpoints. |
 | 0.3.0 | 2026-10-01 | Added `PATCH /api/staff/rooms/{room_id}` (edit duration before start, edit test label) and optional `test_name` on `CreateRoomRequest`. |
+| 0.4.0 | 2026-10-01 | Room management and presence. Added `POST /api/staff/rooms/{room_id}/reset` (new session, only from PAUSED/ENDED, lands on NOT_PERMITTED), `DELETE` (soft delete) and `POST .../restore`, `name` and `doc_url` on `UpdateRoomRequest`, `doc_url` on `CreateRoomRequest`. `RoomSnapshot` gained required `deleted` and `doc_url`. Staff may now `pause` and `resume`. Added `?surface=` on the room stream, `presence` SSE event, and `presence` on `StaffRoomsResponse`. |

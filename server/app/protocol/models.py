@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.protocol.constants import MAX_LOGIN_ROOMS, MAX_STAFF_ROOMS
 
@@ -118,6 +118,8 @@ class RoomSnapshot(BaseModel):
     version: int  # per room; increases whenever the room's snapshot changes
     server_time_ms: int  # informational only; NOT a clock-sync sample
     timer: TimerSnapshot
+    deleted: bool  # soft-deleted by an admin; only staff ever see these
+    doc_url: str | None  # optional https link (clarifications doc), set by an admin
 
 
 # ---------------------------------------------------------------- commands
@@ -234,8 +236,34 @@ class StaffIdentity(BaseModel):
 Identity = Annotated[RoomIdentity | StaffIdentity, Field(discriminator="kind")]
 
 
+class SurfacePresence(BaseModel):
+    online: int = Field(ge=0)  # open streams from that page right now
+    last_seen_ms: int | None = (
+        None  # last connect/disconnect; null = never since the server started
+    )
+
+
+class RoomPresence(BaseModel):
+    """Who has this room's pages open (staff stream only). `control` = proctor page."""
+
+    room_id: str
+    control: SurfacePresence
+    display: SurfacePresence
+
+
 class StaffRoomsResponse(BaseModel):
     rooms: list[RoomSnapshot] = Field(max_length=MAX_STAFF_ROOMS)
+    presence: list[RoomPresence] = Field(default_factory=list, max_length=MAX_STAFF_ROOMS)
+
+
+def _https_url(v: str | None) -> str | None:
+    """Empty string clears; anything else must be an https link."""
+    if v is None:
+        return None
+    v = v.strip()
+    if v and not v.startswith("https://"):
+        raise ValueError("Use a link that starts with https://")
+    return v
 
 
 class CreateRoomRequest(BaseModel):
@@ -245,6 +273,9 @@ class CreateRoomRequest(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     duration_min: int = Field(default=180, ge=1, le=720)
     test_name: str | None = Field(default=None, max_length=60)
+    doc_url: str | None = Field(default=None, max_length=500)
+
+    _check_url = field_validator("doc_url")(_https_url)
 
 
 class UpdateRoomRequest(BaseModel):
@@ -256,6 +287,18 @@ class UpdateRoomRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     duration_min: int | None = Field(default=None, ge=1, le=720)
     test_name: str | None = Field(default=None, min_length=1, max_length=60)
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    doc_url: str | None = Field(default=None, max_length=500)  # "" removes it
+
+    _check_url = field_validator("doc_url")(_https_url)
+
+
+class ResetRoomRequest(BaseModel):
+    """Admin resets a paused or finished room to a fresh, not-started timer. `session_id` is the
+    session the admin was looking at, so two admins can't reset twice by accident."""
+
+    model_config = ConfigDict(extra="forbid")
+    session_id: str
 
 
 # ---------------------------------------------------------------- SSE messages
@@ -270,6 +313,13 @@ class SnapshotMessage(BaseModel):
 
     event: Literal["snapshot"]
     data: RoomSnapshot
+
+
+class PresenceMessage(BaseModel):
+    """SSE frame on the staff stream: `event: presence`, `data: <RoomPresence as JSON>`."""
+
+    event: Literal["presence"]
+    data: RoomPresence
 
 
 class HeartbeatMessage(BaseModel):

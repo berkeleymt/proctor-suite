@@ -96,3 +96,35 @@ def test_failed_commit_leaves_memory_untouched(monkeypatch):
         assert not room.seen
 
     asyncio.run(run())
+
+
+def test_reset_delete_rename_survive_restart(monkeypatch):
+    monkeypatch.setenv("SEED_ROOMS", "Seed One")
+    asyncio.run(reset())
+    migrate()  # runs 0001 then 0002
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        first = Store()
+        await first.load(pool)
+        room = await first.create_room("Keep Hall", 60, doc_url="https://example.com/d")
+        await first.apply(room, command("permit", room), ActorKind.STAFF)
+        await first.apply(room, command("start", room), ActorKind.STAFF)
+        await first.apply(room, command("pause", room), ActorKind.STAFF)
+        old_session = room.session_id
+        await first.reset_room(room, old_session)
+        await first.update_room(room, name="Kept Hall", doc_url="")
+        gone = await first.create_room("Gone Hall", 60)
+        await first.delete_room(gone)
+        want = (room.session_id, room.version, first.snapshot(room).timer.status)
+        assert want[0] != old_session and want[2] == TimerStatus.NOT_PERMITTED
+
+        second = Store()  # "restart"
+        await second.load(pool)
+        back = second.rooms["keep-hall"]
+        assert (back.session_id, back.version, second.snapshot(back).timer.status) == want
+        assert back.name == "Kept Hall" and back.doc_url is None and not back.events
+        assert second.rooms["gone-hall"].deleted
+        await pool.close()
+
+    asyncio.run(run())

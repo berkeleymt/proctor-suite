@@ -4,6 +4,7 @@ import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
 import { FitText, useZoom, ZoomButtons } from "../components/FitText";
+import { Dot, Sheet } from "../components/ui";
 
 type Me = { room_id: string; room_name: string };
 
@@ -39,7 +40,7 @@ export function Proctor() {
 
 function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
   useTick();
-  const { data: s, setData, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream`, mergeRoom);
+  const { data: s, setData, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream?surface=control`, mergeRoom);
   const [err, setErr] = useState("");
   const [asking, setAsking] = useState(false);
   const z = useZoom("proctor");
@@ -67,7 +68,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
         <div>
           <strong>{s.room_name}</strong> <span className="pill" data-s={st}>{label(s)}</span>
         </div>
-        <span className={`dot ${online ? "ok" : "bad"}`} title={online ? "Connected" : "Offline"} />
+        <Dot online={online} />
         <button onClick={logout}>Log out</button>
       </header>
       <div className="clock-wrap">
@@ -84,8 +85,10 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
           <button className="primary" onClick={() => act("resume")}>
             Resume
           </button>
+        ) : st === "ENDED" ? (
+          <button disabled>Time&apos;s up</button>
         ) : (
-          <button className="primary" disabled={st !== "PERMITTED"} onClick={() => act("start")} title={st === "NOT_PERMITTED" ? "Waiting for an admin to allow start" : undefined}>
+          <button className="primary" disabled={st !== "PERMITTED"} onClick={() => act("start")}>
             Start
           </button>
         )}
@@ -94,13 +97,23 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
           <span className="short">Display ↗</span>
         </button>
       </div>
+      <p className="hint">
+        {st === "NOT_PERMITTED"
+          ? "Start unlocks when an admin allows it."
+          : st === "PAUSED"
+            ? "Paused. Resume when you're ready. Only an admin can reset the timer."
+            : st === "ENDED"
+              ? "The timer is finished. Only an admin can reset it."
+              : "\u00a0"}
+      </p>
       {asking && (
-        <div className="scrim" onClick={() => setAsking(false)}>
-          <div className="sheet stack" role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
-            <h2>Pause the timer for {s.room_name}?</h2>
-            <p className="muted">Students will see the clock stop.</p>
+        <Sheet title={`Pause the timer for ${s.room_name}?`} onClose={() => setAsking(false)}>
+          <p className="muted">Students will see the clock stop.</p>
+          <div className="row">
+            <button onClick={() => setAsking(false)}>Cancel</button>
             <button
               className="primary"
+              autoFocus
               onClick={() => {
                 setAsking(false);
                 act("pause");
@@ -108,9 +121,8 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
             >
               Pause
             </button>
-            <button onClick={() => setAsking(false)}>Cancel</button>
           </div>
-        </div>
+        </Sheet>
       )}
     </main>
   );

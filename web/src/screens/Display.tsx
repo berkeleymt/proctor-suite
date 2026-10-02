@@ -3,6 +3,7 @@ import { api, fmt, remainingMs, serverNow, type Snapshot } from "../api";
 import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { FitText, useActive, useZoom, ZoomButtons } from "../components/FitText";
+import { Dot } from "../components/ui";
 
 export function Display() {
   useClock();
@@ -26,7 +27,7 @@ export function Display() {
 }
 
 function Screen({ roomId }: { roomId: string }) {
-  const { data: s, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream`, mergeRoom);
+  const { data: s, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream?surface=display`, mergeRoom);
   useEffect(() => {
     if (unauthorized) go(`/login?surface=display&room=${roomId}`);
   }, [unauthorized, roomId]);
@@ -50,7 +51,7 @@ function View({ s, online }: { s: Snapshot; online: boolean }) {
         <span className={`ctl ${active ? "" : "hide"}`}>
           <ZoomButtons z={z} />
         </span>
-        <span className={`dot ${online ? "ok" : "bad"}`} title={online ? "Connected" : "Offline"} />
+        <Dot online={online} />
       </header>
       <FitText className={`clock ${tone}`} text={fmt(ms)} zoom={z.zoom} />
       <footer>{label(s)}</footer>

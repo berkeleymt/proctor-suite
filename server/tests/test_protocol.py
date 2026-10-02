@@ -59,6 +59,8 @@ SNAPSHOT = {
     "session_id": "sess-1",
     "version": 3,
     "server_time_ms": 123,
+    "deleted": False,
+    "doc_url": None,
     "timer": {
         "status": "RUNNING",
         "duration_ms": 600000,

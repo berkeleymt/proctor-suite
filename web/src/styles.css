@@ -37,9 +37,25 @@ button:active:not(:disabled) { transform: scale(0.97); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; position: sticky; top: 0; background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--line); }
+.bar { display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 14px 20px; position: sticky; top: 0; background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--line); }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); transition: background-color 200ms var(--ease); }
 .dot.bad { background: var(--bad); }
+.dot.off { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); }
+.bar > .dot { margin-left: auto; flex: none; }  /* connection light: always at the right, next to the buttons */
+button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.hint { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
+.menu { position: relative; display: inline-block; }
+.menu-btn { min-width: 40px; padding: 0 10px; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; min-width: 168px; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 8px 30px rgb(0 0 0 / 0.14); display: grid; animation: rise 140ms var(--ease); }
+.menu-list button { border: 0; background: transparent; text-align: left; min-height: 40px; font-weight: 500; }
+.menu-list button:hover:not(:disabled) { background: color-mix(in srgb, var(--muted) 14%, transparent); }
+.menu-list .bad { color: var(--bad); }
+.devs { display: flex; gap: 12px; font-size: 13px; color: var(--muted); }
+.dev { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dev .dot { width: 8px; height: 8px; }
+.dev.on { color: var(--text); }
+.tr.gone { opacity: 0.6; }
+.link { border: 0; background: none; min-height: 0; padding: 0; color: var(--accent); font-weight: 500; font-size: 14px; }
 .pill { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 18%, transparent); }
 .pill[data-s="RUNNING"] { color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); }
 .pill[data-s="PAUSED"], .pill[data-s="PERMITTED"] { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
@@ -70,7 +86,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .admin .bar .muted { flex: 1; font-size: 14px; }
 .admin .error { margin: 12px 20px; }
 .table { margin: 16px 20px; background: var(--card); border-radius: 16px; overflow-x: auto; }
-.tr { display: grid; grid-template-columns: 28px 1.2fr 1fr 1fr 0.9fr 0.8fr 2.2fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 980px; }
+.tr { display: grid; grid-template-columns: 28px 1.2fr 1fr 1fr 0.9fr 0.8fr 1.3fr 2.5fr; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); min-width: 1200px; }
 .tr:first-child { border-top: 0; }
 .th { color: var(--muted); font-size: 13px; }
 .tr button { min-height: 40px; padding: 0 14px; }

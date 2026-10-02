@@ -126,6 +126,18 @@
         "additionalProperties": false,
         "description": "Admin adds a room (wireframe: Admin \u00b7 Timers). Duration defaults to 180 minutes.",
         "properties": {
+          "doc_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Url"
+          },
           "duration_min": {
             "default": 180,
             "maximum": 720.0,
@@ -496,6 +508,21 @@
         "title": "RejectionReason",
         "type": "string"
       },
+      "ResetRoomRequest": {
+        "additionalProperties": false,
+        "description": "Admin resets a paused or finished room to a fresh, not-started timer. `session_id` is the\nsession the admin was looking at, so two admins can't reset twice by accident.",
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "ResetRoomRequest",
+        "type": "object"
+      },
       "ResumeCommand": {
         "additionalProperties": false,
         "properties": {
@@ -636,9 +663,46 @@
         "title": "RoomLoginRequest",
         "type": "object"
       },
+      "RoomPresence": {
+        "description": "Who has this room's pages open (staff stream only). `control` = proctor page.",
+        "properties": {
+          "control": {
+            "$ref": "#/components/schemas/SurfacePresence"
+          },
+          "display": {
+            "$ref": "#/components/schemas/SurfacePresence"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "control",
+          "display"
+        ],
+        "title": "RoomPresence",
+        "type": "object"
+      },
       "RoomSnapshot": {
         "description": "Everything a room device needs to show and tick the timer. Sent in full every time.",
         "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "doc_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Url"
+          },
           "room_id": {
             "title": "Room Id",
             "type": "string"
@@ -674,7 +738,9 @@
           "session_id",
           "version",
           "server_time_ms",
-          "timer"
+          "timer",
+          "deleted",
+          "doc_url"
         ],
         "title": "RoomSnapshot",
         "type": "object"
@@ -760,6 +826,14 @@
       },
       "StaffRoomsResponse": {
         "properties": {
+          "presence": {
+            "items": {
+              "$ref": "#/components/schemas/RoomPresence"
+            },
+            "maxItems": 1000,
+            "title": "Presence",
+            "type": "array"
+          },
           "rooms": {
             "items": {
               "$ref": "#/components/schemas/RoomSnapshot"
@@ -854,6 +928,31 @@
         "title": "Surface",
         "type": "string"
       },
+      "SurfacePresence": {
+        "properties": {
+          "last_seen_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen Ms"
+          },
+          "online": {
+            "minimum": 0.0,
+            "title": "Online",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "online"
+        ],
+        "title": "SurfacePresence",
+        "type": "object"
+      },
       "TimeResponse": {
         "properties": {
           "server_time_ms": {
@@ -922,6 +1021,18 @@
         "additionalProperties": false,
         "description": "Admin edits a room that has not started (wireframe: Edit\u2026). Omitted fields are unchanged.\n\nDuration can only change before the timer starts; use `adjust` (+/- time) once running.",
         "properties": {
+          "doc_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Url"
+          },
           "duration_min": {
             "anyOf": [
               {
@@ -934,6 +1045,19 @@
               }
             ],
             "title": "Duration Min"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "test_name": {
             "anyOf": [
@@ -974,7 +1098,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1627,6 +1751,26 @@
               "title": "Room Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "surface",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "control",
+                    "display"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Surface"
+            }
           }
         ],
         "responses": {
@@ -1648,7 +1792,7 @@
                 }
               }
             },
-            "description": "text/event-stream. Frames are SnapshotMessage and HeartbeatMessage."
+            "description": "text/event-stream. Frames are SnapshotMessage, HeartbeatMessage and (staff stream only) PresenceMessage."
           },
           "401": {
             "content": {
@@ -1870,6 +2014,97 @@
       }
     },
     "/api/staff/rooms/{room_id}": {
+      "delete": {
+        "description": "Admin: soft delete (hide). Not while RUNNING or PAUSED. Signs the room out. 0.4.0.",
+        "operationId": "delete_room_api_staff_rooms__room_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "room_in_progress"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Delete Room",
+        "tags": [
+          "staff"
+        ]
+      },
       "patch": {
         "description": "Admin edits duration (before start only) and/or test label. Added in 0.3.0.",
         "operationId": "update_room_api_staff_rooms__room_id__patch",
@@ -1972,6 +2207,192 @@
         ]
       }
     },
+    "/api/staff/rooms/{room_id}/reset": {
+      "post": {
+        "description": "Admin: fresh not-started timer for a PAUSED or ENDED room. Added in 0.4.0.",
+        "operationId": "reset_room_api_staff_rooms__room_id__reset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetRoomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_resettable | stale_session | room_deleted"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Reset Room",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/staff/rooms/{room_id}/restore": {
+      "post": {
+        "description": "Admin: undo a soft delete. Added in 0.4.0.",
+        "operationId": "restore_room_api_staff_rooms__room_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Restore Room",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
     "/api/staff/stream": {
       "get": {
         "description": "SSE: a snapshot per room on connect, then every change in any room, plus heartbeats.",
@@ -1995,7 +2416,7 @@
                 }
               }
             },
-            "description": "text/event-stream. Frames are SnapshotMessage and HeartbeatMessage."
+            "description": "text/event-stream. Frames are SnapshotMessage, HeartbeatMessage and (staff stream only) PresenceMessage."
           },
           "401": {
             "content": {
