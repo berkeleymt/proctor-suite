@@ -61,6 +61,7 @@ SNAPSHOT = {
     "server_time_ms": 123,
     "deleted": False,
     "doc_url": None,
+    "clarifications": [],
     "timer": {
         "status": "RUNNING",
         "duration_ms": 600000,

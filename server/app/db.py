@@ -59,3 +59,24 @@ async def save_command(pool: asyncpg.Pool, row: dict, version: int) -> None:
     async with pool.acquire() as c, c.transaction():
         await _insert_command(c, row)
         await c.execute("UPDATE rooms SET version=$2 WHERE room_id=$1", row["room_id"], version)
+
+
+async def load_clarifications(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+    async with pool.acquire() as c:
+        return await c.fetch("SELECT * FROM clarifications ORDER BY created_at_ms, id")
+
+
+async def insert_clarification(pool: asyncpg.Pool, x) -> None:
+    async with pool.acquire() as c:
+        await c.execute(
+            "INSERT INTO clarifications (id, body, room_ids, hidden, created_at_ms, rev)"
+            " VALUES ($1,$2,$3,$4,$5,$6)",
+            x.id, x.body, x.room_ids, x.hidden, x.created_at_ms, x.rev,
+        )  # fmt: skip
+
+
+async def set_clarification_hidden(pool: asyncpg.Pool, x, hidden: bool, rev: int) -> None:
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE clarifications SET hidden=$2, rev=$3 WHERE id=$1", x.id, hidden, rev
+        )

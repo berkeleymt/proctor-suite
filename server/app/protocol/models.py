@@ -108,6 +108,36 @@ class TimerSnapshot(BaseModel):
     running_since_ms: int | None
 
 
+class ClarificationOut(BaseModel):
+    """One visible clarification, as a room device sees it."""
+
+    id: UUID
+    body: str  # plain text; lines starting "- " are shown as bullets
+    created_at_ms: int
+
+
+class ClarificationAdmin(ClarificationOut):
+    room_ids: list[str] | None  # null = all rooms
+    hidden: bool
+
+
+class ClarificationsResponse(BaseModel):
+    clarifications: list[ClarificationAdmin]  # newest first, at most 200, hidden included
+
+
+class CreateClarificationRequest(BaseModel):
+    """Admin posts a clarification (wireframe: Admin · Clarifications). null room_ids = all."""
+
+    model_config = ConfigDict(extra="forbid")
+    body: str = Field(min_length=1, max_length=2000)
+    room_ids: list[str] | None = Field(default=None, min_length=1, max_length=500)
+
+
+class HideClarificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    hidden: bool
+
+
 class RoomSnapshot(BaseModel):
     """Everything a room device needs to show and tick the timer. Sent in full every time."""
 
@@ -120,6 +150,9 @@ class RoomSnapshot(BaseModel):
     timer: TimerSnapshot
     deleted: bool  # soft-deleted by an admin; only staff ever see these
     doc_url: str | None  # optional https link (clarifications doc), set by an admin
+    # Visible clarifications for this room, oldest first, at most 50. Always [] in the staff
+    # room list and staff stream (staff read /api/staff/clarifications instead).
+    clarifications: list[ClarificationOut]
 
 
 # ---------------------------------------------------------------- commands

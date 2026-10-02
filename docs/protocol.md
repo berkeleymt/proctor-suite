@@ -208,6 +208,10 @@ data: {"server_time_ms": 1760000000000}
 
 `GET /api/rooms/{room_id}/snapshot?since_version=N` → `200 RoomSnapshot`, or `304` if the room's version is ≤ N. Served from memory. Used only when streaming fails (§8). Never returns an unbounded list (invariant 8).
 
+### 7.5 Clarifications (0.6.0)
+
+Plain text (lines starting `- ` render as bullets), posted by staff (admin or PM) to all rooms (`room_ids: null`) or a non-empty subset. Hide/unhide only; edit and permanent delete come later. Every `RoomSnapshot` carries `clarifications`: the visible ones for that room, oldest first, at most `MAX_ROOM_CLARIFICATIONS` (50), so they ride the existing snapshot/SSE/polling path and need no new device loop. The staff room list and staff stream always send `clarifications: []`; staff read `GET /api/staff/clarifications` (newest first, at most 200, hidden included). A clarification change adds 1 to a store-wide counter that is added to every room's `version`, so affected rooms see a higher version without rewriting each room row. The display hides the list once the timer is `ENDED`.
+
 ### 7.4 Staff list
 
 `GET /api/staff/rooms` → `{rooms: [RoomSnapshot]}`, at most `MAX_STAFF_ROOMS` (1000). Staff cookie only. Used for the dashboard's first paint.
@@ -253,6 +257,9 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `DELETE /api/staff/rooms/{room_id}` | admin/PM | | `RoomSnapshot` with `deleted: true` (soft delete). 409 `room_in_progress` while RUNNING or PAUSED. Signs the room's devices out |
 | `POST /api/staff/rooms/{room_id}/restore` | admin/PM | | `RoomSnapshot` with `deleted: false` |
 | `GET /api/staff/stream` | staff | — | SSE |
+| `GET /api/staff/clarifications` | staff (admin/pm) | — | `{clarifications: [ClarificationAdmin]}` |
+| `POST /api/staff/clarifications` | staff (admin/pm) | `{body, room_ids \| null}` | `ClarificationAdmin` (201); 422 `unknown_room` |
+| `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden}` | `ClarificationAdmin`; 404 `unknown_clarification` |
 
 `/readyz` touches Postgres and is for monitoring only. Room devices never call it (invariant 1).
 
@@ -298,3 +305,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.3.0 | 2026-10-01 | Added `PATCH /api/staff/rooms/{room_id}` (edit duration before start, edit test label) and optional `test_name` on `CreateRoomRequest`. |
 | 0.5.0 | 2026-10-01 | Instant presence on close. Added optional `?cid=` on the room stream and `POST /api/rooms/{room_id}/stream/{cid}/close` (204). |
 | 0.4.0 | 2026-10-01 | Room management and presence. Added `POST /api/staff/rooms/{room_id}/reset` (new session, only from PAUSED/ENDED, lands on NOT_PERMITTED), `DELETE` (soft delete) and `POST .../restore`, `name` and `doc_url` on `UpdateRoomRequest`, `doc_url` on `CreateRoomRequest`. `RoomSnapshot` gained required `deleted` and `doc_url`. Staff may now `pause` and `resume`. Added `?surface=` on the room stream, `presence` SSE event, and `presence` on `StaffRoomsResponse`. |
+| 0.6.0 | 2026-10-01 | Clarifications. Added `GET/POST /api/staff/clarifications` and `PATCH /api/staff/clarifications/{id}` (hide/unhide), required `clarifications` on `RoomSnapshot` (§7.5). Room `version` is now the room counter plus a store-wide clarification counter. |

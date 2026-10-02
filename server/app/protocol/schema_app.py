@@ -13,10 +13,14 @@ from fastapi.openapi.utils import get_openapi
 from app.protocol.constants import COOKIE_NAMES, PROTOCOL_VERSION
 from app.protocol.models import (
     EXTRA_SCHEMA_MODELS,
+    ClarificationAdmin,
+    ClarificationsResponse,
     Command,
     CommandResponse,
+    CreateClarificationRequest,
     CreateRoomRequest,
     ErrorResponse,
+    HideClarificationRequest,
     Identity,
     LoginOptionsResponse,
     ResetRoomRequest,
@@ -205,6 +209,40 @@ def build_schema_app() -> FastAPI:
     )
     async def restore_room(room_id: str):
         """Admin: undo a soft delete. Added in 0.4.0."""
+        _stub()
+
+    @app.get(
+        "/api/staff/clarifications",
+        response_model=ClarificationsResponse,
+        tags=["staff"],
+        responses=_ERRORS,
+    )
+    async def list_clarifications():
+        """Admin: every clarification, newest first, hidden included. Added in 0.6.0."""
+        _stub()
+
+    @app.post(
+        "/api/staff/clarifications",
+        response_model=ClarificationAdmin,
+        status_code=201,
+        tags=["staff"],
+        responses={**_ERRORS, 422: {"model": ErrorResponse, "description": "unknown_room"}},
+    )
+    async def post_clarification(body: CreateClarificationRequest):
+        """Admin posts text to all rooms (room_ids null) or a subset. Added in 0.6.0."""
+        _stub()
+
+    @app.patch(
+        "/api/staff/clarifications/{clarification_id}",
+        response_model=ClarificationAdmin,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            404: {"model": ErrorResponse, "description": "unknown_clarification"},
+        },
+    )
+    async def hide_clarification(clarification_id: str, body: HideClarificationRequest):
+        """Admin hides or unhides a clarification. Added in 0.6.0."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)

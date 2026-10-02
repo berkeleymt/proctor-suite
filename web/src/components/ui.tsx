@@ -1,4 +1,20 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { go } from "../main";
+
+/** Admin page switcher (wireframe: tabs). Only the tabs that exist so far. */
+export function AdminTabs({ active }: { active: "timers" | "clarifications" }) {
+  const tab = (id: typeof active, label: string, path: string) => (
+    <a className="tab" href={path} aria-current={active === id ? "page" : undefined} onClick={(e) => (e.preventDefault(), go(path))}>
+      {label}
+    </a>
+  );
+  return (
+    <nav className="tabs" aria-label="Admin">
+      {tab("timers", "Timers", "/admin")}
+      {tab("clarifications", "Clarifications", "/admin/clarifications")}
+    </nav>
+  );
+}
 
 /** The connection light. Same look and position on every screen (green = connected). */
 export function Dot({ online }: { online: boolean }) {

@@ -115,7 +115,7 @@ async def frames(
         for rid in [room_id] if room_id else sorted(store.rooms):
             room = store.rooms.get(rid)
             if room and not (room_id and room.deleted):
-                snap = store.snapshot(room)
+                snap = store.snapshot(room, with_clar=room_id is not None)
                 yield _frame("snapshot", snap.model_dump_json(), snap.version)
         if room_id is None:
             for p in hub.presence_all():
@@ -137,7 +137,7 @@ async def frames(
                     continue
                 if room_id and room.deleted:
                     return
-                snap = store.snapshot(room)
+                snap = store.snapshot(room, with_clar=room_id is not None)
                 yield _frame("snapshot", snap.model_dump_json(), snap.version)
             for rid in pres:
                 yield _frame("presence", json.dumps(hub.presence(rid)))

@@ -17,8 +17,11 @@ from uuid import UUID, uuid4
 
 from app import db
 from app.fold import SessionSpec, TimerEvent, fold
+from app.protocol.constants import MAX_ADMIN_CLARIFICATIONS, MAX_ROOM_CLARIFICATIONS
 from app.protocol.models import (
     ActorKind,
+    ClarificationAdmin,
+    ClarificationOut,
     CommandOutcome,
     CommandResponse,
     EventType,
@@ -62,6 +65,19 @@ class Room:
         return f"{self.room_id}-{self.session_seq}"
 
 
+@dataclass
+class Clarification:
+    id: UUID
+    body: str
+    room_ids: list[str] | None  # None = all rooms
+    created_at_ms: int
+    rev: int  # store-wide counter value when this row last changed
+    hidden: bool = False
+
+    def shows_in(self, room_id: str) -> bool:
+        return not self.hidden and (self.room_ids is None or room_id in self.room_ids)
+
+
 @dataclass(frozen=True)
 class Session:
     kind: str  # "room" | "staff"
@@ -79,6 +95,10 @@ class Store:
         self.event_name = os.environ.get("EVENT_NAME", "BMT (slice 1 demo)")
         self.rooms = {_slug(n): Room(_slug(n), n, minutes * 60_000, t) for n in names if n}
         self.sessions: dict[str, Session] = {}
+        self.clars: dict[UUID, Clarification] = {}
+        # Added to every room's version so a clarification change reaches all affected rooms
+        # without rewriting each room row. Rebuilt at startup as max(rev). Only ever grows.
+        self.clar_rev = 0
         self.pool = None  # asyncpg pool when persistence is on
         self.hub = Hub()  # SSE subscribers; notified after every committed change
         self._locks: dict[str, asyncio.Lock] = {}
@@ -124,6 +144,11 @@ class Store:
                 RejectionReason(c["reason"]) if c["reason"] else None,
             )
         self.rooms = loaded
+        for c in await db.load_clarifications(pool):
+            self.clars[c["id"]] = Clarification(
+                c["id"], c["body"], c["room_ids"], c["created_at_ms"], c["rev"], c["hidden"]
+            )
+            self.clar_rev = max(self.clar_rev, c["rev"])
 
     # --- auth ---
     @staticmethod
@@ -239,8 +264,59 @@ class Store:
                 room, audit, session_seq=room.session_seq + 1, session_created_ms=t, events=[]
             )
 
+    # --- clarifications (commit first, then memory, then tell the affected rooms) ---
+    def _notify_targets(self, x: Clarification) -> None:
+        for rid in x.room_ids if x.room_ids is not None else list(self.rooms):
+            self.hub.notify(rid)
+
+    async def post_clarification(self, body: str, room_ids: list[str] | None) -> Clarification:
+        body = body.strip()
+        if not body:
+            raise ValueError("empty")
+        if room_ids is not None:
+            room_ids = sorted(set(room_ids))
+            if any(r not in self.rooms or self.rooms[r].deleted for r in room_ids):
+                raise KeyError("unknown_room")
+        async with self._admin_lock:
+            x = Clarification(uuid4(), body, room_ids, now_ms(), self.clar_rev + 1)
+            if self.pool:
+                await db.insert_clarification(self.pool, x)
+            self.clars[x.id] = x
+            self.clar_rev = x.rev
+            self._notify_targets(x)
+            return x
+
+    async def hide_clarification(self, cid: UUID, hidden: bool) -> Clarification:
+        async with self._admin_lock:
+            x = self.clars[cid]  # KeyError -> 404
+            if x.hidden != hidden:
+                rev = self.clar_rev + 1
+                if self.pool:
+                    await db.set_clarification_hidden(self.pool, x, hidden, rev)
+                x.hidden, x.rev, self.clar_rev = hidden, rev, rev
+                self._notify_targets(x)
+            return x
+
+    def clarifications_for(self, room: Room) -> list[ClarificationOut]:
+        mine = [x for x in self.clars.values() if x.shows_in(room.room_id)]
+        mine.sort(key=lambda x: (x.created_at_ms, str(x.id)))
+        return [
+            ClarificationOut(id=x.id, body=x.body, created_at_ms=x.created_at_ms)
+            for x in mine[-MAX_ROOM_CLARIFICATIONS:]
+        ]
+
+    def clarifications_admin(self) -> list[ClarificationAdmin]:
+        xs = sorted(self.clars.values(), key=lambda x: (x.created_at_ms, str(x.id)), reverse=True)
+        return [
+            ClarificationAdmin(
+                id=x.id, body=x.body, created_at_ms=x.created_at_ms,
+                room_ids=x.room_ids, hidden=x.hidden,
+            )
+            for x in xs[:MAX_ADMIN_CLARIFICATIONS]
+        ]  # fmt: skip
+
     # --- snapshots ---
-    def snapshot(self, room: Room) -> RoomSnapshot:
+    def snapshot(self, room: Room, with_clar: bool = True) -> RoomSnapshot:
         t = now_ms()
         spec = SessionSpec(
             room.session_id, room.duration_ms, room.session_created_ms or room.created_at_ms
@@ -251,12 +327,16 @@ class Store:
             room_name=room.name,
             test_name=room.test_name,
             session_id=room.session_id,
-            version=room.version,
+            version=self.version(room),
             server_time_ms=t,
             timer=timer,
             deleted=room.deleted,
             doc_url=room.doc_url,
+            clarifications=self.clarifications_for(room) if with_clar else [],
         )
+
+    def version(self, room: Room) -> int:
+        return room.version + self.clar_rev
 
     # --- commands (idempotent on command_id; protocol §6.4) ---
     async def apply(self, room: Room, cmd, actor: ActorKind) -> CommandResponse:

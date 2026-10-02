@@ -1,6 +1,7 @@
 """Slice 1 HTTP API: time, auth, snapshots, commands (docs/protocol.md §3-§7, polling only)."""
 
 from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -13,9 +14,13 @@ from app.protocol.constants import (
 )
 from app.protocol.models import (
     ActorKind,
+    ClarificationAdmin,
+    ClarificationsResponse,
     Command,
     CommandResponse,
+    CreateClarificationRequest,
     CreateRoomRequest,
+    HideClarificationRequest,
     LoginOptionsResponse,
     LoginRoomOption,
     ResetRoomRequest,
@@ -152,7 +157,7 @@ async def snapshot(request: Request, room_id: str, since_version: int = -1) -> R
         raise err(404, "unknown_room", "No such room.")
     if not can_read(session_for(request, "staff", "control", "display"), room_id):
         raise err(401, "unauthenticated", "Not logged in.")
-    if room.version <= since_version:
+    if store.version(room) <= since_version:
         return Response(status_code=304)
     return JSONResponse(store.snapshot(room).model_dump(mode="json"))
 
@@ -205,7 +210,7 @@ async def staff_rooms(request: Request) -> StaffRoomsResponse:
         raise err(401, "unauthenticated", "Staff login required.")
     rooms = sorted(store.rooms.values(), key=lambda r: r.name)
     return StaffRoomsResponse(
-        rooms=[store.snapshot(r) for r in rooms],
+        rooms=[store.snapshot(r, with_clar=False) for r in rooms],
         presence=[RoomPresence(**p) for p in store.hub.presence_all()],
     )
 
@@ -321,3 +326,52 @@ async def commands(cmd: Command, request: Request, _: Post) -> CommandResponse:
         return await store.apply(room, cmd, actor)
     except ValueError:
         raise err(409, "command_id_conflict", "command_id reused with different content") from None
+
+
+# --- clarifications (0.6.0) ---
+
+
+def admin_only(request: Request) -> None:
+    staff = session_for(request, "staff")
+    if not staff:
+        raise err(401, "unauthenticated", "Staff login required.")
+    if staff.role not in (StaffRole.ADMIN, StaffRole.PM):
+        raise err(403, "forbidden", "Not allowed.")
+
+
+def clar_out(x) -> ClarificationAdmin:
+    return ClarificationAdmin(
+        id=x.id, body=x.body, created_at_ms=x.created_at_ms, room_ids=x.room_ids, hidden=x.hidden
+    )
+
+
+@router.get("/staff/clarifications", response_model=ClarificationsResponse)
+async def list_clarifications(request: Request) -> ClarificationsResponse:
+    admin_only(request)
+    return ClarificationsResponse(clarifications=store.clarifications_admin())
+
+
+@router.post("/staff/clarifications", response_model=ClarificationAdmin, status_code=201)
+async def post_clarification(
+    body: CreateClarificationRequest, request: Request, _: Post
+) -> ClarificationAdmin:
+    admin_only(request)
+    try:
+        x = await store.post_clarification(body.body, body.room_ids)
+    except ValueError:
+        raise err(422, "invalid_request", "Write something first.") from None
+    except KeyError:
+        raise err(422, "unknown_room", "One of those rooms doesn't exist.") from None
+    return clar_out(x)
+
+
+@router.patch("/staff/clarifications/{clarification_id}", response_model=ClarificationAdmin)
+async def hide_clarification(
+    clarification_id: UUID, body: HideClarificationRequest, request: Request, _: Post
+) -> ClarificationAdmin:
+    admin_only(request)
+    try:
+        x = await store.hide_clarification(clarification_id, body.hidden)
+    except KeyError:
+        raise err(404, "unknown_clarification", "No such clarification.") from None
+    return clar_out(x)

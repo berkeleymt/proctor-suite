@@ -185,6 +185,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/staff/clarifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Clarifications
+         * @description Admin: every clarification, newest first, hidden included. Added in 0.6.0.
+         */
+        get: operations["list_clarifications_api_staff_clarifications_get"];
+        put?: never;
+        /**
+         * Post Clarification
+         * @description Admin posts text to all rooms (room_ids null) or a subset. Added in 0.6.0.
+         */
+        post: operations["post_clarification_api_staff_clarifications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/staff/clarifications/{clarification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Hide Clarification
+         * @description Admin hides or unhides a clarification. Added in 0.6.0.
+         */
+        patch: operations["hide_clarification_api_staff_clarifications__clarification_id__patch"];
+        trace?: never;
+    };
     "/api/staff/rooms": {
         parameters: {
             query?: never;
@@ -347,6 +391,42 @@ export interface components {
              */
             type: "adjust";
         };
+        /** ClarificationAdmin */
+        ClarificationAdmin: {
+            /** Body */
+            body: string;
+            /** Created At Ms */
+            created_at_ms: number;
+            /** Hidden */
+            hidden: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Room Ids */
+            room_ids: string[] | null;
+        };
+        /**
+         * ClarificationOut
+         * @description One visible clarification, as a room device sees it.
+         */
+        ClarificationOut: {
+            /** Body */
+            body: string;
+            /** Created At Ms */
+            created_at_ms: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** ClarificationsResponse */
+        ClarificationsResponse: {
+            /** Clarifications */
+            clarifications: components["schemas"]["ClarificationAdmin"][];
+        };
         /**
          * CommandOutcome
          * @enum {string}
@@ -364,6 +444,16 @@ export interface components {
             /** Replayed */
             replayed: boolean;
             snapshot: components["schemas"]["RoomSnapshot"];
+        };
+        /**
+         * CreateClarificationRequest
+         * @description Admin posts a clarification (wireframe: Admin · Clarifications). null room_ids = all.
+         */
+        CreateClarificationRequest: {
+            /** Body */
+            body: string;
+            /** Room Ids */
+            room_ids?: string[] | null;
         };
         /**
          * CreateRoomRequest
@@ -438,6 +528,11 @@ export interface components {
              * @constant
              */
             event: "heartbeat";
+        };
+        /** HideClarificationRequest */
+        HideClarificationRequest: {
+            /** Hidden */
+            hidden: boolean;
         };
         /** LoginOptionsResponse */
         LoginOptionsResponse: {
@@ -600,6 +695,8 @@ export interface components {
          * @description Everything a room device needs to show and tick the timer. Sent in full every time.
          */
         RoomSnapshot: {
+            /** Clarifications */
+            clarifications: components["schemas"]["ClarificationOut"][];
             /** Deleted */
             deleted: boolean;
             /** Doc Url */
@@ -1346,6 +1443,211 @@ export interface operations {
                 };
             };
             /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_clarifications_api_staff_clarifications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationsResponse"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_clarification_api_staff_clarifications_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClarificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationAdmin"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    hide_clarification_api_staff_clarifications__clarification_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clarification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HideClarificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClarificationAdmin"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_clarification */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -20,9 +20,11 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - [~] Clock sync + backoff in `web/src/{api,hooks}.ts`; `useLive` = SSE with our own backoff reconnect, 35 s dead-stream rule, polling only while the stream is down (slice 6). No TS fold yet (remaining time is computed from the snapshot). Not tried in a browser or through Caddy
 - [?] Login + "Is this your room?" built (slice 1); not tried in a browser
 - [?] Proctor control (slice 1, slice 5): Start / Pause / Resume, and Start, Open display window and Log out on one row, timer with A-/A+ zoom. Not tried in a browser
-- [?] Display / projector screen (slice 5): light theme, timer auto-fits any screen size, A-/A+ zoom (remembered per device), controls fade after 4 s. No clarifications area or paragraph zoom yet (no clarifications feature). Not tried in a browser
+- [?] Display / projector screen (slice 5): light theme, timer auto-fits any screen size, A-/A+ zoom (remembered per device), controls fade after 4 s. Slice 8 added the clarifications list (shrinks to fit, hidden at ENDED); no paragraph zoom yet. Not tried in a browser
 - [?] Admin Timers (slices 1-7): summary line, Add room, Edit (name, duration before start, test label, doc link), filters (room, test, status, duration, pages open), per-row actions by timer state (Allow start, Start, Pause, Resume, Reset, +5 min, "more" menu with Edit and Delete), confirm dialogs (Shift skips), bulk Allow start / Start / +5 / Edit / Delete (type DELETE), "Show deleted" with Restore, Proctor/Display presence dots. Missing: End (protocol has it, wireframe doesn't show it), doc link display, "Show hidden" is called "Show deleted". Not tried in a browser
 - [?] Proctor panel timer states (slice 7): Start (locked until allowed), Pause, Resume, "Time's up"; hint line explains disabled buttons. Not tried in a browser
+
+- [?] Admin Clarifications (slice 8): composer, room chips (All, Clear, building, test), posted list with Hide/Unhide, projector list. Server tests pass; Postgres tests not run here; not tried in a browser. Missing: Edit, Preview display, markdown/math, per-room delete
 
 ## Deploy and demo
 - [ ] Deployed to AWS via `deploy.sh`
@@ -33,6 +35,7 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 8 (2026-10-01): clarifications: post to all/some rooms, hide/unhide, projector list; protocol 0.6.0, migration 0003, ADR 0011, `log/2026-10-01-claude-slice8-clarifications.md`.
 - Slice 7 (2026-10-01): timer states (admin Pause/Resume/Reset, proctor Time's up), rename/delete/restore/doc link, presence, shared Sheet/Menu/Dot, protocol 0.4.0, migration 0002, ADR 0010, `log/2026-10-01-claude-slice7-room-management.md`.
 - Slice 6 (2026-10-01): SSE streams + heartbeat, `useLive` client with polling fallback, design-principles doc, ADR 0009, `log/2026-10-01-claude-slice6-sse.md`.
 - Slice 5 (2026-10-01): bulk Allow start + bulk Edit, column filters, projector display with fit-to-screen timer and zoom, proctor single action row, docs sweep, ADR 0008, `log/2026-10-01-claude-slice5-display-filters.md`.

@@ -30,7 +30,7 @@ def migrate() -> None:
 
 async def reset() -> None:
     c = await asyncpg.connect(URL)
-    await c.execute("DROP TABLE IF EXISTS commands, rooms, alembic_version CASCADE")
+    await c.execute("DROP TABLE IF EXISTS clarifications, commands, rooms, alembic_version CASCADE")
     await c.close()
 
 
@@ -125,6 +125,31 @@ def test_reset_delete_rename_survive_restart(monkeypatch):
         assert (back.session_id, back.version, second.snapshot(back).timer.status) == want
         assert back.name == "Kept Hall" and back.doc_url is None and not back.events
         assert second.rooms["gone-hall"].deleted
+        await pool.close()
+
+    asyncio.run(run())
+
+
+def test_clarifications_survive_restart(monkeypatch):
+    monkeypatch.setenv("SEED_ROOMS", "Clar One,Clar Two")
+    asyncio.run(reset())
+    migrate()
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        first = Store()
+        await first.load(pool)
+        x = await first.post_clarification("All see this", None)
+        y = await first.post_clarification("Only one", ["clar-one"])
+        await first.hide_clarification(x.id, True)
+        want = first.version(first.rooms["clar-two"])
+        second = Store()
+        await second.load(pool)
+        two, one = second.rooms["clar-two"], second.rooms["clar-one"]
+        assert [c.body for c in second.clarifications_for(one)] == ["Only one"]
+        assert second.clarifications_for(two) == []
+        assert second.version(two) == want  # versions never go backwards across a restart
+        assert y.id in second.clars
         await pool.close()
 
     asyncio.run(run())

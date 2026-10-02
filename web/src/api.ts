@@ -2,6 +2,7 @@ import type { components } from "./api-types";
 
 export type Snapshot = components["schemas"]["RoomSnapshot"];
 export type Command = components["schemas"]["CommandResponse"];
+export type Clar = components["schemas"]["ClarificationAdmin"];
 export type RoomPresence = components["schemas"]["RoomPresence"];
 export type SurfacePresence = components["schemas"]["SurfacePresence"];
 export type RoomOption = components["schemas"]["LoginRoomOption"];

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, del, fmt, patch, post, remainingMs, sendCommand, serverNow, type RoomPresence, type Snapshot, type SurfacePresence } from "../api";
-import { Dot, Sheet } from "../components/ui";
+import { AdminTabs, Dot, Sheet } from "../components/ui";
 import { mergePresence, mergeRooms, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
@@ -422,7 +422,7 @@ export function Admin() {
   return (
     <main className="admin">
       <header className="bar">
-        <h1>Timers</h1>
+        <AdminTabs active="timers" />
         <span className="muted">
           {rooms.length} rooms · {count("RUNNING")} running · {count("NOT_PERMITTED") + count("PERMITTED")} not started · {count("ENDED")} finished
           {gone.length > 0 && (
