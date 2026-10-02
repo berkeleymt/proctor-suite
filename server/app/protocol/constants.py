@@ -4,7 +4,7 @@ Changing any value here is a contract change: bump PROTOCOL_VERSION and add a
 changelog line to docs/protocol.md.
 """
 
-PROTOCOL_VERSION = "0.6.0"
+PROTOCOL_VERSION = "0.7.0"
 
 # --- Streaming and network behavior (invariant 2) ---
 HEARTBEAT_INTERVAL_S = 15  # server sends a heartbeat on every open stream this often
@@ -39,3 +39,4 @@ STAFF_SESSION_TTL_H = 24
 
 MAX_ROOM_CLARIFICATIONS = 50  # per snapshot (invariant 8)
 MAX_ADMIN_CLARIFICATIONS = 200
+MAX_CLARIFICATION_EDITS = 10  # earlier wordings kept per clarification (invariant 8)

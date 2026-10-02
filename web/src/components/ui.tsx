@@ -86,3 +86,28 @@ export function Menu({ label, items }: { label: string; items: { label: string; 
     </span>
   );
 }
+
+/** A button that opens a floating panel (click outside or Esc closes). For pickers and long lists. */
+export function Popover({ label, children, className = "" }: { label: ReactNode; children: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  return (
+    <span className={`menu ${className}`} ref={box}>
+      <button type="button" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {label} <span aria-hidden>{open ? "▴" : "▾"}</span>
+      </button>
+      {open && <div className="pop" role="dialog">{children}</div>}
+    </span>
+  );
+}

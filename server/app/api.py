@@ -20,7 +20,6 @@ from app.protocol.models import (
     CommandResponse,
     CreateClarificationRequest,
     CreateRoomRequest,
-    HideClarificationRequest,
     LoginOptionsResponse,
     LoginRoomOption,
     ResetRoomRequest,
@@ -33,9 +32,10 @@ from app.protocol.models import (
     StaffRole,
     StaffRoomsResponse,
     TimeResponse,
+    UpdateClarificationRequest,
     UpdateRoomRequest,
 )
-from app.store import Session, Store, now_ms
+from app.store import ClarError, Session, Store, now_ms
 from app.stream import frames
 
 store = Store()
@@ -339,12 +339,6 @@ def admin_only(request: Request) -> None:
         raise err(403, "forbidden", "Not allowed.")
 
 
-def clar_out(x) -> ClarificationAdmin:
-    return ClarificationAdmin(
-        id=x.id, body=x.body, created_at_ms=x.created_at_ms, room_ids=x.room_ids, hidden=x.hidden
-    )
-
-
 @router.get("/staff/clarifications", response_model=ClarificationsResponse)
 async def list_clarifications(request: Request) -> ClarificationsResponse:
     admin_only(request)
@@ -362,16 +356,45 @@ async def post_clarification(
         raise err(422, "invalid_request", "Write something first.") from None
     except KeyError:
         raise err(422, "unknown_room", "One of those rooms doesn't exist.") from None
-    return clar_out(x)
+    return x.admin()
+
+
+CLAR_ERRORS = {
+    "empty": "Write something first.",
+    "unknown_room": "That room doesn't exist.",
+    "not_in_room": "This clarification isn't posted to that room.",
+    "edit_limit": "This clarification has been edited too many times. Post a new one instead.",
+}
 
 
 @router.patch("/staff/clarifications/{clarification_id}", response_model=ClarificationAdmin)
-async def hide_clarification(
-    clarification_id: UUID, body: HideClarificationRequest, request: Request, _: Post
+async def update_clarification(
+    clarification_id: UUID, body: UpdateClarificationRequest, request: Request, _: Post
 ) -> ClarificationAdmin:
+    """Edit (body) or hide/unhide (hidden, optionally for one room_id)."""
     admin_only(request)
     try:
-        x = await store.hide_clarification(clarification_id, body.hidden)
+        if body.body is not None:
+            x = await store.edit_clarification(clarification_id, body.body)
+        else:
+            x = await store.hide_clarification(clarification_id, bool(body.hidden), body.room_id)
     except KeyError:
         raise err(404, "unknown_clarification", "No such clarification.") from None
-    return clar_out(x)
+    except ClarError as e:
+        raise err(422, e.code, CLAR_ERRORS[e.code]) from None
+    return x.admin()
+
+
+@router.delete("/staff/clarifications/{clarification_id}", status_code=204)
+async def delete_clarification(
+    clarification_id: UUID, request: Request, _: Post, room_id: str | None = None
+) -> Response:
+    """Wipe a clarification for good, everywhere or (room_id) from one room only."""
+    admin_only(request)
+    try:
+        await store.delete_clarification(clarification_id, room_id)
+    except KeyError:
+        raise err(404, "unknown_clarification", "No such clarification.") from None
+    except ClarError as e:
+        raise err(422, e.code, CLAR_ERRORS[e.code]) from None
+    return Response(status_code=204)

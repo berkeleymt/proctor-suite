@@ -86,14 +86,46 @@
             "title": "Created At Ms",
             "type": "integer"
           },
+          "edited_at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited At Ms"
+          },
           "hidden": {
             "title": "Hidden",
             "type": "boolean"
+          },
+          "hidden_room_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hidden Room Ids",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "previous": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Previous",
+            "type": "array"
+          },
+          "removed_room_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed Room Ids",
+            "type": "array"
           },
           "room_ids": {
             "anyOf": [
@@ -114,8 +146,12 @@
           "id",
           "body",
           "created_at_ms",
+          "previous",
+          "edited_at_ms",
           "room_ids",
-          "hidden"
+          "hidden",
+          "hidden_room_ids",
+          "removed_room_ids"
         ],
         "title": "ClarificationAdmin",
         "type": "object"
@@ -131,16 +167,36 @@
             "title": "Created At Ms",
             "type": "integer"
           },
+          "edited_at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edited At Ms"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "previous": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Previous",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "body",
-          "created_at_ms"
+          "created_at_ms",
+          "previous",
+          "edited_at_ms"
         ],
         "title": "ClarificationOut",
         "type": "object"
@@ -422,20 +478,6 @@
           "data"
         ],
         "title": "HeartbeatMessage",
-        "type": "object"
-      },
-      "HideClarificationRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "hidden": {
-            "title": "Hidden",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "hidden"
-        ],
-        "title": "HideClarificationRequest",
         "type": "object"
       },
       "LoginOptionsResponse": {
@@ -1157,6 +1199,50 @@
         "title": "TimerStatus",
         "type": "string"
       },
+      "UpdateClarificationRequest": {
+        "additionalProperties": false,
+        "description": "Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,\nstruck out). `room_id` limits a hide/unhide to one room; it is not allowed with `body`.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "hidden": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hidden"
+          },
+          "room_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Id"
+          }
+        },
+        "title": "UpdateClarificationRequest",
+        "type": "object"
+      },
       "UpdateRoomRequest": {
         "additionalProperties": false,
         "description": "Admin edits a room that has not started (wireframe: Edit\u2026). Omitted fields are unchanged.\n\nDuration can only change before the timer starts; use `adjust` (+/- time) once running.",
@@ -1238,7 +1324,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2246,9 +2332,99 @@
       }
     },
     "/api/staff/clarifications/{clarification_id}": {
+      "delete": {
+        "description": "Admin wipes a clarification from the system, or (`room_id`) from one room only.\nNot undoable. Added in 0.7.0.",
+        "operationId": "delete_clarification_api_staff_clarifications__clarification_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "clarification_id",
+            "required": true,
+            "schema": {
+              "title": "Clarification Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Room Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_clarification"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room, not_in_room"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Delete Clarification",
+        "tags": [
+          "staff"
+        ]
+      },
       "patch": {
-        "description": "Admin hides or unhides a clarification. Added in 0.6.0.",
-        "operationId": "hide_clarification_api_staff_clarifications__clarification_id__patch",
+        "description": "Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one\nroom with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0.",
+        "operationId": "update_clarification_api_staff_clarifications__clarification_id__patch",
         "parameters": [
           {
             "in": "path",
@@ -2264,7 +2440,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/HideClarificationRequest"
+                "$ref": "#/components/schemas/UpdateClarificationRequest"
               }
             }
           },
@@ -2319,7 +2495,7 @@
                 }
               }
             },
-            "description": "invalid_request"
+            "description": "empty, unknown_room, not_in_room, edit_limit"
           },
           "429": {
             "content": {
@@ -2332,7 +2508,7 @@
             "description": "rate_limited"
           }
         },
-        "summary": "Hide Clarification",
+        "summary": "Update Clarification",
         "tags": [
           "staff"
         ]

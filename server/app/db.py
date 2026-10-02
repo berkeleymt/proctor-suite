@@ -75,8 +75,28 @@ async def insert_clarification(pool: asyncpg.Pool, x) -> None:
         )  # fmt: skip
 
 
-async def set_clarification_hidden(pool: asyncpg.Pool, x, hidden: bool, rev: int) -> None:
+async def save_clarification(pool: asyncpg.Pool, x) -> None:
+    """Edit, hide/unhide, per-room hide/delete: one UPDATE of everything that can change."""
     async with pool.acquire() as c:
         await c.execute(
-            "UPDATE clarifications SET hidden=$2, rev=$3 WHERE id=$1", x.id, hidden, rev
+            "UPDATE clarifications SET body=$2, hidden=$3, previous=$4, edited_at_ms=$5,"
+            " hidden_room_ids=$6, removed_room_ids=$7, rev=$8 WHERE id=$1",
+            x.id, x.body, x.hidden, x.previous, x.edited_at_ms,
+            x.hidden_room_ids, x.removed_room_ids, x.rev,
+        )  # fmt: skip
+
+
+async def delete_clarification(pool: asyncpg.Pool, cid, rev: int) -> None:
+    """Wipe the row for good and remember the version counter in the same transaction."""
+    async with pool.acquire() as c, c.transaction():
+        await c.execute("DELETE FROM clarifications WHERE id=$1", cid)
+        await c.execute(
+            "INSERT INTO clar_counter (id, rev) VALUES (1, $1)"
+            " ON CONFLICT (id) DO UPDATE SET rev = GREATEST(clar_counter.rev, $1)",
+            rev,
         )
+
+
+async def load_clar_counter(pool: asyncpg.Pool) -> int:
+    async with pool.acquire() as c:
+        return await c.fetchval("SELECT COALESCE(MAX(rev), 0) FROM clar_counter")

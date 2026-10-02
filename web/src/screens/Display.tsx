@@ -4,7 +4,7 @@ import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { FitText, useActive, useZoom, ZoomButtons } from "../components/FitText";
 import { Dot } from "../components/ui";
-import { FitList } from "../components/ClarList";
+import { ClarSizeButtons, docEmbedUrl, FitList, useClarSize } from "../components/ClarList";
 
 export function Display() {
   useClock();
@@ -40,23 +40,28 @@ function Screen({ roomId }: { roomId: string }) {
 /** Projector view (wireframe: Proctor · Display). Light theme, timer always fits the screen. */
 function View({ s, online }: { s: Snapshot; online: boolean }) {
   const z = useZoom("display");
+  const cz = useClarSize();
   const active = useActive();
   const ms = s.timer.status === "ENDED" ? 0 : remainingMs(s, serverNow());
   const tone = s.timer.status === "RUNNING" && ms <= 300_000 ? (ms === 0 ? "done" : "warn") : "";
-  const showClars = s.timer.status !== "ENDED" && s.clarifications.length > 0; // hidden once time is up (swire)
+  const live = s.timer.status !== "ENDED"; // clarifications go away once time is up (swire)
+  const doc = live && !!s.doc_url; // a doc link replaces the text list entirely (wireframe)
+  const text = live && !s.doc_url && s.clarifications.length > 0;
   return (
-    <main className={`display ${showClars ? "has-clars" : ""}`}>
+    <main className={`display ${doc || text ? "has-clars" : ""}`}>
       <header>
         <span className="where">
           {s.room_name} · {s.test_name}
         </span>
         <span className={`ctl ${active ? "" : "hide"}`}>
           <ZoomButtons z={z} />
+          {text && <ClarSizeButtons z={cz} />}
         </span>
         <Dot online={online} />
       </header>
       <FitText className={`clock ${tone}`} text={fmt(ms)} zoom={z.zoom} />
-      {showClars && <FitList items={s.clarifications} />}
+      {text && <FitList items={s.clarifications} z={cz} />}
+      {doc && <iframe className="doc" title="Clarifications document" src={docEmbedUrl(s.doc_url!)} referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />}
       <footer>{label(s)}</footer>
     </main>
   );

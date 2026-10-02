@@ -219,14 +219,20 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Clarification
+         * @description Admin wipes a clarification from the system, or (`room_id`) from one room only.
+         *     Not undoable. Added in 0.7.0.
+         */
+        delete: operations["delete_clarification_api_staff_clarifications__clarification_id__delete"];
         options?: never;
         head?: never;
         /**
-         * Hide Clarification
-         * @description Admin hides or unhides a clarification. Added in 0.6.0.
+         * Update Clarification
+         * @description Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one
+         *     room with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0.
          */
-        patch: operations["hide_clarification_api_staff_clarifications__clarification_id__patch"];
+        patch: operations["update_clarification_api_staff_clarifications__clarification_id__patch"];
         trace?: never;
     };
     "/api/staff/rooms": {
@@ -397,13 +403,21 @@ export interface components {
             body: string;
             /** Created At Ms */
             created_at_ms: number;
+            /** Edited At Ms */
+            edited_at_ms: number | null;
             /** Hidden */
             hidden: boolean;
+            /** Hidden Room Ids */
+            hidden_room_ids: string[];
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Previous */
+            previous: string[];
+            /** Removed Room Ids */
+            removed_room_ids: string[];
             /** Room Ids */
             room_ids: string[] | null;
         };
@@ -416,11 +430,15 @@ export interface components {
             body: string;
             /** Created At Ms */
             created_at_ms: number;
+            /** Edited At Ms */
+            edited_at_ms: number | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
+            /** Previous */
+            previous: string[];
         };
         /** ClarificationsResponse */
         ClarificationsResponse: {
@@ -528,11 +546,6 @@ export interface components {
              * @constant
              */
             event: "heartbeat";
-        };
-        /** HideClarificationRequest */
-        HideClarificationRequest: {
-            /** Hidden */
-            hidden: boolean;
         };
         /** LoginOptionsResponse */
         LoginOptionsResponse: {
@@ -827,6 +840,19 @@ export interface components {
          * @enum {string}
          */
         TimerStatus: "NOT_PERMITTED" | "PERMITTED" | "RUNNING" | "PAUSED" | "ENDED";
+        /**
+         * UpdateClarificationRequest
+         * @description Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,
+         *     struck out). `room_id` limits a hide/unhide to one room; it is not allowed with `body`.
+         */
+        UpdateClarificationRequest: {
+            /** Body */
+            body?: string | null;
+            /** Hidden */
+            hidden?: boolean | null;
+            /** Room Id */
+            room_id?: string | null;
+        };
         /**
          * UpdateRoomRequest
          * @description Admin edits a room that has not started (wireframe: Edit…). Omitted fields are unchanged.
@@ -1605,7 +1631,74 @@ export interface operations {
             };
         };
     };
-    hide_clarification_api_staff_clarifications__clarification_id__patch: {
+    delete_clarification_api_staff_clarifications__clarification_id__delete: {
+        parameters: {
+            query?: {
+                room_id?: string | null;
+            };
+            header?: never;
+            path: {
+                clarification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_clarification */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room, not_in_room */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_clarification_api_staff_clarifications__clarification_id__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -1616,7 +1709,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["HideClarificationRequest"];
+                "application/json": components["schemas"]["UpdateClarificationRequest"];
             };
         };
         responses: {
@@ -1656,7 +1749,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_request */
+            /** @description empty, unknown_room, not_in_room, edit_limit */
             422: {
                 headers: {
                     [name: string]: unknown;

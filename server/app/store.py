@@ -17,7 +17,11 @@ from uuid import UUID, uuid4
 
 from app import db
 from app.fold import SessionSpec, TimerEvent, fold
-from app.protocol.constants import MAX_ADMIN_CLARIFICATIONS, MAX_ROOM_CLARIFICATIONS
+from app.protocol.constants import (
+    MAX_ADMIN_CLARIFICATIONS,
+    MAX_CLARIFICATION_EDITS,
+    MAX_ROOM_CLARIFICATIONS,
+)
 from app.protocol.models import (
     ActorKind,
     ClarificationAdmin,
@@ -65,6 +69,14 @@ class Room:
         return f"{self.room_id}-{self.session_seq}"
 
 
+class ClarError(Exception):
+    """A clarification request that can't be done; `code` is the API error code."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
 @dataclass
 class Clarification:
     id: UUID
@@ -73,9 +85,30 @@ class Clarification:
     created_at_ms: int
     rev: int  # store-wide counter value when this row last changed
     hidden: bool = False
+    previous: list[str] = field(default_factory=list)  # earlier wordings, oldest first
+    edited_at_ms: int | None = None
+    hidden_room_ids: list[str] = field(default_factory=list)  # reversible, per room
+    removed_room_ids: list[str] = field(default_factory=list)  # permanent, per room
 
     def shows_in(self, room_id: str) -> bool:
-        return not self.hidden and (self.room_ids is None or room_id in self.room_ids)
+        return (
+            not self.hidden
+            and room_id not in self.hidden_room_ids
+            and room_id not in self.removed_room_ids
+            and (self.room_ids is None or room_id in self.room_ids)
+        )
+
+    def out(self) -> ClarificationOut:
+        return ClarificationOut(
+            id=self.id, body=self.body, created_at_ms=self.created_at_ms,
+            previous=self.previous, edited_at_ms=self.edited_at_ms,
+        )  # fmt: skip
+
+    def admin(self) -> ClarificationAdmin:
+        return ClarificationAdmin(
+            **self.out().model_dump(), room_ids=self.room_ids, hidden=self.hidden,
+            hidden_room_ids=self.hidden_room_ids, removed_room_ids=self.removed_room_ids,
+        )  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -146,9 +179,13 @@ class Store:
         self.rooms = loaded
         for c in await db.load_clarifications(pool):
             self.clars[c["id"]] = Clarification(
-                c["id"], c["body"], c["room_ids"], c["created_at_ms"], c["rev"], c["hidden"]
-            )
+                c["id"], c["body"], c["room_ids"], c["created_at_ms"], c["rev"], c["hidden"],
+                list(c["previous"]), c["edited_at_ms"],
+                list(c["hidden_room_ids"]), list(c["removed_room_ids"]),
+            )  # fmt: skip
             self.clar_rev = max(self.clar_rev, c["rev"])
+        # Deleted rows are gone, so the counter is kept in its own row (never goes backwards).
+        self.clar_rev = max(self.clar_rev, await db.load_clar_counter(pool))
 
     # --- auth ---
     @staticmethod
@@ -286,34 +323,93 @@ class Store:
             self._notify_targets(x)
             return x
 
-    async def hide_clarification(self, cid: UUID, hidden: bool) -> Clarification:
+    async def _change(self, x: Clarification, **ch) -> Clarification:
+        """Commit a changed copy to Postgres, then swap it into memory (invariant 5)."""
+        rev = self.clar_rev + 1
+        new = replace(x, rev=rev, **ch)
+        if self.pool:
+            await db.save_clarification(self.pool, new)
+        self.clars[x.id] = new
+        self.clar_rev = rev
+        return new
+
+    def _in_scope(self, x: Clarification, room_id: str) -> None:
+        room = self.rooms.get(room_id)
+        if not room or room.deleted:
+            raise ClarError("unknown_room")
+        if (x.room_ids is not None and room_id not in x.room_ids) or room_id in x.removed_room_ids:
+            raise ClarError("not_in_room")
+
+    async def hide_clarification(
+        self, cid: UUID, hidden: bool, room_id: str | None = None
+    ) -> Clarification:
         async with self._admin_lock:
             x = self.clars[cid]  # KeyError -> 404
-            if x.hidden != hidden:
-                rev = self.clar_rev + 1
-                if self.pool:
-                    await db.set_clarification_hidden(self.pool, x, hidden, rev)
-                x.hidden, x.rev, self.clar_rev = hidden, rev, rev
-                self._notify_targets(x)
-            return x
+            if room_id is None:
+                if x.hidden == hidden:
+                    return x
+                new = await self._change(x, hidden=hidden)
+                self._notify_targets(new)
+                return new
+            self._in_scope(x, room_id)
+            rooms = set(x.hidden_room_ids)
+            if hidden:
+                rooms.add(room_id)
+            else:
+                rooms.discard(room_id)
+            if rooms == set(x.hidden_room_ids):
+                return x
+            new = await self._change(x, hidden_room_ids=sorted(rooms))
+            self.hub.notify(room_id)
+            return new
+
+    async def edit_clarification(self, cid: UUID, body: str) -> Clarification:
+        """Never replaces silently: the old wording is kept and shown struck out (protocol §7.5)."""
+        body = body.strip()
+        if not body:
+            raise ClarError("empty")
+        async with self._admin_lock:
+            x = self.clars[cid]
+            if body == x.body:
+                return x
+            if len(x.previous) >= MAX_CLARIFICATION_EDITS:
+                raise ClarError("edit_limit")
+            new = await self._change(
+                x, body=body, previous=[*x.previous, x.body], edited_at_ms=now_ms()
+            )
+            self._notify_targets(new)
+            return new
+
+    async def delete_clarification(self, cid: UUID, room_id: str | None = None) -> None:
+        """Wipe it from the system: everywhere, or (room_id) from one room only."""
+        async with self._admin_lock:
+            x = self.clars[cid]
+            if room_id is not None:
+                self._in_scope(x, room_id)
+                gone = sorted({*x.removed_room_ids, room_id})
+                if x.room_ids is None or not set(x.room_ids) <= set(gone):
+                    await self._change(
+                        x,
+                        removed_room_ids=gone,
+                        hidden_room_ids=[r for r in x.hidden_room_ids if r != room_id],
+                    )
+                    self.hub.notify(room_id)
+                    return
+            rev = self.clar_rev + 1
+            if self.pool:
+                await db.delete_clarification(self.pool, cid, rev)
+            del self.clars[cid]
+            self.clar_rev = rev
+            self._notify_targets(x)
 
     def clarifications_for(self, room: Room) -> list[ClarificationOut]:
         mine = [x for x in self.clars.values() if x.shows_in(room.room_id)]
         mine.sort(key=lambda x: (x.created_at_ms, str(x.id)))
-        return [
-            ClarificationOut(id=x.id, body=x.body, created_at_ms=x.created_at_ms)
-            for x in mine[-MAX_ROOM_CLARIFICATIONS:]
-        ]
+        return [x.out() for x in mine[-MAX_ROOM_CLARIFICATIONS:]]
 
     def clarifications_admin(self) -> list[ClarificationAdmin]:
         xs = sorted(self.clars.values(), key=lambda x: (x.created_at_ms, str(x.id)), reverse=True)
-        return [
-            ClarificationAdmin(
-                id=x.id, body=x.body, created_at_ms=x.created_at_ms,
-                room_ids=x.room_ids, hidden=x.hidden,
-            )
-            for x in xs[:MAX_ADMIN_CLARIFICATIONS]
-        ]  # fmt: skip
+        return [x.admin() for x in xs[:MAX_ADMIN_CLARIFICATIONS]]
 
     # --- snapshots ---
     def snapshot(self, room: Room, with_clar: bool = True) -> RoomSnapshot:

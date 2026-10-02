@@ -30,7 +30,9 @@ def migrate() -> None:
 
 async def reset() -> None:
     c = await asyncpg.connect(URL)
-    await c.execute("DROP TABLE IF EXISTS clarifications, commands, rooms, alembic_version CASCADE")
+    await c.execute(
+        "DROP TABLE IF EXISTS clar_counter, clarifications, commands, rooms, alembic_version CASCADE"
+    )
     await c.close()
 
 
@@ -150,6 +152,36 @@ def test_clarifications_survive_restart(monkeypatch):
         assert second.clarifications_for(two) == []
         assert second.version(two) == want  # versions never go backwards across a restart
         assert y.id in second.clars
+        await pool.close()
+
+    asyncio.run(run())
+
+
+def test_clarification_edit_per_room_and_delete_survive_restart(monkeypatch):
+    monkeypatch.setenv("SEED_ROOMS", "Clar One,Clar Two")
+    asyncio.run(reset())
+    migrate()
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        first = Store()
+        await first.load(pool)
+        x = await first.post_clarification("Original", None)
+        gone = await first.post_clarification("Wipe me", None)
+        await first.edit_clarification(x.id, "Corrected")
+        await first.hide_clarification(x.id, True, "clar-one")
+        await first.delete_clarification(x.id, "clar-two")
+        await first.delete_clarification(gone.id)  # highest rev lives only in clar_counter now
+        want = first.version(first.rooms["clar-one"])
+
+        second = Store()
+        await second.load(pool)
+        back = second.clars[x.id]
+        assert (back.body, back.previous) == ("Corrected", ["Original"])
+        assert back.edited_at_ms is not None
+        assert (back.hidden_room_ids, back.removed_room_ids) == (["clar-one"], ["clar-two"])
+        assert gone.id not in second.clars
+        assert second.version(second.rooms["clar-one"]) == want  # no step backwards after delete
         await pool.close()
 
     asyncio.run(run())

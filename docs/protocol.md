@@ -208,9 +208,13 @@ data: {"server_time_ms": 1760000000000}
 
 `GET /api/rooms/{room_id}/snapshot?since_version=N` → `200 RoomSnapshot`, or `304` if the room's version is ≤ N. Served from memory. Used only when streaming fails (§8). Never returns an unbounded list (invariant 8).
 
-### 7.5 Clarifications (0.6.0)
+### 7.5 Clarifications (0.6.0, extended in 0.7.0)
 
-Plain text (lines starting `- ` render as bullets), posted by staff (admin or PM) to all rooms (`room_ids: null`) or a non-empty subset. Hide/unhide only; edit and permanent delete come later. Every `RoomSnapshot` carries `clarifications`: the visible ones for that room, oldest first, at most `MAX_ROOM_CLARIFICATIONS` (50), so they ride the existing snapshot/SSE/polling path and need no new device loop. The staff room list and staff stream always send `clarifications: []`; staff read `GET /api/staff/clarifications` (newest first, at most 200, hidden included). A clarification change adds 1 to a store-wide counter that is added to every room's `version`, so affected rooms see a higher version without rewriting each room row. The display hides the list once the timer is `ENDED`.
+Markdown with `$inline$` and `$$display$$` math (raw HTML is not rendered; lines starting `- ` are bullets), posted by staff (admin or PM) to all rooms (`room_ids: null`) or a non-empty subset. Every `RoomSnapshot` carries `clarifications`: the visible ones for that room, oldest first, at most `MAX_ROOM_CLARIFICATIONS` (50), so they ride the existing snapshot/SSE/polling path and need no new device loop. The staff room list and staff stream always send `clarifications: []`; staff read `GET /api/staff/clarifications` (newest first, at most 200, hidden included). A clarification change adds 1 to a store-wide counter that is added to every room's `version`, so affected rooms see a higher version without rewriting each room row. The counter is persisted (`clar_counter`) so a delete can never make versions go backwards after a restart. The display hides the list once the timer is `ENDED`; if the room has a `doc_url`, the display frames that document instead of the list.
+
+**Edit (0.7.0)** never replaces silently. `PATCH {body}` keeps the old wording in `previous` (oldest first, at most `MAX_CLARIFICATION_EDITS` = 10, then 422 `edit_limit`) and sets `edited_at_ms`. Displays show every `previous` entry crossed out and faded, then `body`. Identical text is a no-op.
+
+**Hide** (`PATCH {hidden}`) is reversible and hides everywhere. With `room_id` it hides only in that room (`hidden_room_ids`). **Delete** (`DELETE`) wipes the row for good; with `?room_id=` it only removes the room from the clarification (`removed_room_ids`, not reversible), and deleting the last targeted room wipes the whole row. A room that is not a target gets 422 `not_in_room`; a missing or deleted room 422 `unknown_room`. A `PATCH` carries exactly one of `hidden` or `body`; `room_id` goes only with `hidden`.
 
 ### 7.4 Staff list
 
@@ -259,7 +263,8 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `GET /api/staff/stream` | staff | — | SSE |
 | `GET /api/staff/clarifications` | staff (admin/pm) | — | `{clarifications: [ClarificationAdmin]}` |
 | `POST /api/staff/clarifications` | staff (admin/pm) | `{body, room_ids \| null}` | `ClarificationAdmin` (201); 422 `unknown_room` |
-| `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden}` | `ClarificationAdmin`; 404 `unknown_clarification` |
+| `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden, room_id?}` or `{body}` | `ClarificationAdmin`; 404 `unknown_clarification`; 422 `empty` / `edit_limit` / `unknown_room` / `not_in_room` |
+| `DELETE /api/staff/clarifications/{id}?room_id=` | staff (admin/pm) | — | 204; 404 `unknown_clarification`; 422 `unknown_room` / `not_in_room` |
 
 `/readyz` touches Postgres and is for monitoring only. Room devices never call it (invariant 1).
 
@@ -306,3 +311,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.5.0 | 2026-10-01 | Instant presence on close. Added optional `?cid=` on the room stream and `POST /api/rooms/{room_id}/stream/{cid}/close` (204). |
 | 0.4.0 | 2026-10-01 | Room management and presence. Added `POST /api/staff/rooms/{room_id}/reset` (new session, only from PAUSED/ENDED, lands on NOT_PERMITTED), `DELETE` (soft delete) and `POST .../restore`, `name` and `doc_url` on `UpdateRoomRequest`, `doc_url` on `CreateRoomRequest`. `RoomSnapshot` gained required `deleted` and `doc_url`. Staff may now `pause` and `resume`. Added `?surface=` on the room stream, `presence` SSE event, and `presence` on `StaffRoomsResponse`. |
 | 0.6.0 | 2026-10-01 | Clarifications. Added `GET/POST /api/staff/clarifications` and `PATCH /api/staff/clarifications/{id}` (hide/unhide), required `clarifications` on `RoomSnapshot` (§7.5). Room `version` is now the room counter plus a store-wide clarification counter. |
+| 0.7.0 | 2026-10-02 | Clarification edit, per-room hide, delete. `PATCH /api/staff/clarifications/{id}` takes `{hidden, room_id?}` or `{body}` (was `{hidden}`); new `DELETE` (optional `room_id`); `ClarificationOut` gains `previous`, `edited_at_ms`; `ClarificationAdmin` gains `hidden_room_ids`, `removed_room_ids`. Bodies are Markdown + math. Migration 0004. |

@@ -20,7 +20,6 @@ from app.protocol.models import (
     CreateClarificationRequest,
     CreateRoomRequest,
     ErrorResponse,
-    HideClarificationRequest,
     Identity,
     LoginOptionsResponse,
     ResetRoomRequest,
@@ -32,6 +31,7 @@ from app.protocol.models import (
     StaffRoomsResponse,
     Surface,
     TimeResponse,
+    UpdateClarificationRequest,
     UpdateRoomRequest,
 )
 
@@ -239,10 +239,30 @@ def build_schema_app() -> FastAPI:
         responses={
             **_ERRORS,
             404: {"model": ErrorResponse, "description": "unknown_clarification"},
+            422: {
+                "model": ErrorResponse,
+                "description": "empty, unknown_room, not_in_room, edit_limit",
+            },
         },
     )
-    async def hide_clarification(clarification_id: str, body: HideClarificationRequest):
-        """Admin hides or unhides a clarification. Added in 0.6.0."""
+    async def update_clarification(clarification_id: str, body: UpdateClarificationRequest):
+        """Admin edits (`body`; old wording stays, struck out) or hides/unhides (`hidden`, one
+        room with `room_id`). Added in 0.6.0 as hide only; edit and per-room in 0.7.0."""
+        _stub()
+
+    @app.delete(
+        "/api/staff/clarifications/{clarification_id}",
+        status_code=204,
+        tags=["staff"],
+        responses={
+            **_ERRORS,
+            404: {"model": ErrorResponse, "description": "unknown_clarification"},
+            422: {"model": ErrorResponse, "description": "unknown_room, not_in_room"},
+        },
+    )
+    async def delete_clarification(clarification_id: str, room_id: str | None = None):
+        """Admin wipes a clarification from the system, or (`room_id`) from one room only.
+        Not undoable. Added in 0.7.0."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)

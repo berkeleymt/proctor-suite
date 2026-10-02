@@ -12,7 +12,7 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.protocol.constants import MAX_LOGIN_ROOMS, MAX_STAFF_ROOMS
 
@@ -112,13 +112,19 @@ class ClarificationOut(BaseModel):
     """One visible clarification, as a room device sees it."""
 
     id: UUID
-    body: str  # plain text; lines starting "- " are shown as bullets
+    body: str  # Markdown with $math$ / $$math$$ (0.7.0); lines starting "- " are bullets
     created_at_ms: int
+    # Earlier wordings, oldest first. Students see them struck out above `body`, so an edit
+    # is never silent (0.7.0). At most MAX_CLARIFICATION_EDITS.
+    previous: list[str]
+    edited_at_ms: int | None
 
 
 class ClarificationAdmin(ClarificationOut):
     room_ids: list[str] | None  # null = all rooms
-    hidden: bool
+    hidden: bool  # hidden everywhere
+    hidden_room_ids: list[str]  # hidden only in these rooms (0.7.0)
+    removed_room_ids: list[str]  # permanently deleted from only these rooms (0.7.0)
 
 
 class ClarificationsResponse(BaseModel):
@@ -133,9 +139,22 @@ class CreateClarificationRequest(BaseModel):
     room_ids: list[str] | None = Field(default=None, min_length=1, max_length=500)
 
 
-class HideClarificationRequest(BaseModel):
+class UpdateClarificationRequest(BaseModel):
+    """Exactly one of `hidden` (hide/unhide) or `body` (edit; the old wording stays visible,
+    struck out). `room_id` limits a hide/unhide to one room; it is not allowed with `body`."""
+
     model_config = ConfigDict(extra="forbid")
-    hidden: bool
+    hidden: bool | None = None
+    body: str | None = Field(default=None, min_length=1, max_length=2000)
+    room_id: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def _one_action(self):
+        if (self.hidden is None) == (self.body is None):
+            raise ValueError("send exactly one of hidden or body")
+        if self.body is not None and self.room_id is not None:
+            raise ValueError("room_id only goes with hidden")
+        return self
 
 
 class RoomSnapshot(BaseModel):
