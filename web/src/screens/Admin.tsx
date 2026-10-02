@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, del, fmt, patch, post, remainingMs, sendCommand, serverNow, type RoomPresence, type Snapshot, type SurfacePresence } from "../api";
-import { Dot, Menu, Sheet } from "../components/ui";
+import { Dot, Sheet } from "../components/ui";
 import { mergePresence, mergeRooms, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { label } from "./Display";
 
 type Rooms = { rooms: Snapshot[]; presence?: RoomPresence[]; version?: number };
-type Kind = "permit" | "start" | "pause" | "resume" | "adjust";
-type Action = "permit" | "start" | "adjust";
+type Kind = "permit" | "start" | "pause" | "resume" | "adjust" | "reset";
+type Action = "permit" | "start" | "adjust" | "pause" | "resume" | "reset";
 type Confirm = { title: string; detail: string; confirm: string; run: () => void };
 type Filters = { room: string; test: string; status: string; dur: string; dev: string };
 const NO_FILTER: Filters = { room: "", test: "", status: "", dur: "", dev: "" };
@@ -22,6 +22,9 @@ const why = (e: unknown) => (e instanceof ApiError ? e.message : "Couldn't reach
 function plan(action: Action, s: Snapshot): Kind[] {
   const st = s.timer.status;
   if (action === "adjust") return st === "ENDED" ? [] : ["adjust"];
+  if (action === "pause") return st === "RUNNING" ? ["pause"] : [];
+  if (action === "resume") return st === "PAUSED" ? ["resume"] : [];
+  if (action === "reset") return st === "PAUSED" || st === "ENDED" ? ["reset"] : [];
   if (action === "permit") return st === "NOT_PERMITTED" ? ["permit"] : [];
   return st === "NOT_PERMITTED" ? ["permit", "start"] : st === "PERMITTED" ? ["start"] : [];
 }
@@ -260,6 +263,10 @@ export function Admin() {
   async function runRoom(s: Snapshot, kinds: Kind[]): Promise<string> {
     for (const k of kinds) {
       try {
+        if (k === "reset") {
+          put((s = await post<Snapshot>(`/api/staff/rooms/${s.room_id}/reset`, { session_id: s.session_id })));
+          continue;
+        }
         const r = await sendCommand(k, s, k === "adjust" ? { delta_ms: 300_000 } : {});
         put(r.snapshot);
         s = r.snapshot;
@@ -332,6 +339,9 @@ export function Admin() {
     permit: ["Allow start for", "Proctors will be able to press Start."],
     start: ["Start", "Students will see the clock run right away."],
     adjust: ["Add 5 minutes to", "Students will see the change right away."],
+    pause: ["Pause", "Students will see the clock stop."],
+    resume: ["Resume", "Students will see the clock run again."],
+    reset: ["Reset", "Clocks go back to full time and rooms need Allow start again."],
   };
   const askBulk = (e: React.MouseEvent, action: Action) => {
     const n = chosen.filter((s) => plan(action, s).length).length;
@@ -340,7 +350,7 @@ export function Admin() {
     ask(e, {
       title: `${TEXT[action][0]} ${n} room${n === 1 ? "" : "s"}?`,
       detail: skipped ? `${skipped} selected room${skipped === 1 ? " is" : "s are"} skipped (not in the right state).` : TEXT[action][1],
-      confirm: action === "permit" ? "Allow start" : action === "start" ? "Start" : "Add 5 min",
+      confirm: action === "permit" ? "Allow start" : action === "start" ? "Start" : action === "adjust" ? "Add 5 min" : TEXT[action][0],
       run: () => bulk(action),
     });
   };
@@ -357,7 +367,7 @@ export function Admin() {
   function actions(s: Snapshot) {
     const st = s.timer.status;
     return (
-      <span className="row">
+      <span className="row" style={{ flexWrap: "nowrap" }}>
         {st === "NOT_PERMITTED" && <button onClick={() => act(s, ["permit"])}>Allow start</button>}
         {st === "PERMITTED" && (
           <button className="primary" onClick={() => act(s, ["start"])}>
@@ -401,13 +411,10 @@ export function Admin() {
             +5 min
           </button>
         )}
-        <Menu
-          label={`More actions for ${s.room_name}`}
-          items={[
-            { label: "Edit…", onSelect: () => setEditing(s) },
-            { label: "Delete…", danger: true, disabled: inProgress(s), onSelect: () => setDeleting([s]) },
-          ]}
-        />
+        <button onClick={() => setEditing(s)}>Edit…</button>
+        <button disabled={inProgress(s)} onClick={() => setDeleting([s])}>
+          Delete…
+        </button>
       </span>
     );
   }
@@ -449,6 +456,15 @@ export function Admin() {
           <button className="primary" disabled={working} onClick={(e) => askBulk(e, "start")}>
             Start
           </button>
+          <button disabled={working} onClick={(e) => askBulk(e, "pause")}>
+            Pause
+          </button>
+          <button disabled={working} onClick={(e) => askBulk(e, "resume")}>
+            Resume
+          </button>
+          <button disabled={working} onClick={(e) => askBulk(e, "reset")}>
+            Reset
+          </button>
           <button disabled={working} onClick={(e) => askBulk(e, "adjust")}>
             +5 min
           </button>
@@ -457,9 +473,6 @@ export function Admin() {
           </button>
           <button disabled={working} onClick={() => setDeleting(chosen)}>
             Delete…
-          </button>
-          <button disabled={working} onClick={() => setSel(new Set())}>
-            Clear
           </button>
           {working && <span className="muted">Working…</span>}
         </div>
