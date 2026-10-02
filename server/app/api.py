@@ -1,19 +1,25 @@
 """Slice 1 HTTP API: time, auth, snapshots, commands (docs/protocol.md §3-§7, polling only)."""
 
+import asyncio
+import os
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from app import google_auth
 from app.protocol.constants import (
     CLIENT_HEADER,
     COOKIE_NAMES,
     MAX_STAFF_ROOMS,
     STAFF_SESSION_TTL_H,
+    SUPER_COOKIE,
 )
 from app.protocol.models import (
     ActorKind,
+    AddSuperAdminRequest,
+    BrandResponse,
     ClarificationAdmin,
     ClarificationsResponse,
     Command,
@@ -31,9 +37,16 @@ from app.protocol.models import (
     StaffLoginRequest,
     StaffRole,
     StaffRoomsResponse,
+    SuperAdminOut,
+    SuperAdminsResponse,
+    SuperConfig,
+    SuperIdentity,
+    SuperLoginRequest,
+    SuperSettings,
     TimeResponse,
     UpdateClarificationRequest,
     UpdateRoomRequest,
+    UpdateSettingsRequest,
 )
 from app.store import ClarError, Session, Store, now_ms
 from app.stream import frames
@@ -442,3 +455,150 @@ async def empty_clarification(clarification_id: UUID, request: Request, _: Post)
     except ClarError as e:
         raise err(422, e.code, CLAR_ERRORS[e.code]) from None
     return Response(status_code=204)
+
+
+# --- branding and the super-admin page (0.9.0) ---
+
+
+@router.get("/brand", response_model=BrandResponse)
+async def brand() -> BrandResponse:
+    name, icon = store.brand()
+    return BrandResponse(name=name, icon=icon)
+
+
+@router.get("/auth/super-config", response_model=SuperConfig)
+async def super_config() -> SuperConfig:
+    return SuperConfig(google_client_id=os.environ.get("GOOGLE_CLIENT_ID") or None)
+
+
+def super_session(request: Request) -> Session | None:
+    s = store.sessions.get(request.cookies.get(SUPER_COOKIE) or "")
+    return s if s and s.kind == "super" and s.email and store.is_super(s.email) else None
+
+
+def super_only(request: Request) -> Session:
+    s = super_session(request)
+    if not s:
+        raise err(401, "unauthenticated", "Sign in with Google first.")
+    return s
+
+
+@router.post("/auth/super-login", response_model=SuperIdentity)
+async def super_login(body: SuperLoginRequest, response: Response, _: Post) -> SuperIdentity:
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise err(503, "not_configured", "Google sign-in isn't set up on this server yet.")
+    try:  # one HTTPS call to Google (their keys); keep it off the event loop
+        claims = await asyncio.to_thread(google_auth.verify, body.credential, client_id)
+    except ValueError:
+        raise err(401, "invalid_credentials", "Google couldn't confirm that sign-in.") from None
+    email = str(claims.get("email", "")).lower()
+    if not email or claims.get("email_verified") is not True or not store.is_super(email):
+        raise err(403, "not_allowed", f"{email or 'That account'} isn't a super-admin.")
+    tok = store.new_session(Session("super", "super", email=email))
+    response.set_cookie(
+        SUPER_COOKIE, tok, httponly=True, secure=True, samesite="lax",
+        max_age=STAFF_SESSION_TTL_H * 3600, path="/",
+    )  # fmt: skip
+    return SuperIdentity(email=email)
+
+
+@router.post("/auth/super-logout", status_code=204)
+async def super_logout(request: Request, _: Post) -> Response:
+    store.sessions.pop(request.cookies.get(SUPER_COOKIE) or "", None)
+    resp = Response(status_code=204)
+    resp.delete_cookie(SUPER_COOKIE, path="/")
+    return resp
+
+
+@router.get("/super/me", response_model=SuperIdentity)
+async def super_me(request: Request) -> SuperIdentity:
+    return SuperIdentity(email=super_only(request).email or "")
+
+
+def settings_out() -> SuperSettings:
+    name, _icon = store.brand()
+    return SuperSettings(
+        app_name=name,
+        app_icon=store.setting("APP_ICON"),
+        room_password=store.setting("ROOM_PASSWORD"),
+        admin_password=store.setting("ADMIN_PASSWORD"),
+    )
+
+
+@router.get("/super/settings", response_model=SuperSettings)
+async def super_settings(request: Request) -> Response:
+    super_only(request)
+    return JSONResponse(settings_out().model_dump(), headers={"Cache-Control": "no-store"})
+
+
+@router.patch("/super/settings", response_model=SuperSettings)
+async def update_settings(body: UpdateSettingsRequest, request: Request, _: Post) -> Response:
+    who = super_only(request).email or ""
+    names = {
+        "app_name": "APP_NAME",
+        "app_icon": "APP_ICON",
+        "room_password": "ROOM_PASSWORD",
+        "admin_password": "ADMIN_PASSWORD",
+    }
+    changes = {}
+    for field, env in names.items():
+        value = getattr(body, field)
+        if value is not None:
+            changes[env] = value.strip() if field in ("app_name", "app_icon") else value
+    changes = {k: v for k, v in changes.items() if v != store.setting(k)}
+    revoke: set[str] = set()
+    if body.log_out_old:
+        revoke |= {"room"} if "ROOM_PASSWORD" in changes else set()
+        revoke |= {"staff"} if "ADMIN_PASSWORD" in changes else set()
+    if changes:
+        await store.update_settings(changes, who, revoke)
+    return JSONResponse(settings_out().model_dump(), headers={"Cache-Control": "no-store"})
+
+
+def admins_out() -> SuperAdminsResponse:
+    env = [
+        SuperAdminOut(email=e, source="env", added_by=None, added_at_ms=None)
+        for e in sorted(store.env_supers())
+    ]
+    added = [
+        SuperAdminOut(email=a.email, source="added", added_by=a.added_by, added_at_ms=a.added_at_ms)
+        for a in sorted(store.supers.values(), key=lambda a: (a.added_at_ms, a.email))
+        if a.email not in store.env_supers()
+    ]
+    return SuperAdminsResponse(admins=env + added)
+
+
+@router.get("/super/admins", response_model=SuperAdminsResponse)
+async def list_super_admins(request: Request) -> SuperAdminsResponse:
+    super_only(request)
+    return admins_out()
+
+
+@router.post("/super/admins", response_model=SuperAdminsResponse, status_code=201)
+async def add_super_admin(
+    body: AddSuperAdminRequest, request: Request, _: Post
+) -> SuperAdminsResponse:
+    who = super_only(request).email or ""
+    try:
+        await store.add_super(body.email, who)
+    except ValueError:
+        raise err(409, "already_super_admin", f"{body.email} is already a super-admin.") from None
+    return admins_out()
+
+
+@router.delete("/super/admins/{email}", response_model=SuperAdminsResponse)
+async def remove_super_admin(email: str, request: Request, _: Post) -> SuperAdminsResponse:
+    me = super_only(request).email
+    email = email.strip().lower()
+    if email == me:
+        raise err(422, "cannot_remove_self", "You can't remove yourself. Ask another super-admin.")
+    if email in store.env_supers():
+        raise err(
+            422, "set_in_env", "This one comes from SUPER_ADMIN_EMAILS in .env. Edit it there."
+        )
+    try:
+        await store.remove_super(email)
+    except KeyError:
+        raise err(404, "unknown_admin", "No such super-admin.") from None
+    return admins_out()

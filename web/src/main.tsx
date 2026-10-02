@@ -6,6 +6,8 @@ import { Clarifications } from "./screens/Clarifications";
 import { Display } from "./screens/Display";
 import { Login } from "./screens/Login";
 import { Proctor } from "./screens/Proctor";
+import { Super } from "./screens/Super";
+import { loadBrand } from "./brand";
 
 export function go(path: string) {
   history.pushState(null, "", path);
@@ -23,8 +25,11 @@ function App() {
   if (path.startsWith("/admin")) return <Admin />;
   if (path.startsWith("/display")) return <Display />;
   if (path.startsWith("/proctor")) return <Proctor />;
+  if (path.startsWith("/super")) return <Super />;
   return <Login />;
 }
+
+void loadBrand();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

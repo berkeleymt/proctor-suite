@@ -8,6 +8,7 @@ Rules for this file:
 - After editing, run `uv run python -m scripts.export_openapi` and commit contracts/openapi.json.
 """
 
+import re
 from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
@@ -289,6 +290,98 @@ class StaffIdentity(BaseModel):
 
 
 Identity = Annotated[RoomIdentity | StaffIdentity, Field(discriminator="kind")]
+
+
+# ------------------------------------------------- branding and super-admin (0.9.0)
+
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class BrandResponse(BaseModel):
+    """Public: what every page shows as its title and icon. Empty strings if not configured."""
+
+    name: str
+    icon: str  # absolute URL, or a path from the site root; "" = no icon
+
+
+class SuperConfig(BaseModel):
+    """Public: what the sign-in button needs. null = Google sign-in is not set up on this server."""
+
+    google_client_id: str | None
+
+
+class SuperLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    credential: str = Field(min_length=20, max_length=4096)  # Google ID token (a JWT)
+
+
+class SuperIdentity(BaseModel):
+    email: str
+
+
+class SuperSettings(BaseModel):
+    """What the super-admin page edits. These replace the same-named .env values at runtime."""
+
+    app_name: str
+    app_icon: str
+    room_password: str
+    admin_password: str
+
+
+def _icon_ok(v: str | None) -> str | None:
+    if v is None:
+        return v
+    v = v.strip()
+    if v and "://" in v and not v.startswith(("https://", "http://")):
+        raise ValueError("icon must be a path or an http(s) URL")
+    if v and "://" not in v and not re.fullmatch(r"[\w./-]+", v):
+        raise ValueError("icon path may only use letters, digits, / . _ -")
+    return v
+
+
+class UpdateSettingsRequest(BaseModel):
+    """Omitted fields are unchanged. `log_out_old` signs out everyone who got in with a password
+    that this request changes (room devices for the room password, admins for the admin one)."""
+
+    model_config = ConfigDict(extra="forbid")
+    app_name: str | None = Field(default=None, min_length=1, max_length=40)
+    app_icon: str | None = Field(default=None, max_length=500)  # "" removes the icon
+    room_password: str | None = Field(default=None, min_length=8, max_length=100)
+    admin_password: str | None = Field(default=None, min_length=8, max_length=100)
+    log_out_old: bool = False
+
+    _check_icon = field_validator("app_icon")(_icon_ok)
+
+    @field_validator("app_name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("name can't be blank")
+        return v
+
+
+class SuperAdminOut(BaseModel):
+    email: str
+    source: Literal["env", "added"]  # "env" = SUPER_ADMIN_EMAILS in .env: cannot be removed here
+    added_by: str | None
+    added_at_ms: int | None
+
+
+class SuperAdminsResponse(BaseModel):
+    admins: list[SuperAdminOut]
+
+
+class AddSuperAdminRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL.match(v):
+            raise ValueError("not an email address")
+        return v
 
 
 class SurfacePresence(BaseModel):

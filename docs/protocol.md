@@ -224,6 +224,12 @@ Markdown with `$inline$` and `$$display$$` math (raw HTML is not rendered; lines
 
 `GET /api/staff/rooms` → `{rooms: [RoomSnapshot]}`, at most `MAX_STAFF_ROOMS` (1000). Staff cookie only. Used for the dashboard's first paint.
 
+### 7.6 Branding and the super-admin page (0.9.0)
+
+`GET /api/brand` is public and tiny: the site `name` and `icon` (an absolute URL, or a path from the site root; `""` = none). Nothing in the web app hard-codes them. They start as `APP_NAME` / `APP_ICON` from `.env`; a value saved on the super-admin page is stored in Postgres (`settings`) and wins from then on. The same holds for `ROOM_PASSWORD` and `ADMIN_PASSWORD` (compared as before; stored as plain text so the page can show them).
+
+The super-admin page (`/super`) is not a room or staff login. The browser gets a Google ID token (Google Identity Services), `POST /api/auth/super-login` verifies it against `GOOGLE_CLIENT_ID` (signature, audience, `email_verified`) and the lower-cased email must be in `SUPER_ADMIN_EMAILS` (`.env`, cannot be removed on the page) or the `super_admins` table. The session is its own cookie, `super_sid`. Removing someone ends their session at once; nobody can remove themselves. `PATCH /api/super/settings` with `log_out_old` signs out every room device (room password changed) or admin (admin password changed). Only `/super` talks to Google; room and admin pages never do (invariant 6).
+
 ## 8. Client network behavior (invariant 2)
 
 Applies to every loop: clock sync, stream, polling, outbox flush.
@@ -268,6 +274,12 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `GET /api/staff/clarifications` | staff (admin/pm) | — | `{clarifications: [ClarificationAdmin]}` |
 | `POST /api/staff/clarifications` | staff (admin/pm) | `{body, room_ids \| null}` | `ClarificationAdmin` (201); 422 `unknown_room` |
 | `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden, room_id?}` or `{body}` | `ClarificationAdmin`; 404 `unknown_clarification`; 422 `empty` / `edit_limit` / `unknown_room` / `not_in_room` |
+| `GET /api/brand` | public | — | `{name, icon}` (0.9.0) |
+| `GET /api/auth/super-config` | public | — | `{google_client_id \| null}` |
+| `POST /api/auth/super-login` | public | `{credential}` (Google ID token) | `{email}`, sets `super_sid`; 401 `invalid_credentials`; 403 `not_allowed`; 503 `not_configured` |
+| `POST /api/auth/super-logout`, `GET /api/super/me` | super | — | 204, `{email}` |
+| `GET/PATCH /api/super/settings` | super | `{app_name?, app_icon?, room_password?, admin_password?, log_out_old?}` | `{app_name, app_icon, room_password, admin_password}` |
+| `GET/POST /api/super/admins`, `DELETE /api/super/admins/{email}` | super | `{email}` | `{admins: [{email, source, added_by, added_at_ms}]}`; 409 `already_super_admin`; 422 `cannot_remove_self` / `set_in_env`; 404 `unknown_admin` |
 | `DELETE /api/staff/clarifications/{id}?room_id=` | staff (admin/pm) | — | 204; 404 `unknown_clarification`; 422 `unknown_room` / `not_in_room` |
 
 `/readyz` touches Postgres and is for monitoring only. Room devices never call it (invariant 1).
@@ -317,3 +329,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.6.0 | 2026-10-01 | Clarifications. Added `GET/POST /api/staff/clarifications` and `PATCH /api/staff/clarifications/{id}` (hide/unhide), required `clarifications` on `RoomSnapshot` (§7.5). Room `version` is now the room counter plus a store-wide clarification counter. |
 | 0.7.0 | 2026-10-02 | Clarification edit, per-room hide, delete. `PATCH /api/staff/clarifications/{id}` takes `{hidden, room_id?}` or `{body}` (was `{hidden}`); new `DELETE` (optional `room_id`); `ClarificationOut` gains `previous`, `edited_at_ms`; `ClarificationAdmin` gains `hidden_room_ids`, `removed_room_ids`. Bodies are Markdown + math. Migration 0004. |
 | 0.8.0 | 2026-10-02 | Clarification delete is soft: `DELETE` no longer wipes; new `POST /api/staff/clarifications/{id}/restore` and `/empty`, new `POST /api/staff/rooms/{id}/empty`. `ClarificationAdmin` gains `deleted`, `edited_room_ids`. `PATCH {body, room_id}` = per-room edit (returns the new copy). `GET /api/staff/stream?clarifications=1` adds a `clarifications` event; the staff stream sends `room_removed` after an Empty. Migration 0005. |
+| 0.9.0 | 2026-10-02 | Branding and super-admin. Added `GET /api/brand`, `GET /api/auth/super-config`, `POST /api/auth/super-login`, `POST /api/auth/super-logout`, `GET /api/super/me`, `GET/PATCH /api/super/settings`, `GET/POST /api/super/admins`, `DELETE /api/super/admins/{email}` (§7.6). Migration 0007 (`settings`, `super_admins`). |

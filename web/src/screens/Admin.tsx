@@ -3,6 +3,7 @@ import { ApiError, del, fmt, patch, post, remainingMs, sendCommand, serverNow, t
 import { AdminBar, Sheet } from "../components/ui";
 import { dropRoom, mergePresence, mergeRooms, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
+import { usePageTitle } from "../brand";
 import { label } from "./Display";
 
 type Rooms = { rooms: Snapshot[]; presence?: RoomPresence[]; version?: number };
@@ -197,6 +198,7 @@ function DeleteSheet({ rooms, onConfirm, onClose }: { rooms: Snapshot[]; onConfi
 }
 
 export function Admin() {
+  usePageTitle("Timers");
   useClock();
   useTick();
   const { data, setData, online, unauthorized } = useLive<Rooms>("/api/staff/rooms", "/api/staff/stream", mergeRooms, 2000, { presence: mergePresence, room_removed: dropRoom });

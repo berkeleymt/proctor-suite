@@ -4,9 +4,13 @@ import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
 import { FitText, useActive, useZoom, ZoomButtons } from "../components/FitText";
 import { Dot } from "../components/ui";
+import { usePageTitle } from "../brand";
+import { isDisplayWindow, useAutoFullscreen } from "../fullscreen";
 import { ClarSizeButtons, docEmbedUrl, FitList, useClarSize } from "../components/ClarList";
 
 export function Display() {
+  usePageTitle("Display");
+  const waitingFs = useAutoFullscreen(isDisplayWindow());
   useClock();
   useTick();
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -24,7 +28,12 @@ export function Display() {
   }, []);
 
   if (needLogin || !roomId) return <main className="center" />;
-  return <Screen roomId={roomId} />;
+  return (
+    <>
+      <Screen roomId={roomId} />
+      {waitingFs && <p className="fs-hint">Click anywhere for full screen</p>}
+    </>
+  );
 }
 
 function Screen({ roomId }: { roomId: string }) {

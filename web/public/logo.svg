@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Placeholder logo">
+  <ellipse cx="32" cy="34" rx="26" ry="20" fill="#f6d33b"/>
+  <path d="M6 34c0-3 2-6 5-7M58 34c0-3-2-6-5-7" stroke="#e0b81f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M32 14c1-5 6-8 12-8-1 6-5 9-12 8z" fill="#3a9d4f"/>
+  <path d="M20 30c2-5 6-8 11-9" stroke="#fff" stroke-opacity=".6" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

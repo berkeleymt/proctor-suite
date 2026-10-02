@@ -38,6 +38,12 @@ services:
       DATABASE_URL: postgresql://proctor:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}@postgres:5432/proctor
       ROOM_PASSWORD: ${ROOM_PASSWORD:?set ROOM_PASSWORD in infra/.env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in infra/.env}
+      # Site name and icon (the first values; the super-admin page can change them later).
+      APP_NAME: ${APP_NAME:?set APP_NAME in infra/.env}
+      APP_ICON: ${APP_ICON:-}
+      # Super-admin page: Google sign-in, plus the emails that may always open it.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS:-}
       SEED_ROOMS: ${SEED_ROOMS:-Dwinelle 145,Evans 10,Soda 306,Wheeler 150}
       SESSION_DURATION_MIN: ${SESSION_DURATION_MIN:-60}
     depends_on:

@@ -18,6 +18,8 @@ or private window, since each surface has its own cookie). Admin: **Allow start*
 
 Clarifications: open **Clarifications** (tab at the top of `/admin`). Write Markdown (bullets, **bold**, `$x^2$` math) and watch the preview beside it. **Send to**: All rooms, All <building>, All <test>, Clear (they add up), or **Pick rooms** for single ones. **Post**. It shows under the timer on those rooms' `/display` pages (timer moves to the top; **¶−/Auto/¶+** on the display resize the text) and disappears when time runs out. In the posted list: **Edit** keeps the old text on the displays, crossed out, with the new text after it. **Hide** asks first (if you are retracting something, edit it instead); **Unhide** brings it back. **Delete…** wipes it for good. **Rooms** shows where it went and lets you hide or delete it for one room only. A room with a doc link shows that Google Doc (shared "Anyone with the link") instead of the text list.
 
+**Name, icon, passwords, super-admin.** `APP_NAME` and `APP_ICON` in `infra/.env` set the tab title, tab icon and login page (nothing else hard-codes the name; the icon is a file in `web/public/` like `/logo.svg`, or an https link). **Open display window** opens the projector view sized to the screen and goes full screen (if the browser wants a click first, click once in that window). `/super` is the super-admin page: sign in with Google (an email in `SUPER_ADMIN_EMAILS` or added on the page), change the name, icon, proctor and admin passwords (no redeploy; saved values win over `.env`) and manage who else is a super-admin. Setup for Google and for the `lemon.berkeley.mt` domain: [`docs/setup-domain-and-google.md`](docs/setup-domain-and-google.md).
+
 Rooms and timers are saved in Postgres: `docker compose restart app` keeps everything (people just have to sign in again). To start fresh: `docker compose down -v`.
 
 Server tests, including the real-Postgres ones: `cd server && TEST_DATABASE_URL=postgresql://user:pw@localhost:5432/dbname uv run pytest` (they drop and recreate the tables in that database, so point it at a throwaway one; without the variable they are skipped).
@@ -26,7 +28,7 @@ Server tests, including the real-Postgres ones: `cd server && TEST_DATABASE_URL=
 
 ```bash
 sudo su - ubuntu
-nano ~/proctor-suite/infra/.env   # add ROOM_PASSWORD=... and ADMIN_PASSWORD=... (strong password, not the dev ones)
+nano ~/proctor-suite/infra/.env   # add ROOM_PASSWORD=... and ADMIN_PASSWORD=... (strong, not the dev ones), APP_NAME=..., APP_ICON=...; see .env.example
 ```
 
 ```bash

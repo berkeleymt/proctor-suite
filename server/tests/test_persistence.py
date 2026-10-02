@@ -31,7 +31,7 @@ def migrate() -> None:
 async def reset() -> None:
     c = await asyncpg.connect(URL)
     await c.execute(
-        "DROP TABLE IF EXISTS clar_counter, clarifications, commands, rooms, alembic_version CASCADE"
+        "DROP TABLE IF EXISTS super_admins, settings, clar_counter, clarifications, commands, rooms, alembic_version CASCADE"
     )
     await c.close()
 
@@ -191,6 +191,32 @@ def test_clarification_edit_per_room_and_delete_survive_restart(monkeypatch):
         assert second.clars[copy.id].room_ids == ["clar-one"]
         assert second.clars[copy.id].previous == ["For both"]
         assert second.version(second.rooms["clar-one"]) == want  # no step backwards after delete
+        await pool.close()
+
+    asyncio.run(run())
+
+
+def test_settings_and_super_admins_survive_restart(monkeypatch):
+    monkeypatch.setenv("ROOM_PASSWORD", "from-env")
+    asyncio.run(reset())
+    migrate()
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        first = Store()
+        await first.load(pool)
+        await first.update_settings(
+            {"APP_NAME": "Lemma", "ROOM_PASSWORD": "from-db"}, "a@b.co", set()
+        )
+        await first.add_super("helper@berkeley.mt", "a@b.co")
+        await first.add_super("gone@berkeley.mt", "a@b.co")
+        await first.remove_super("gone@berkeley.mt")
+        second = Store()  # "restart"
+        await second.load(pool)
+        assert second.brand()[0] == "Lemma"
+        assert second.check_password("from-db", "ROOM_PASSWORD")  # the database beats .env
+        assert not second.check_password("from-env", "ROOM_PASSWORD")
+        assert list(second.supers) == ["helper@berkeley.mt"]
         await pool.close()
 
     asyncio.run(run())

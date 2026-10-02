@@ -13,6 +13,8 @@ from fastapi.openapi.utils import get_openapi
 from app.protocol.constants import COOKIE_NAMES, PROTOCOL_VERSION
 from app.protocol.models import (
     EXTRA_SCHEMA_MODELS,
+    AddSuperAdminRequest,
+    BrandResponse,
     ClarificationAdmin,
     ClarificationsResponse,
     Command,
@@ -29,10 +31,16 @@ from app.protocol.models import (
     StaffIdentity,
     StaffLoginRequest,
     StaffRoomsResponse,
+    SuperAdminsResponse,
+    SuperConfig,
+    SuperIdentity,
+    SuperLoginRequest,
+    SuperSettings,
     Surface,
     TimeResponse,
     UpdateClarificationRequest,
     UpdateRoomRequest,
+    UpdateSettingsRequest,
 )
 
 _ERRORS: dict[int | str, dict[str, Any]] = {
@@ -305,6 +313,80 @@ def build_schema_app() -> FastAPI:
     )
     async def empty_room(room_id: str):
         """Admin wipes a deleted room and its history from the database for good. 0.8.0."""
+        _stub()
+
+    @app.get("/api/brand", response_model=BrandResponse, tags=["public"])
+    async def brand():
+        """Public: the site name and icon every page shows. Added in 0.9.0."""
+        _stub()
+
+    @app.get("/api/auth/super-config", response_model=SuperConfig, tags=["super"])
+    async def super_config():
+        """Public: the Google client id for the sign-in button (null = not set up). 0.9.0."""
+        _stub()
+
+    @app.post(
+        "/api/auth/super-login",
+        response_model=SuperIdentity,
+        tags=["super"],
+        responses={
+            401: {"model": ErrorResponse, "description": "invalid_credentials"},
+            403: {"model": ErrorResponse, "description": "not_allowed"},
+            503: {"model": ErrorResponse, "description": "not_configured"},
+        },
+    )
+    async def super_login(body: SuperLoginRequest):
+        """Sign in with a Google ID token. Only emails on the super-admin list get a session."""
+        _stub()
+
+    @app.post("/api/auth/super-logout", status_code=204, tags=["super"])
+    async def super_logout():
+        _stub()
+
+    @app.get("/api/super/me", response_model=SuperIdentity, tags=["super"], responses=_ERRORS)
+    async def super_me():
+        _stub()
+
+    @app.get("/api/super/settings", response_model=SuperSettings, tags=["super"], responses=_ERRORS)
+    async def super_settings():
+        """Super-admin: current name, icon and the two passwords (not cached)."""
+        _stub()
+
+    @app.patch(
+        "/api/super/settings", response_model=SuperSettings, tags=["super"], responses=_ERRORS
+    )
+    async def update_settings(body: UpdateSettingsRequest):
+        """Change any of them; they replace the .env values from now on. 0.9.0."""
+        _stub()
+
+    @app.get(
+        "/api/super/admins", response_model=SuperAdminsResponse, tags=["super"], responses=_ERRORS
+    )
+    async def list_super_admins():
+        _stub()
+
+    @app.post(
+        "/api/super/admins",
+        response_model=SuperAdminsResponse,
+        status_code=201,
+        tags=["super"],
+        responses={**_ERRORS, 409: {"model": ErrorResponse, "description": "already_super_admin"}},
+    )
+    async def add_super_admin(body: AddSuperAdminRequest):
+        _stub()
+
+    @app.delete(
+        "/api/super/admins/{email}",
+        response_model=SuperAdminsResponse,
+        tags=["super"],
+        responses={
+            **_ERRORS,
+            404: {"model": ErrorResponse, "description": "unknown_admin"},
+            422: {"model": ErrorResponse, "description": "cannot_remove_self, set_in_env"},
+        },
+    )
+    async def remove_super_admin(email: str):
+        """Remove someone added on this page. Not yourself, and not the .env ones."""
         _stub()
 
     @app.get("/api/staff/stream", tags=["staff"], responses=_SSE)

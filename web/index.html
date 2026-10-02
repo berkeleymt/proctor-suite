@@ -4,7 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <title>Proctor Suite</title>
+    <!-- No site name here: it comes from APP_NAME / APP_ICON (.env or the super-admin page) via
+         /api/brand. The last values are remembered below so the tab is right before the app loads. -->
+    <title>…</title>
+    <link rel="icon" id="icon" href="data:," />
+    <script>
+      try {
+        var b = JSON.parse(localStorage.getItem("brand") || "{}");
+        if (b.name) document.title = b.name;
+        if (b.icon) document.getElementById("icon").href = b.icon;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

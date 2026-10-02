@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-10-02 (slice 11) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
+**Last updated:** 2026-10-02 (slice 12) · **Event:** BMT, Sat Nov 14, 2026 · **Feature freeze:** Nov 1 · **Total freeze:** Nov 11
 
 ## Where we are
 
@@ -16,6 +16,8 @@
 - Scope ceiling is `docs/wireframe.html`. Chat, bathroom log, roster, super-admin need protocol additions first. There is no Deletion tab (ADR 0013).
 
 ## Next actions, in order
+
+-1. Slice 12: add `APP_NAME` / `APP_ICON` to prod `.env` (compose requires `APP_NAME`), do DNS and Google setup ([`setup-domain-and-google.md`](../setup-domain-and-google.md)), then deploy (migration 0007).
 
 0. *(Done in slice 11)* Contract regenerated; pytest 98 passed with Postgres, `npm run build` passes.
 1. Push slices 8-10 (migrations 0003-0005) and run `deploy.sh` (README). Open `/display` on a real projector or a resized window and click through login, Add room, filters, bulk actions on 2 devices. **Browser verification is the biggest open risk.**

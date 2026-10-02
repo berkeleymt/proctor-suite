@@ -4,7 +4,7 @@ Changing any value here is a contract change: bump PROTOCOL_VERSION and add a
 changelog line to docs/protocol.md.
 """
 
-PROTOCOL_VERSION = "0.8.0"
+PROTOCOL_VERSION = "0.9.0"
 
 # --- Streaming and network behavior (invariant 2) ---
 HEARTBEAT_INTERVAL_S = 15  # server sends a heartbeat on every open stream this often
@@ -34,6 +34,7 @@ MAX_STAFF_ROOMS = 1000
 
 # --- Auth ---
 CLIENT_HEADER = "X-Proctor-Client"  # required (non-empty) on every POST: CSRF guard
+SUPER_COOKIE = "super_sid"  # Google-signed-in super-admin page (its own cookie, not a surface)
 COOKIE_NAMES = {"display": "display_sid", "control": "control_sid", "staff": "staff_sid"}
 STAFF_SESSION_TTL_H = 24
 

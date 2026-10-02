@@ -26,6 +26,8 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 
 - [?] Admin Clarifications (slices 8-9): navbar tabs, composer with live Markdown/math preview, compact room picker (All rooms / All building / All test / Clear + searchable list), posted list with a summary and per-room Rooms popover, Edit (old text stays crossed out), Hide (asks first; Edit instead), Delete, per-room Hide/Delete. Server tests pass incl. real Postgres; not tried in a browser. Slice 10: header counts + light + Log out, live list without reload, Delete is soft with "Show deleted" (Restore, Empty…), per-room Edit (that room gets its own copy). Missing: Preview-display button. No Deletion tab (cancelled, ADR 0013)
 
+- [?] Super-admin page (slice 12): Google sign-in (token check tested with a fake; real Google not tried), name, icon, passwords, super-admin list. Server tests pass incl. Postgres; not tried in a browser
+
 ## Deploy and demo
 - [ ] Deployed to AWS via `deploy.sh`
 - [ ] Oct 5 demo run; evidence recorded here (date, devices, outcome)
@@ -35,6 +37,7 @@ Not in the prototype: offline outbox, Service Worker, clarifications, bathroom l
 - Protocol §13 open questions (non-blocking).
 
 ## Slice log
+- Slice 12 (2026-10-02): name/icon from config, projector window full screen, super-admin page (Google sign-in, passwords, super-admins), DNS and Google setup guide; protocol 0.9.0, migration 0007, ADR 0014, `log/2026-10-02-claude-slice12-branding-super-admin.md`.
 - Slice 11 (2026-10-02): mobile admin header (shared `AdminBar`, ☰ menu under 1040 px), contract regenerated, stale test fixed, `log/2026-10-02-claude-slice11-admin-header-mobile.md`.
 - Slice 10 (2026-10-02): auto size, heading, clarifications header, live admin list, soft delete + Restore + Empty (clarifications and rooms), per-room edit, Deletion tab cancelled; protocol 0.8.0, migration 0005, ADR 0013, `log/2026-10-02-claude-slice10-soft-delete-per-room-edit.md`.
 - Slice 9 (2026-10-02): clarification edit, delete, per-room hide/delete, Markdown + KaTeX, projector layout and ¶ size, doc iframe, navbar tabs; protocol 0.7.0, migration 0004, ADR 0012, `log/2026-10-02-claude-slice9-clarification-edit-delete.md`.

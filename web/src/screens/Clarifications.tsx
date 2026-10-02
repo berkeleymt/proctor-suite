@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError, del, patch, post, type Clar, type Snapshot } from "../api";
 import { dropRoom, mergeRooms, useLive } from "../hooks";
 import { go } from "../main";
+import { usePageTitle } from "../brand";
 import { AdminBar, Popover, Sheet } from "../components/ui";
 import { ClarItem } from "../components/ClarList";
 
@@ -149,6 +150,7 @@ function EditSheet({ c, room, draft: first, onClose, onSave }: { c: Clar; room?:
 
 /** Admin · Clarifications (wireframe): composer with preview, room picker, posted list. Updates live. */
 export function Clarifications() {
+  usePageTitle("Clarifications");
   const [body, setBody] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [err, setErr] = useState("");

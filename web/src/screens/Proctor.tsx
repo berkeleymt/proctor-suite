@@ -5,10 +5,20 @@ import { go } from "../main";
 import { label } from "./Display";
 import { FitText, useZoom, ZoomButtons } from "../components/FitText";
 import { Dot, Sheet } from "../components/ui";
+import { usePageTitle } from "../brand";
+import { DISPLAY_WINDOW } from "../fullscreen";
 
 type Me = { room_id: string; room_name: string };
 
+/** The projector window: as big as the screen this laptop is on; it then goes full screen itself. */
+function openDisplay() {
+  const s = window.screen as Screen & { availLeft?: number; availTop?: number };
+  const at = `left=${s.availLeft ?? 0},top=${s.availTop ?? 0},width=${s.availWidth},height=${s.availHeight}`;
+  window.open("/display", DISPLAY_WINDOW, `popup,${at}`);
+}
+
 export function Proctor() {
+  usePageTitle("Proctor");
   useClock();
   const [me, setMe] = useState<Me | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -92,7 +102,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
             Start
           </button>
         )}
-        <button onClick={() => window.open("/display", "proctor-display", "popup")}>
+        <button onClick={openDisplay}>
           <span className="long">Open display window ↗</span>
           <span className="short">Display ↗</span>
         </button>

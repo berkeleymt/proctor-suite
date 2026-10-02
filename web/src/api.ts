@@ -6,6 +6,9 @@ export type Clar = components["schemas"]["ClarificationAdmin"] & { deleted: bool
 export type RoomPresence = components["schemas"]["RoomPresence"];
 export type SurfacePresence = components["schemas"]["SurfacePresence"];
 export type RoomOption = components["schemas"]["LoginRoomOption"];
+export type Brand = components["schemas"]["BrandResponse"];
+export type SuperSettings = components["schemas"]["SuperSettings"];
+export type SuperAdmin = components["schemas"]["SuperAdminOut"];
 export type Identity = components["schemas"]["RoomIdentity"] | components["schemas"]["StaffIdentity"];
 
 const TIMEOUT_MS = 10_000; // protocol REQUEST_TIMEOUT_S

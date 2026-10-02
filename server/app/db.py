@@ -144,3 +144,37 @@ async def delete_clarification(pool: asyncpg.Pool, cid, rev: int) -> None:
 async def load_clar_counter(pool: asyncpg.Pool) -> int:
     async with pool.acquire() as c:
         return await c.fetchval("SELECT COALESCE(MAX(rev), 0) FROM clar_counter")
+
+
+async def load_settings(pool: asyncpg.Pool) -> dict[str, str]:
+    async with pool.acquire() as c:
+        return {r["key"]: r["value"] for r in await c.fetch("SELECT key, value FROM settings")}
+
+
+async def save_settings(pool: asyncpg.Pool, changes: dict[str, str], by: str, at_ms: int) -> None:
+    """All changed settings in one transaction."""
+    async with pool.acquire() as c, c.transaction():
+        for key, value in changes.items():
+            await c.execute(
+                "INSERT INTO settings (key, value, updated_at_ms, updated_by) VALUES ($1,$2,$3,$4)"
+                " ON CONFLICT (key) DO UPDATE SET value=$2, updated_at_ms=$3, updated_by=$4",
+                key, value, at_ms, by,
+            )  # fmt: skip
+
+
+async def load_super_admins(pool: asyncpg.Pool) -> list[asyncpg.Record]:
+    async with pool.acquire() as c:
+        return await c.fetch("SELECT * FROM super_admins ORDER BY added_at_ms, email")
+
+
+async def insert_super_admin(pool: asyncpg.Pool, email: str, by: str, at_ms: int) -> None:
+    async with pool.acquire() as c:
+        await c.execute(
+            "INSERT INTO super_admins (email, added_by, added_at_ms) VALUES ($1,$2,$3)",
+            email, by, at_ms,
+        )  # fmt: skip
+
+
+async def delete_super_admin(pool: asyncpg.Pool, email: str) -> None:
+    async with pool.acquire() as c:
+        await c.execute("DELETE FROM super_admins WHERE email=$1", email)

@@ -1,0 +1,18 @@
+# 0014: Site name and icon from config, super-admin page with Google sign-in
+
+**Date:** 2026-10-02 · **Decided by:** PM (requirements), Claude (slice 12). Closes the wireframe's super-admin "Decision" (allow-list).
+
+## Decisions
+- **The product name is not in the code.** `APP_NAME` and `APP_ICON` live in `infra/.env` (`.env.example`). The server serves them at `GET /api/brand`; the web app uses them in exactly three places: the tab title (`<page> · <name>`), the tab icon, and the login page (icon on top, name below, centered). `index.html` has no name; the last values are remembered in localStorage so the tab is right before the app loads and offline. Compose requires `APP_NAME`, so a missing value fails the deploy loudly instead of showing a blank name. Renaming (Lemon, Lemma, ...) is one value. `APP_ICON` is a path from the site root (a file in `web/public/`) or an `https://` link; a bare `logo.png` is read as `/logo.png`. A link to another site is allowed but is a small outside dependency (login page and tab icon only, never the timer path). `web/public/logo.svg` is a placeholder lemon.
+- **Settings are runtime data.** A `settings` table (`APP_NAME`, `APP_ICON`, `ROOM_PASSWORD`, `ADMIN_PASSWORD`) overrides the same-named environment variables; no row means the `.env` value is used. We do not rewrite `.env` from the app (it is injected into the container and the app has no business editing server files). Consequence: once the page has saved a value, editing `.env` for that value no longer changes anything.
+- **Passwords are stored as plain text**, like in `.env`, because the wireframe's "Show" needs to read them back and they are shared event passwords handed out to volunteers. Reads are `no-store` and only for super-admins. Revisit if passwords ever become per-person.
+- **"Log out everyone with the old password"** (wireframe checkbox, off by default) deletes the in-memory room sessions (room password) or staff sessions (admin password). An already-open stream keeps running until its next reconnect, then gets 401.
+- **Super-admin = Google sign-in + email allow-list** (pattern from `calverify`): Google Identity Services button, ID token posted to `/api/auth/super-login`, verified with `google-auth` (signature, audience = `GOOGLE_CLIENT_ID`, `email_verified`). The allow-list is `SUPER_ADMIN_EMAILS` in `.env` (bootstrap; cannot be removed on the page, so a mistake can't lock everyone out) plus the `super_admins` table, managed on the page. You cannot remove yourself. Removing someone ends their session immediately. Own cookie (`super_sid`), not a room/staff surface.
+- **Invariant 6 still holds:** only `/super` loads Google's script or calls Google. Room, proctor, display and admin pages never do, and with Google down only this page is affected.
+- **Projector window.** "Open display window" opens a window sized to the laptop's screen (named `proctor-display`) and the display tries to go full screen right away. Browsers only allow full screen after a click inside that window, so if the first try is refused the next click or key press does it, with a small "Click anywhere for full screen" hint. When the window has to sign in first, the Sign in click does it.
+
+## Not built
+Logo upload (the icon is a path or link), "reset to .env value", audit log of changes, hashing passwords, rate limiting on `/api/auth/super-login` (Google tokens aren't guessable).
+
+## Consequences
+Protocol 0.9.0, migration 0007 (additive; `--rollback` safe). New env vars `APP_NAME` (required by compose), `APP_ICON`, `GOOGLE_CLIENT_ID`, `SUPER_ADMIN_EMAILS`. New server dependencies `google-auth`, `requests`. Setup steps for DNS and Google: `docs/setup-domain-and-google.md`.

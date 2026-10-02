@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, post, type RoomOption } from "../api";
 import { go } from "../main";
+import { BrandMark, usePageTitle } from "../brand";
+import { enterFullscreen, isDisplayWindow } from "../fullscreen";
 
 const ADMIN = "__admin__";
 
 export function Login() {
+  usePageTitle();
   const q = new URLSearchParams(location.search);
   const surface = q.get("surface") === "display" ? "display" : "control";
   const [rooms, setRooms] = useState<RoomOption[] | null>(null);
@@ -22,6 +25,7 @@ export function Login() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!room || busy) return;
+    if (surface === "display" && isDisplayWindow()) void enterFullscreen(); // this click is the permission
     setBusy(true);
     setErr("");
     try {
@@ -41,7 +45,7 @@ export function Login() {
   return (
     <main className="center">
       <form className="card stack" onSubmit={submit}>
-        <h1>Proctor Suite</h1>
+        <BrandMark />
         {surface === "display" && <p className="muted">Signing in the projector display</p>}
         <label>
           Room

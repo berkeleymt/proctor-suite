@@ -122,6 +122,14 @@ class Session:
     surface: str
     room_id: str | None = None
     role: StaffRole | None = None
+    email: str | None = None  # super-admin sessions only
+
+
+@dataclass(frozen=True)
+class SuperAdmin:
+    email: str
+    added_by: str
+    added_at_ms: int
 
 
 class Store:
@@ -134,6 +142,8 @@ class Store:
         self.rooms = {_slug(n): Room(_slug(n), n, minutes * 60_000, t) for n in names if n}
         self.sessions: dict[str, Session] = {}
         self.clars: dict[UUID, Clarification] = {}
+        self.settings: dict[str, str] = {}  # runtime overrides of APP_NAME, ROOM_PASSWORD, ...
+        self.supers: dict[str, SuperAdmin] = {}  # super-admins added in the UI (emails, lower case)
         # Added to every room's version so a clarification change reaches all affected rooms
         # without rewriting each room row. Rebuilt at startup as max(rev). Only ever grows.
         self.clar_rev = 0
@@ -148,6 +158,11 @@ class Store:
     # --- startup: rebuild memory from Postgres (seed on first run) ---
     async def load(self, pool) -> None:
         self.pool = pool
+        self.settings = await db.load_settings(pool)
+        self.supers = {
+            r["email"]: SuperAdmin(r["email"], r["added_by"], r["added_at_ms"])
+            for r in await db.load_super_admins(pool)
+        }
         rooms, cmds = await db.load_rooms(pool)
         if not rooms:
             for r in self.rooms.values():
@@ -194,10 +209,58 @@ class Store:
         self.clar_rev = max(self.clar_rev, await db.load_clar_counter(pool))
 
     # --- auth ---
-    @staticmethod
-    def check_password(given: str, env_name: str) -> bool:
-        want = os.environ.get(env_name, "")
+    def setting(self, name: str, default: str = "") -> str:
+        """A value changed on the super-admin page wins; otherwise the .env value (read each time)."""
+        return self.settings[name] if name in self.settings else os.environ.get(name, default)
+
+    def check_password(self, given: str, name: str) -> bool:
+        want = self.setting(name)
         return bool(want) and hmac.compare_digest(given.encode(), want.encode())
+
+    def brand(self) -> tuple[str, str]:
+        """(name, icon URL). A relative icon path is anchored at the site root."""
+        icon = self.setting("APP_ICON").strip()
+        if icon and "://" not in icon:
+            icon = "/" + icon.lstrip("./")
+        return self.setting("APP_NAME").strip(), icon
+
+    async def update_settings(self, changes: dict[str, str], by: str, revoke: set[str]) -> None:
+        """Commit first, then memory (invariant 5). `revoke` = session kinds to sign out."""
+        async with self._admin_lock:
+            if self.pool:
+                await db.save_settings(self.pool, changes, by, now_ms())
+            self.settings.update(changes)
+            for tok in [t for t, x in self.sessions.items() if x.kind in revoke]:
+                del self.sessions[tok]
+
+    # --- super-admins: .env SUPER_ADMIN_EMAILS (cannot be removed here) + the table ---
+    @staticmethod
+    def env_supers() -> set[str]:
+        raw = os.environ.get("SUPER_ADMIN_EMAILS", "").replace(";", ",").replace(" ", ",")
+        return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+    def is_super(self, email: str) -> bool:
+        e = email.lower()
+        return e in self.env_supers() or e in self.supers
+
+    async def add_super(self, email: str, by: str) -> None:
+        async with self._admin_lock:
+            if self.is_super(email):
+                raise ValueError("already")
+            row = SuperAdmin(email, by, now_ms())
+            if self.pool:
+                await db.insert_super_admin(self.pool, email, by, row.added_at_ms)
+            self.supers[email] = row
+
+    async def remove_super(self, email: str) -> None:
+        async with self._admin_lock:
+            if email not in self.supers:
+                raise KeyError(email)
+            if self.pool:
+                await db.delete_super_admin(self.pool, email)
+            del self.supers[email]
+            for tok in [t for t, x in self.sessions.items() if x.email == email]:
+                del self.sessions[tok]
 
     def new_session(self, s: Session) -> str:
         token = secrets.token_urlsafe(32)
