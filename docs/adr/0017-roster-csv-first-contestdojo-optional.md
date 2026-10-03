@@ -1,5 +1,7 @@
 # 0017: Roster from a CSV first; ContestDojo's API is an optional extra
 
+> **Superseded (2026-10-02):** CSV import was removed. ContestDojo Sync is the only source; rooms are set by admins on the Roster tab. See [`setup-contestdojo.md`](../setup-contestdojo.md).
+
 **Date:** 2026-10-02 · **Decided by:** Claude (slice 14), PM to confirm. PM asked for typing a student ID to show their name and info for proctors and admins alike.
 
 ## What we found out about ContestDojo's API (github.com/contestdojo/api, read 2026-10-02)

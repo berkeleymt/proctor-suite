@@ -22,7 +22,7 @@ def load(admin, monkeypatch, students=None):
     """Sync a roster the way production does, with ContestDojo's answer faked."""
     monkeypatch.setenv("CONTESTDOJO_API_TOKEN", "t")
     monkeypatch.setenv("CONTESTDOJO_EVENT_ID", "ev1")
-    monkeypatch.setattr(api, "fetch_contestdojo", lambda *cfg: students or STUDENTS)
+    monkeypatch.setattr(api, "fetch_contestdojo", lambda *cfg: (students or STUDENTS, []))
     return admin.post("/api/staff/roster/sync", headers=H)
 
 
@@ -228,10 +228,10 @@ def test_sync_not_configured_then_configured(monkeypatch):
     monkeypatch.setattr(
         api,
         "fetch_contestdojo",
-        lambda *cfg: seen.append(cfg) or [roster.Student("1A", "Sync Kid")],
+        lambda *cfg: seen.append(cfg) or ([roster.Student("1A", "Sync Kid")], ["n"]),
     )
     r = admin.post("/api/staff/roster/sync", headers=H)
-    assert r.json() == {"count": 1, "notes": []} and seen == [("t", "ev1")]
+    assert r.json() == {"count": 1, "notes": ["n"]} and seen == [("t", "ev1")]
     assert admin.get("/api/staff/roster").json()["source"] == "contestdojo"
 
     def boom(*cfg):
@@ -269,7 +269,7 @@ def test_fetch_contestdojo_maps_students_teams_orgs(monkeypatch):
         return FakeResp(200, data[path])
 
     monkeypatch.setattr(roster.requests, "get", fake_get)
-    got = roster.fetch_contestdojo("tok", "ev1")
+    got, _ = roster.fetch_contestdojo("tok", "ev1")
     assert got == [
         roster.Student("054A", "Ada L", "Moor High", "Moor A", "", "a@x.org"),
         roster.Student("ROW2", "No Number", "", "", "", ""),  # no number: still imported
@@ -287,8 +287,9 @@ def test_fetch_contestdojo_imports_everything_even_without_numbers_or_orgs(monke
         return FakeResp(404, {})  # orgs and teams unavailable
 
     monkeypatch.setattr(roster.requests, "get", fake_get)
-    got = roster.fetch_contestdojo("tok", "ev1")
+    got, notes = roster.fetch_contestdojo("tok", "ev1")
     assert [(s.id, s.school) for s in got] == [("U1", "Fallback HS"), ("U2", "")]
+    assert notes == ["ContestDojo sent 2 students, 0 teams, 0 orgs; 0 have a number."]
 
 
 @pytest.mark.parametrize(("status", "words"), [(401, "refused"), (404, "event"), (500, "500")])

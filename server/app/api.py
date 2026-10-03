@@ -520,7 +520,7 @@ async def staff_roster_sync(request: Request, _: Post) -> RosterImportResponse:
             "Add the ContestDojo token and event ID on the /super page (or in .env) first.",
         )
     try:  # a blocking HTTP call, so it runs in a thread and never stalls the timers
-        students = await asyncio.to_thread(fetch_contestdojo, *cfg)
+        students, notes = await asyncio.to_thread(fetch_contestdojo, *cfg)
     except RosterError as e:
         raise err(502, "sync_failed", str(e)) from None
     # ContestDojo has no rooms: keep the ones admins set (matched by email, else name).
@@ -528,7 +528,7 @@ async def staff_roster_sync(request: Request, _: Post) -> RosterImportResponse:
     kept = {key(s): s.room for s in store.roster.values() if s.room}
     students = [replace(s, room=s.room or kept.get(key(s), "")) for s in students]
     await store.replace_roster(students, "contestdojo")
-    return RosterImportResponse(count=len(students), notes=[])
+    return RosterImportResponse(count=len(students), notes=notes)
 
 
 @router.post("/staff/roster/room", response_model=RosterImportResponse)

@@ -9,3 +9,5 @@ The roster is filled **only** by syncing from the ContestDojo API. Do it **befor
 3. Spot-check a real student in `/proctor`.
 
 Privacy: the roster holds minors' names and emails. After the event use **Admin -> Roster -> Clear roster…** (type DELETE).
+
+After Sync the Roster page reports what ContestDojo sent ("ContestDojo sent N students, T teams, O orgs"). If N is not what you expect, the event ID on `/super` is probably another event; it is not a bug in the import, which keeps every student returned.

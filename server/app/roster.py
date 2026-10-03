@@ -65,19 +65,21 @@ def _get_opt(base: str, token: str, path: str) -> list[dict]:
         return []
 
 
-def fetch_contestdojo(token: str, event_id: str) -> list[Student]:
+def fetch_contestdojo(token: str, event_id: str) -> tuple[list[Student], list[str]]:
     """Blocking (run it in a thread). Joins `/events/{id}/students|teams|orgs/` (students carry
     `org` and `team` ids). Imports EVERY student returned: the ID is `number` when set, else the
     ContestDojo user id, so a proctor can still find them. School = org name, else the
-    `customFields.school` text."""
+    `customFields.school` text. Also returns notes (what ContestDojo sent) so an admin can sanity-check."""
     ev = f"/events/{event_id}"
     students = _get(CONTESTDOJO_URL, token, f"{ev}/students/")
     teams = {t.get("id"): t for t in _get_opt(CONTESTDOJO_URL, token, f"{ev}/teams/")}
     orgs = {o.get("id"): o for o in _get_opt(CONTESTDOJO_URL, token, f"{ev}/orgs/")}
     out: dict[str, Student] = {}
+    clashes = 0
     for n, s in enumerate(students, start=1):
         sid = norm_id(s.get("number") or s.get("id") or s.get("user") or f"ROW{n}")
         if sid in out:  # never drop a student because of an ID clash
+            clashes += 1
             sid = norm_id(f"{sid} {s.get('id') or n}")
         t = teams.get(s.get("team")) or {}
         o = orgs.get(s.get("org")) or {}
@@ -90,4 +92,10 @@ def fetch_contestdojo(token: str, event_id: str) -> list[Student]:
             "",  # room: not synced; ContestDojo has no room data yet
             s.get("email") or "",
         )
-    return list(out.values())
+    numbered = sum(1 for s in students if s.get("number"))
+    notes = [
+        f"ContestDojo sent {len(students)} students, {len(teams)} teams, {len(orgs)} orgs; {numbered} have a number."
+    ]
+    if clashes:
+        notes.append(f"{clashes} students shared an ID, so theirs got a suffix.")
+    return list(out.values()), notes

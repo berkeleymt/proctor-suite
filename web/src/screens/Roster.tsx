@@ -35,8 +35,8 @@ export function Roster() {
     setSyncing(true);
     setMsg(null);
     try {
-      const r = (await post<{ count: number }>("/api/staff/roster/sync"))!;
-      setMsg({ text: `Synced ${r.count.toLocaleString()} students from ContestDojo.`, bad: false });
+      const r = (await post<{ count: number; notes: string[] }>("/api/staff/roster/sync"))!;
+      setMsg({ text: `Synced ${r.count.toLocaleString()} students. ${r.notes.join(" ")}`, bad: false });
       await refresh();
     } catch (e) {
       setMsg({ text: why(e), bad: true });

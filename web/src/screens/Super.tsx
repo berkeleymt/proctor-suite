@@ -105,6 +105,12 @@ function Panel({ email, out }: { email: string; out: () => void }) {
 }
 type Fail = (e: unknown, set: (m: string) => void) => void;
 
+/** An (i) badge: hover, focus or tap shows which .env variable a field maps to. */
+function Tip({ env }: { env: string }) {
+  const text = `.env variable: ${env}`;
+  return <span className="tip" tabIndex={0} role="img" aria-label={text} data-tip={text}>i</span>;
+}
+
 function Site({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSettings) => void; fail: Fail }) {
   const [name, setName] = useState(s.app_name);
   const [icon, setIcon] = useState(s.app_icon);
@@ -125,13 +131,13 @@ function Site({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSettings) =>
   return (
     <section className="block">
       <h2>Name and icon</h2>
-      <p className="muted">Shown on the login page, the browser tab and the tab icon. Saved here, they replace APP_NAME and APP_ICON in .env.</p>
+      <p className="muted">Shown on the login page, the browser tab and the tab icon.</p>
       <label>
-        Name
+        <span>Name <Tip env="APP_NAME" /></span>
         <input value={name} maxLength={40} onChange={(e) => (setName(e.target.value), setSaved(false))} />
       </label>
       <label>
-        Icon: a link, or a path to a file on this site
+        <span>Icon: a link, or a path to a file on this site <Tip env="APP_ICON" /></span>
         <span className="row">
           <input value={icon} maxLength={500} placeholder="/logo.png or https://…" onChange={(e) => (setIcon(e.target.value), setSaved(false))} />
           {live.icon && <img className="icon-preview" src={live.icon} alt="Current icon" />}
@@ -165,13 +171,13 @@ function ContestDojo({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSetti
   return (
     <section className="block">
       <h2>ContestDojo</h2>
-      <p className="muted">Used by Admin → Roster → Sync. Saved here, they replace CONTESTDOJO_API_TOKEN and CONTESTDOJO_EVENT_ID in .env.</p>
+      <p className="muted">Used by Admin → Roster → Sync.</p>
       <label>
-        API token
+        <span>API token <Tip env="CONTESTDOJO_API_TOKEN" /></span>
         <input value={token} maxLength={200} autoComplete="off" onChange={(e) => (setToken(e.target.value), setSaved(false))} />
       </label>
       <label>
-        Event ID
+        <span>Event ID <Tip env="CONTESTDOJO_EVENT_ID" /></span>
         <input value={ev} maxLength={100} autoComplete="off" onChange={(e) => (setEv(e.target.value), setSaved(false))} />
       </label>
       <p className="error" role="alert" hidden={!err}>{err}</p>
@@ -191,8 +197,8 @@ function Passwords({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSetting
   const [logOut, setLogOut] = useState(false);
   const [err, setErr] = useState("");
   const rows: [Which, string, string][] = [
-    ["room_password", "Proctor password (all rooms)", "everyone signed in to a room"],
-    ["admin_password", "Admin password", "every admin"],
+    ["room_password", "Proctor password (all rooms)", "ROOM_PASSWORD"],
+    ["admin_password", "Admin password", "ADMIN_PASSWORD"],
   ];
   const save = async () => {
     setErr("");
@@ -207,9 +213,9 @@ function Passwords({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSetting
   return (
     <section className="block">
       <h2>Passwords</h2>
-      {rows.map(([k, label]) => (
+      {rows.map(([k, label, env]) => (
         <div className="secret" key={k}>
-          <span className="label">{label}</span>
+          <span className="label">{label} <Tip env={env} /></span>
           {edit === k ? (
             <>
               <input autoFocus value={draft} minLength={8} maxLength={100} onChange={(e) => setDraft(e.target.value)} placeholder="New password (8+ characters)" autoComplete="off" onKeyDown={(e) => e.key === "Enter" && draft.length >= 8 && save()} />
@@ -230,7 +236,7 @@ function Passwords({ s, setS, fail }: { s: SuperSettings; setS: (s: SuperSetting
         Log out everyone signed in with the old password when I change one
       </label>
       <p className="error" role="alert" hidden={!err}>{err}</p>
-      <p className="muted">Changes apply at once, no redeploy. They replace ROOM_PASSWORD and ADMIN_PASSWORD in .env.</p>
+      <p className="muted">Changes apply at once, no redeploy.</p>
     </section>
   );
 }
@@ -261,7 +267,7 @@ function Admins({ admins, setAdmins, me, fail }: { admins: SuperAdmin[]; setAdmi
               {a.email}
               {a.email === me && <span className="muted"> (you)</span>}
               <br />
-              <small className="muted">{a.source === "env" ? "Set in .env (SUPER_ADMIN_EMAILS)" : `Added by ${a.added_by}`}</small>
+              <small className="muted">{a.source === "env" ? <>Set in .env <Tip env="SUPER_ADMIN_EMAILS" /></> : `Added by ${a.added_by}`}</small>
             </span>
             {a.source === "added" && a.email !== me && <button className="bad" onClick={() => setGone(a)}>Remove…</button>}
           </div>
