@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "gen": "openapi-typescript ../contracts/openapi.json -o src/api-types.ts"
+    "gen": "openapi-typescript ../contracts/openapi.json -o src/api-types.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:layout": "vitest run --project layout"
   },
   "dependencies": {
     "@vscode/markdown-it-katex": "1.1.1",
@@ -16,13 +19,19 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.1.0",
     "@types/katex": "0.16.7",
     "@types/markdown-it": "14.1.2",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.3.4",
+    "@vitest/browser": "2.1.9",
+    "jsdom": "25.0.1",
     "openapi-typescript": "7.4.4",
+    "playwright": "1.63.0",
     "typescript": "5.6.3",
-    "vite": "5.4.11"
+    "vite": "5.4.11",
+    "vitest": "2.1.9"
   }
 }

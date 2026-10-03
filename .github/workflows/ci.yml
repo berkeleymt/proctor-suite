@@ -43,6 +43,8 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm run gen && git diff --exit-code src/api-types.ts
+      - run: npx playwright install --with-deps chromium-headless-shell # layout tests run in real Chromium
+      - run: npm test
       - run: npm run build
 
   shellcheck:
