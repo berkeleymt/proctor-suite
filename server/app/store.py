@@ -8,6 +8,7 @@ a restart logs everyone out.
 
 import asyncio
 import hmac
+import json
 import os
 import re
 import secrets
@@ -18,6 +19,9 @@ from uuid import UUID, uuid4
 from app import db
 from app.fold import SessionSpec, TimerEvent, fold
 from app.protocol.constants import (
+    DISPLAY_CLAR_STEPS,
+    DISPLAY_TIMER_ZOOM_DEFAULT,
+    DISPLAY_TIMER_ZOOM_PCT,
     MAX_ADMIN_BATHROOM,
     MAX_ADMIN_CLARIFICATIONS,
     MAX_BATHROOM_BACK,
@@ -33,6 +37,7 @@ from app.protocol.models import (
     ClarificationOut,
     CommandOutcome,
     CommandResponse,
+    DisplaySettings,
     EventType,
     RejectionReason,
     RoomSnapshot,
@@ -71,6 +76,58 @@ class Visit:
         )
 
 
+@dataclass(frozen=True)
+class Setting:
+    """One projector size (0.13.0). Last writer wins by (click time, command id)."""
+
+    value: int | str
+    at_ms: int | None = None  # None = the default, never changed
+    by: str = ""  # command_id of the change in effect; breaks ties, makes retries no-ops
+
+    def beaten_by(self, at_ms: int, by: str) -> bool:
+        return self.at_ms is None or (at_ms, by) > (self.at_ms, self.by)
+
+
+DISPLAY_DEFAULTS = {"timer_zoom_pct": DISPLAY_TIMER_ZOOM_DEFAULT, "clar_size": "auto"}
+_DISPLAY_OK = {
+    "timer_zoom_pct": lambda v: v in DISPLAY_TIMER_ZOOM_PCT and not isinstance(v, bool),
+    "clar_size": lambda v: (
+        v == "auto"
+        or (isinstance(v, int) and not isinstance(v, bool) and 0 <= v < DISPLAY_CLAR_STEPS)
+    ),
+}
+
+
+def default_display() -> dict[str, Setting]:
+    return {k: Setting(v) for k, v in DISPLAY_DEFAULTS.items()}
+
+
+def display_from_db(raw) -> dict[str, Setting]:
+    """The `rooms.display` column. Anything missing or unreadable falls back to the default."""
+    d = default_display()
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+        for k in d:
+            x = data.get(k)
+            if (
+                isinstance(x, dict)
+                and _DISPLAY_OK[k](x.get("value"))
+                and isinstance(x.get("at_ms"), int)
+            ):
+                d[k] = Setting(x["value"], x["at_ms"], str(x.get("by", "")))
+    except (ValueError, TypeError, AttributeError):
+        pass
+    return d
+
+
+def display_to_db(d: dict[str, Setting]) -> dict:
+    return {
+        k: {"value": x.value, "at_ms": x.at_ms, "by": x.by}
+        for k, x in d.items()
+        if x.at_ms is not None
+    }
+
+
 @dataclass
 class Room:
     room_id: str
@@ -84,6 +141,7 @@ class Room:
     session_seq: int = 1  # bumped by an admin Reset: a fresh timer, old history kept in Postgres
     session_created_ms: int | None = None
     bathroom: list[Visit] = field(default_factory=list)  # oldest first; kept for the whole day
+    display: dict[str, Setting] = field(default_factory=default_display)  # projector sizes
     events: list[TimerEvent] = field(default_factory=list)
     seen: dict[UUID, tuple[tuple, CommandOutcome, RejectionReason | None]] = field(
         default_factory=dict
@@ -202,7 +260,7 @@ class Store:
                 r["room_id"], r["name"], r["duration_ms"], r["created_at_ms"],
                 test_name=r["test_name"], version=r["version"], doc_url=r["doc_url"],
                 deleted=r["deleted"], session_seq=r["session_seq"],
-                session_created_ms=r["session_created_ms"],
+                session_created_ms=r["session_created_ms"], display=display_from_db(r["display"]),
             )  # fmt: skip
         for c in cmds:
             room = loaded.get(c["room_id"])
@@ -766,6 +824,28 @@ class Store:
                 r[v.student_id] = min(v.left_ms, r.get(v.student_id, v.left_ms))
         return r
 
+    # --- projector sizes (0.13.0; commit first, then memory, then tell the room) ---
+    async def set_display(
+        self, room: Room, command_id: UUID, claimed_at_ms: int, changes: dict[str, int | str]
+    ) -> None:
+        """Last writer wins, per field, by (click time, command id). A click "later" than its
+        arrival counts as its arrival (the device's clock is off). A retry, or a click older than
+        the one in effect, changes nothing."""
+        async with self.lock(room.room_id):
+            at = max(0, min(claimed_at_ms, now_ms()))
+            by = str(command_id)
+            new = dict(room.display)
+            for k, v in changes.items():
+                if new[k].beaten_by(at, by):
+                    new[k] = Setting(v, at, by)
+            if new == room.display:
+                return
+            version = room.version + 1
+            if self.pool:
+                await db.save_display(self.pool, room.room_id, display_to_db(new), version)
+            room.display, room.version = new, version
+            self.hub.notify(room.room_id)
+
     # --- snapshots ---
     def snapshot(self, room: Room, with_clar: bool = True) -> RoomSnapshot:
         t = now_ms()
@@ -793,6 +873,12 @@ class Store:
             ]
             if with_clar
             else [],
+            display=DisplaySettings(
+                timer_zoom_pct=room.display["timer_zoom_pct"].value,
+                clar_size=room.display["clar_size"].value,
+                timer_zoom_at_ms=room.display["timer_zoom_pct"].at_ms,
+                clar_size_at_ms=room.display["clar_size"].at_ms,
+            ),
         )
 
     @staticmethod

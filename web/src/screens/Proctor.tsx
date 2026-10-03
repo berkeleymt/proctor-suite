@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { api, ApiError, fmt, post, remainingMs, sendCommand, serverNow, type Snapshot } from "../api";
 import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
-import { label } from "./Display";
-import { FitText, useZoom, ZoomButtons } from "../components/FitText";
+import { CLARS_HIDDEN, label } from "./Display";
+import { FitText, TimerSizeButtons } from "../components/FitText";
+import { ClarSizeButtons } from "../components/ClarList";
+import { TIMER_PCT_DEFAULT, useDisplayControl } from "../displaySettings";
 import { Dot, Sheet } from "../components/ui";
 import { usePageTitle } from "../brand";
 import { DISPLAY_WINDOW } from "../fullscreen";
@@ -54,7 +56,6 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
   const { data: s, setData, online, unauthorized } = useLive<Snapshot>(`/api/rooms/${roomId}/snapshot`, `/api/rooms/${roomId}/stream?surface=control`, mergeRoom);
   const [err, setErr] = useState("");
   const [asking, setAsking] = useState(false);
-  const z = useZoom("proctor");
   useEffect(() => {
     if (unauthorized) go("/login");
   }, [unauthorized]);
@@ -83,8 +84,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
         <button onClick={logout}>Log out</button>
       </header>
       <div className="clock-wrap">
-        <FitText className="clock" text={fmt(ms)} zoom={z.zoom} />
-        <ZoomButtons z={z} />
+        <FitText className="clock" text={fmt(ms)} zoom={TIMER_PCT_DEFAULT / 100} />
       </div>
       <p className="error" role="alert" hidden={!err}>
         {err}
@@ -117,6 +117,7 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
               ? "The timer is finished. Only an admin can reset it."
               : "\u00a0"}
       </p>
+      <DisplaySizes s={s} setData={setData} />
       <BathroomLog s={s} setData={setData} />
       {asking && (
         <Sheet title={`Pause the timer for ${s.room_name}?`} onClose={() => setAsking(false)}>
@@ -137,5 +138,39 @@ function Panel({ roomId, logout }: { roomId: string; logout: () => void }) {
         </Sheet>
       )}
     </main>
+  );
+}
+
+/**
+ * Projector sizes. The display has no buttons (nothing for students to bump), so they live here.
+ * They belong to the room: every proctor page and display of the room shows the same (ADR 0019).
+ */
+export function DisplaySizes({ s, setData }: { s: Snapshot; setData: Dispatch<SetStateAction<Snapshot | null>> }) {
+  const d = useDisplayControl(s, setData);
+  const n = s.clarifications.length;
+  const note =
+    s.timer.status === "ENDED"
+      ? n > 0 || s.doc_url
+        ? CLARS_HIDDEN
+        : ""
+      : s.doc_url
+        ? "The display shows the clarifications document."
+        : n > 0
+          ? `${n} clarification${n === 1 ? "" : "s"} on the display.`
+          : "No clarifications yet.";
+  return (
+    <section className="projector" aria-label="Projector display">
+      <h2>Projector display</h2>
+      <div className="size-row">
+        <span>Timer size</span>
+        <TimerSizeButtons pct={d.values.timer_zoom_pct} onChange={(v) => d.set("timer_zoom_pct", v)} />
+      </div>
+      <div className="size-row">
+        <span>Clarification size</span>
+        <ClarSizeButtons size={d.values.clar_size} onChange={(v) => d.set("clar_size", v)} />
+      </div>
+      {note && <p className="muted" role="status">{note}</p>}
+      {d.error && <p className="error" role="alert">{d.error}</p>}
+    </section>
   );
 }

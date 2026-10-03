@@ -148,6 +148,12 @@ function EditSheet({ c, room, draft: first, onClose, onSave }: { c: Clar; room?:
   );
 }
 
+/** Displays hide clarifications once a room's timer ends (swire), so say so before posting there. */
+export function finishedNote(done: number, picked: number): string {
+  const which = done === picked ? (done === 1 ? "This room has" : "All these rooms have") : `${done} of these rooms ${done === 1 ? "has" : "have"}`;
+  return `${which} finished. Displays hide clarifications once time is up, so ${done === 1 ? "it" : "they"} won't show this until the timer is reset.`;
+}
+
 /** Admin · Clarifications (wireframe): composer with preview, room picker, posted list. Updates live. */
 export function Clarifications() {
   usePageTitle("Clarifications");
@@ -173,6 +179,7 @@ export function Clarifications() {
   const rooms: Room[] = live.data.rooms.filter((x) => !x.deleted).map((x) => ({ id: x.room_id, name: x.room_name, test: x.test_name }));
 
   const picked = rooms.filter((r) => sel.has(r.id)).length;
+  const done = live.data.rooms.filter((x) => !x.deleted && sel.has(x.room_id) && x.timer.status === "ENDED").length;
   const all = data.clarifications;
   const list = all.filter((c) => !c.deleted);
   const gone = all.filter((c) => c.deleted);
@@ -236,6 +243,7 @@ export function Clarifications() {
         <div className="stack">
           <RoomPicker rooms={rooms} groups={groups} sel={sel} setSel={setSel} />
           <p className="muted">{picked === 0 ? "Pick at least one room." : `Will post to ${picked} of ${rooms.length} rooms`}</p>
+          {done > 0 && <p className="note" role="status">{finishedNote(done, picked)}</p>}
         </div>
         {err && <p className="error" role="alert">{err}</p>}
         <div className="row">

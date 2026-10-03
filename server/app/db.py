@@ -5,6 +5,8 @@ Room devices never cause a read: reads come from the in-memory Store (invariant 
 Schema is owned by Alembic (alembic/), run by deploy.sh, never here (invariant 10).
 """
 
+import json
+
 import asyncpg
 
 
@@ -41,6 +43,15 @@ async def save_room(pool: asyncpg.Pool, r, audit: dict | None = None) -> None:
         )  # fmt: skip
         if audit:
             await _insert_command(c, audit)
+
+
+async def save_display(pool: asyncpg.Pool, room_id: str, display: dict, version: int) -> None:
+    """Projector sizes (0.13.0): the whole setting and the room's new version, in one statement."""
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE rooms SET display=$2::jsonb, version=$3 WHERE room_id=$1",
+            room_id, json.dumps(display), version,
+        )  # fmt: skip
 
 
 async def _insert_command(c, row: dict) -> None:

@@ -34,6 +34,7 @@ from app.protocol.models import (
     RosterImportResponse,
     RosterResponse,
     RosterRoomRequest,
+    SetDisplayRequest,
     StaffIdentity,
     StaffLoginRequest,
     StaffRoomsResponse,
@@ -155,6 +156,18 @@ def build_schema_app() -> FastAPI:
     )
     async def close_room_stream(room_id: str, cid: str):
         """A page is closing: end its stream now so presence updates at once. Needs X-Proctor-Client. 0.5.0."""
+        _stub()
+
+    @app.patch(
+        "/api/rooms/{room_id}/display",
+        response_model=RoomSnapshot,
+        tags=["rooms"],
+        responses=_ERRORS,
+    )
+    async def set_display(room_id: str, body: SetDisplayRequest):
+        """Projector sizes (0.13.0, §7.9). That room's proctor only (admins and displays: 403).
+        Per field, the latest click wins (claimed_at_ms, then command_id); a retry or an older
+        click changes nothing. 422 if no field is given. Needs X-Proctor-Client."""
         _stub()
 
     @app.post("/api/commands", response_model=CommandResponse, tags=["commands"], responses=_ERRORS)

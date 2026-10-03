@@ -201,6 +201,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{room_id}/display": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Set Display
+         * @description Projector sizes (0.13.0, §7.9). That room's proctor only (admins and displays: 403).
+         *     Per field, the latest click wins (claimed_at_ms, then command_id); a retry or an older
+         *     click changes nothing. 422 if no field is given. Needs X-Proctor-Client.
+         */
+        patch: operations["set_display_api_rooms__room_id__display_patch"];
+        trace?: never;
+    };
     "/api/rooms/{room_id}/snapshot": {
         parameters: {
             query?: never;
@@ -961,6 +983,26 @@ export interface components {
             /** Test Name */
             test_name?: string | null;
         };
+        /**
+         * DisplaySettings
+         * @description How the room's projector shows the timer and clarifications. One per room (0.13.0).
+         *
+         *     Each field is last-writer-wins by when the proctor clicked (§7.9). `*_at_ms` is that click
+         *     time (server time) of the change now in effect; null = never changed (the default).
+         */
+        DisplaySettings: {
+            /** Clar Size */
+            clar_size: number | "auto";
+            /** Clar Size At Ms */
+            clar_size_at_ms: number | null;
+            /** Timer Zoom At Ms */
+            timer_zoom_at_ms: number | null;
+            /**
+             * Timer Zoom Pct
+             * @enum {integer}
+             */
+            timer_zoom_pct: 40 | 50 | 60 | 70 | 80 | 90 | 100;
+        };
         /** EndCommand */
         EndCommand: {
             /** Claimed At Ms */
@@ -1192,6 +1234,7 @@ export interface components {
             clarifications: components["schemas"]["ClarificationOut"][];
             /** Deleted */
             deleted: boolean;
+            display: components["schemas"]["DisplaySettings"];
             /** Doc Url */
             doc_url: string | null;
             /** Room Id */
@@ -1262,6 +1305,23 @@ export interface components {
             school: string;
             /** Team */
             team: string;
+        };
+        /**
+         * SetDisplayRequest
+         * @description Change the room's projector sizes. Omitted (or null) fields stay as they are.
+         */
+        SetDisplayRequest: {
+            /** Claimed At Ms */
+            claimed_at_ms: number;
+            /** Clar Size */
+            clar_size?: number | "auto" | null;
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+            /** Timer Zoom Pct */
+            timer_zoom_pct?: (40 | 50 | 60 | 70 | 80 | 90 | 100) | null;
         };
         /**
          * SnapshotMessage
@@ -2003,6 +2063,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoomIdentity"] | components["schemas"]["StaffIdentity"];
+                };
+            };
+            /** @description unauthenticated / invalid_credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_room / unknown_session */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rate_limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_display_api_rooms__room_id__display_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                room_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDisplayRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomSnapshot"];
                 };
             };
             /** @description unauthenticated / invalid_credentials */

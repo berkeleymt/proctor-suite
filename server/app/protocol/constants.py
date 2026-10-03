@@ -4,7 +4,7 @@ Changing any value here is a contract change: bump PROTOCOL_VERSION and add a
 changelog line to docs/protocol.md.
 """
 
-PROTOCOL_VERSION = "0.12.0"
+PROTOCOL_VERSION = "0.13.0"
 
 # --- Streaming and network behavior (invariant 2) ---
 HEARTBEAT_INTERVAL_S = 15  # server sends a heartbeat on every open stream this often
@@ -24,6 +24,11 @@ CLOCK_JUMP_THRESHOLD_MS = 2000  # wall vs monotonic disagreement that forces a r
 # --- Timer ---
 TIMER_TICK_MS = 250  # clients recompute remaining(serverNow()) this often
 MAX_ADJUST_MS = 10_800_000  # |delta| limit for one ADJUST (3 hours), inclusive
+
+# --- Projector display sizes (0.13.0): one setting per room, set from the proctor page ---
+DISPLAY_TIMER_ZOOM_PCT = (40, 50, 60, 70, 80, 90, 100)  # % of the largest timer that fits
+DISPLAY_TIMER_ZOOM_DEFAULT = 80
+DISPLAY_CLAR_STEPS = 8  # clarification sizes 0..7 (web STEPS_VH), or "auto"
 
 # --- Connectivity banner ---
 OFFLINE_RED_AFTER_S = 300  # display turns amber when offline, red after this long

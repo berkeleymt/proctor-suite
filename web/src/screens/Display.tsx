@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { api, fmt, remainingMs, serverNow, type Snapshot } from "../api";
 import { mergeRoom, useClock, useLive, useTick } from "../hooks";
 import { go } from "../main";
-import { FitText, useActive, useZoom, ZoomButtons } from "../components/FitText";
+import { FitText } from "../components/FitText";
 import { Dot } from "../components/ui";
 import { usePageTitle } from "../brand";
 import { isDisplayWindow, useAutoFullscreen } from "../fullscreen";
-import { ClarSizeButtons, docEmbedUrl, FitList, useClarSize } from "../components/ClarList";
+import { docEmbedUrl, FitList } from "../components/ClarList";
+import { useDisplayValues } from "../displaySettings";
 
 export function Display() {
   usePageTitle("Display");
@@ -46,11 +47,12 @@ function Screen({ roomId }: { roomId: string }) {
   return <View s={s} online={online} />;
 }
 
-/** Projector view (wireframe: Proctor · Display). Light theme, timer always fits the screen. */
-function View({ s, online }: { s: Snapshot; online: boolean }) {
-  const z = useZoom("display");
-  const cz = useClarSize();
-  const active = useActive();
+/**
+ * Projector view (wireframe: Proctor · Display). Light theme, timer always fits the screen.
+ * No buttons here: sizes are the room's, set on the proctor page (ADR 0019).
+ */
+export function View({ s, online }: { s: Snapshot; online: boolean }) {
+  const size = useDisplayValues(s);
   const ms = s.timer.status === "ENDED" ? 0 : remainingMs(s, serverNow());
   const tone = s.timer.status === "RUNNING" && ms <= 300_000 ? (ms === 0 ? "done" : "warn") : "";
   const live = s.timer.status !== "ENDED"; // clarifications go away once time is up (swire)
@@ -62,19 +64,18 @@ function View({ s, online }: { s: Snapshot; online: boolean }) {
         <span className="where">
           {s.room_name} · {s.test_name}
         </span>
-        <span className={`ctl ${active ? "" : "hide"}`}>
-          <ZoomButtons z={z} />
-          {text && <ClarSizeButtons z={cz} />}
-        </span>
         <Dot online={online} />
       </header>
-      <FitText className={`clock ${tone}`} text={fmt(ms)} zoom={z.zoom} />
-      {text && <FitList items={s.clarifications} z={cz} />}
+      <FitText className={`clock ${tone}`} text={fmt(ms)} zoom={size.timer_zoom_pct / 100} />
+      {text && <FitList items={s.clarifications} size={size.clar_size} />}
       {doc && <iframe className="doc" title="Clarifications document" src={docEmbedUrl(s.doc_url!)} referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />}
-      <footer>{label(s)}</footer>
+      <footer>{label(s)}{!live && (s.clarifications.length > 0 || s.doc_url) ? `. ${CLARS_HIDDEN}` : ""}</footer>
     </main>
   );
 }
+
+/** Why the clarifications vanished: they only show until the timer ends (swire behavior). */
+export const CLARS_HIDDEN = "Clarifications are hidden once time is up.";
 
 export function label(s: Snapshot): string {
   return { NOT_PERMITTED: "Not started", PERMITTED: "Ready", RUNNING: "Running", PAUSED: "Paused", ENDED: "Finished" }[s.timer.status];

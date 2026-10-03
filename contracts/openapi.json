@@ -623,6 +623,68 @@
         "title": "CreateRoomRequest",
         "type": "object"
       },
+      "DisplaySettings": {
+        "description": "How the room's projector shows the timer and clarifications. One per room (0.13.0).\n\nEach field is last-writer-wins by when the proctor clicked (\u00a77.9). `*_at_ms` is that click\ntime (server time) of the change now in effect; null = never changed (the default).",
+        "properties": {
+          "clar_size": {
+            "anyOf": [
+              {
+                "maximum": 7.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "const": "auto",
+                "type": "string"
+              }
+            ],
+            "title": "Clar Size"
+          },
+          "clar_size_at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clar Size At Ms"
+          },
+          "timer_zoom_at_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timer Zoom At Ms"
+          },
+          "timer_zoom_pct": {
+            "enum": [
+              40,
+              50,
+              60,
+              70,
+              80,
+              90,
+              100
+            ],
+            "title": "Timer Zoom Pct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "timer_zoom_pct",
+          "clar_size",
+          "timer_zoom_at_ms",
+          "clar_size_at_ms"
+        ],
+        "title": "DisplaySettings",
+        "type": "object"
+      },
       "EndCommand": {
         "additionalProperties": false,
         "properties": {
@@ -1181,6 +1243,9 @@
             "title": "Deleted",
             "type": "boolean"
           },
+          "display": {
+            "$ref": "#/components/schemas/DisplaySettings"
+          },
           "doc_url": {
             "anyOf": [
               {
@@ -1238,7 +1303,8 @@
           "clarifications",
           "students_out",
           "bathroom_out",
-          "bathroom_back"
+          "bathroom_back",
+          "display"
         ],
         "title": "RoomSnapshot",
         "type": "object"
@@ -1412,6 +1478,64 @@
           "out_since_ms"
         ],
         "title": "RosterStudent",
+        "type": "object"
+      },
+      "SetDisplayRequest": {
+        "additionalProperties": false,
+        "description": "Change the room's projector sizes. Omitted (or null) fields stay as they are.",
+        "properties": {
+          "claimed_at_ms": {
+            "title": "Claimed At Ms",
+            "type": "integer"
+          },
+          "clar_size": {
+            "anyOf": [
+              {
+                "maximum": 7.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "const": "auto",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clar Size"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "timer_zoom_pct": {
+            "anyOf": [
+              {
+                "enum": [
+                  40,
+                  50,
+                  60,
+                  70,
+                  80,
+                  90,
+                  100
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timer Zoom Pct"
+          }
+        },
+        "required": [
+          "command_id",
+          "claimed_at_ms"
+        ],
+        "title": "SetDisplayRequest",
         "type": "object"
       },
       "SnapshotMessage": {
@@ -2148,7 +2272,7 @@
   "info": {
     "description": "Contract for room devices and staff. Prose: docs/protocol.md.",
     "title": "Proctor Suite protocol",
-    "version": "0.12.0"
+    "version": "0.13.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -2812,6 +2936,99 @@
         "summary": "Me",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/rooms/{room_id}/display": {
+      "patch": {
+        "description": "Projector sizes (0.13.0, \u00a77.9). That room's proctor only (admins and displays: 403).\nPer field, the latest click wins (claimed_at_ms, then command_id); a retry or an older\nclick changes nothing. 422 if no field is given. Needs X-Proctor-Client.",
+        "operationId": "set_display_api_rooms__room_id__display_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDisplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated / invalid_credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_room / unknown_session"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited"
+          }
+        },
+        "summary": "Set Display",
+        "tags": [
+          "rooms"
         ]
       }
     },

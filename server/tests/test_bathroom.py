@@ -48,6 +48,10 @@ def test_who_may_log_and_validation(monkeypatch):
     anon = mk(monkeypatch)
     assert out(anon, a).status_code == 401
     assert out(admin, a, "117c").status_code == 403  # admins view and delete, never record
+    screen = mk(monkeypatch)
+    body = {"room_id": a, "password": "room-pw", "surface": "display"}
+    assert screen.post("/api/auth/room-login", json=body, headers=H).status_code == 200
+    assert out(screen, a).status_code == 403  # the projector is signed in, but can't log
     assert out(p, a, "   ").status_code == 422 and out(p, a, "x" * 21).status_code == 422
     assert out(p, "nope").status_code == 404
     assert anon.post(f"/api/rooms/{a}/bathroom", json={"id": "x"}).status_code in (400, 422)

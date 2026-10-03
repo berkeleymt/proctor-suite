@@ -13,9 +13,11 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
 
 from app.protocol.constants import (
+    DISPLAY_CLAR_STEPS,
+    DISPLAY_TIMER_ZOOM_PCT,
     MAX_ADMIN_BATHROOM_EXPORT,
     MAX_BATHROOM_BACK,
     MAX_BATHROOM_IDS,
@@ -191,6 +193,36 @@ class BathroomOutRequest(BaseModel):
         return self
 
 
+# Projector sizes (0.13.0). Timer: % of the largest size that fits. Clarifications: a fixed step
+# (0 = smallest) or "auto" (largest that fits, then a few steps down; measured on the projector).
+TimerZoomPct = Literal[*DISPLAY_TIMER_ZOOM_PCT]
+ClarSize = Annotated[StrictInt, Field(ge=0, le=DISPLAY_CLAR_STEPS - 1)] | Literal["auto"]
+
+
+class DisplaySettings(BaseModel):
+    """How the room's projector shows the timer and clarifications. One per room (0.13.0).
+
+    Each field is last-writer-wins by when the proctor clicked (§7.9). `*_at_ms` is that click
+    time (server time) of the change now in effect; null = never changed (the default).
+    """
+
+    timer_zoom_pct: TimerZoomPct
+    clar_size: ClarSize
+    timer_zoom_at_ms: int | None
+    clar_size_at_ms: int | None
+
+
+class SetDisplayRequest(BaseModel):
+    """Change the room's projector sizes. Omitted (or null) fields stay as they are."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    command_id: UUID  # client-generated (invariant 3); also breaks ties between equal times
+    claimed_at_ms: int  # serverNow() when the proctor clicked; later than receipt counts as receipt
+    timer_zoom_pct: TimerZoomPct | None = None
+    clar_size: ClarSize | None = None
+
+
 class RoomSnapshot(BaseModel):
     """Everything a room device needs to show and tick the timer. Sent in full every time."""
 
@@ -211,6 +243,7 @@ class RoomSnapshot(BaseModel):
     students_out: int = Field(ge=0)
     bathroom_out: list[BathroomVisit] = Field(max_length=MAX_BATHROOM_OUT)
     bathroom_back: list[BathroomVisit] = Field(max_length=MAX_BATHROOM_BACK)
+    display: DisplaySettings  # projector sizes (0.13.0)
 
 
 # ---------------------------------------------------------------- commands

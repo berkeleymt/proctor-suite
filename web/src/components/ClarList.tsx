@@ -3,6 +3,7 @@ import MarkdownIt from "markdown-it";
 import mathPlugin from "@vscode/markdown-it-katex";
 import "katex/dist/katex.min.css"; // bundled with its fonts: nothing is fetched from a CDN (invariant 6)
 import type { Clar } from "../api";
+import type { ClarSize } from "../displaySettings";
 
 /** Markdown + $inline$ / $$display$$ math. Raw HTML is off, so the output is safe to inject. */
 const md = new MarkdownIt({ html: false, breaks: true, linkify: false }).use(mathPlugin, { throwOnError: false });
@@ -28,58 +29,68 @@ export function ClarItem({ c }: { c: Item }) {
   );
 }
 
-const STEPS_VH = [2.5, 3.5, 4.5, 6, 8, 10, 12, 15]; // manual sizes, as % of screen height
+export const STEPS_VH = [2.5, 3.5, 4.5, 6, 8, 10, 12, 15]; // manual sizes, as % of screen height (CLAR_STEPS of them)
 const AUTO_MAX_VH = 11; // Auto never goes bigger than this, so one short line isn't absurd
 const AUTO_MIN_PX = 14;
 const AUTO_BACK_STEPS = 3; // Auto lands where three ¶− clicks from the largest size that fits would (PM, 2026-10-02)
+const AUTO_GUESS = 2; // where ¶−/¶+ start from Auto when this browser hasn't measured the projector
 
 /** The manual step closest to a pixel size. */
 const nearestStep = (px: number) => {
   const vh = (px / window.innerHeight) * 100;
   return STEPS_VH.reduce((best, v, i) => (Math.abs(v - vh) < Math.abs(STEPS_VH[best] - vh) ? i : best), 0);
 };
-const KEY = "clarsize:display";
 
-/** Projector clarification size: "auto" (largest that fits) or a fixed step. Remembered per device. */
-export function useClarSize() {
-  const [step, setStep] = useState<number | "auto">(() => {
-    try {
-      const v = localStorage.getItem(KEY);
-      return v !== null && STEPS_VH[Number(v)] !== undefined ? Number(v) : "auto";
-    } catch {
-      return "auto";
-    }
-  });
-  const lastPx = useRef(0); // what Auto last chose, so ¶− / ¶+ start from what's on screen
-  const set = (s: number | "auto") => {
-    setStep(s);
-    try {
-      localStorage.setItem(KEY, String(s));
-    } catch {
-      /* not persisted; fine */
-    }
-  };
-  const from = () => {
-    if (step !== "auto") return step;
-    return nearestStep(lastPx.current);
-  };
-  const move = (d: number) => set(Math.max(0, Math.min(STEPS_VH.length - 1, from() + d)));
-  return { step, lastPx, auto: () => set("auto"), smaller: () => move(-1), bigger: () => move(1), canSmaller: step === "auto" || step > 0, canBigger: step === "auto" || step < STEPS_VH.length - 1 };
+// The step Auto picked on the projector. It depends on that screen, so it stays in this browser
+// (not the room): the proctor page reads it when the display window runs in the same browser.
+const AUTO_KEY = "clarsize:auto";
+const readAuto = (): number | null => {
+  try {
+    const v = Number(localStorage.getItem(AUTO_KEY) ?? NaN);
+    return STEPS_VH[v] !== undefined ? v : null;
+  } catch {
+    return null;
+  }
+};
+
+/** The step Auto shows on this browser's projector window, if it has one. */
+export function useMeasuredAuto() {
+  const [step, setStep] = useState(readAuto);
+  useEffect(() => {
+    const sync = (e: StorageEvent) => e.key === AUTO_KEY && setStep(readAuto());
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
+  return step;
 }
 
-/** ¶− / Auto / ¶+ (wireframe). Same button look as A− / A+. */
-export function ClarSizeButtons({ z }: { z: ReturnType<typeof useClarSize> }) {
+/** One ¶− / ¶+ click from `size`. From Auto, start from what Auto shows (or a guess). */
+export function stepClar(size: ClarSize, d: -1 | 1, measured: number | null): ClarSize {
+  const from = size === "auto" ? (measured ?? AUTO_GUESS) : size;
+  return Math.max(0, Math.min(STEPS_VH.length - 1, from + d));
+}
+
+/** "3 of 8"; Auto shows the size it picked when we know it. */
+export const clarLabel = (size: ClarSize, measured: number | null) => {
+  const i = size === "auto" ? measured : size;
+  return i === null ? "Auto" : `${i + 1} of ${STEPS_VH.length}`;
+};
+
+/** ¶− / size / ¶+ / Auto (wireframe), on the proctor page. Same button look as A− / A+. */
+export function ClarSizeButtons({ size, onChange }: { size: ClarSize; onChange: (s: ClarSize) => void }) {
+  const measured = useMeasuredAuto();
   return (
     <span className="zoom" role="group" aria-label="Clarification size">
-      <button onClick={z.smaller} disabled={!z.canSmaller} aria-label="Clarifications: smaller">¶−</button>
-      <button onClick={z.auto} aria-pressed={z.step === "auto"} className="auto">Auto</button>
-      <button onClick={z.bigger} disabled={!z.canBigger} aria-label="Clarifications: bigger">¶+</button>
+      <button onClick={() => onChange(stepClar(size, -1, measured))} disabled={size === 0} aria-label="Clarifications: smaller">¶−</button>
+      <output className="size" aria-label="Clarification size now">{clarLabel(size, measured)}</output>
+      <button onClick={() => onChange(stepClar(size, 1, measured))} disabled={size === STEPS_VH.length - 1} aria-label="Clarifications: bigger">¶+</button>
+      <button onClick={() => onChange("auto")} aria-pressed={size === "auto"} className="auto">Auto</button>
     </span>
   );
 }
 
 /** Projector clarifications, oldest first, in whatever space the timer leaves. */
-export function FitList({ items, z }: { items: Item[]; z: ReturnType<typeof useClarSize> }) {
+export function FitList({ items, size }: { items: Item[]; size: ClarSize }) {
   const box = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -91,8 +102,8 @@ export function FitList({ items, z }: { items: Item[]; z: ReturnType<typeof useC
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    if (z.step !== "auto") {
-      el.style.fontSize = `${STEPS_VH[z.step]}vh`;
+    if (size !== "auto") {
+      el.style.fontSize = `${STEPS_VH[size]}vh`;
       return;
     }
     let lo = AUTO_MIN_PX;
@@ -107,10 +118,14 @@ export function FitList({ items, z }: { items: Item[]; z: ReturnType<typeof useC
     const fit = Math.floor(lo);
     const px = Math.min(fit, Math.round((STEPS_VH[Math.max(0, nearestStep(fit) - AUTO_BACK_STEPS)] * window.innerHeight) / 100));
     el.style.fontSize = `${px}px`;
-    z.lastPx.current = px;
-  }, [items, z.step, tick]);
+    try {
+      localStorage.setItem(AUTO_KEY, String(nearestStep(px)));
+    } catch {
+      /* the proctor page then steps from a guess */
+    }
+  }, [items, size, tick]);
   return (
-    <div className={`clars ${z.step === "auto" ? "" : "manual"}`} ref={box} aria-live="polite">
+    <div className={`clars ${size === "auto" ? "" : "manual"}`} ref={box} aria-live="polite">
       <h2 className="clars-h">Clarifications</h2>
       {items.map((c) => (
         <ClarItem key={c.id} c={c} />

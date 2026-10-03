@@ -45,6 +45,7 @@ from app.protocol.models import (
     RosterResponse,
     RosterRoomRequest,
     RosterStudent,
+    SetDisplayRequest,
     StaffIdentity,
     StaffLoginRequest,
     StaffRole,
@@ -370,20 +371,37 @@ async def commands(cmd: Command, request: Request, _: Post) -> CommandResponse:
         raise err(409, "command_id_conflict", "command_id reused with different content") from None
 
 
+# --- projector display sizes (0.13.0) ---
+
+
+@router.patch("/rooms/{room_id}/display", response_model=RoomSnapshot)
+async def set_display(
+    room_id: str, body: SetDisplayRequest, request: Request, _: Post
+) -> RoomSnapshot:
+    """Set how the room's projector shows the timer and clarifications. Last click wins (§7.9)."""
+    room = proctor_room(request, room_id)
+    changes = {k: v for k in ("timer_zoom_pct", "clar_size") if (v := getattr(body, k)) is not None}
+    if not changes:
+        raise err(422, "invalid_request", "Nothing to change.")
+    await store.set_display(room, body.command_id, body.claimed_at_ms, changes)
+    return store.snapshot(room)
+
+
 # --- bathroom log (0.10.0) ---
 
 
-def bathroom_room(request: Request, room_id: str):
-    """Only the room's own proctor records students (0.11.0, ADR 0016). Admins view and delete
-    in the admin Bathroom tab; display pages can do neither."""
+def proctor_room(request: Request, room_id: str):
+    """Only the room's own proctor (control login) may do this. Bathroom: admins view and delete
+    in the admin Bathroom tab (0.11.0, ADR 0016). Projector sizes: admins don't set them (ADR 0019).
+    Display pages can do neither."""
     room = store.rooms.get(room_id)
     if not room or room.deleted:
         raise err(404, "unknown_room", "No such room.")
-    staff = session_for(request, "staff")
+    other = session_for(request, "staff", "display")  # signed in, just not as this proctor
     mine = session_for(request, "control")
     if not (mine and mine.room_id == room_id):
         raise err(
-            403 if (staff or mine) else 401, "forbidden", "Only this room's proctor can do that."
+            403 if (other or mine) else 401, "forbidden", "Only this room's proctor can do that."
         )
     return room
 
@@ -392,7 +410,7 @@ def bathroom_room(request: Request, room_id: str):
 async def bathroom_out(
     room_id: str, body: BathroomOutRequest, request: Request, _: Post
 ) -> RoomSnapshot:
-    room = bathroom_room(request, room_id)
+    room = proctor_room(request, room_id)
     try:
         await store.bathroom_out(room, body.id, body.student_id)
     except ValueError:
@@ -410,7 +428,7 @@ async def bathroom_out(
 
 @router.post("/rooms/{room_id}/bathroom/{visit_id}/return", response_model=RoomSnapshot)
 async def bathroom_return(room_id: str, visit_id: UUID, request: Request, _: Post) -> RoomSnapshot:
-    room = bathroom_room(request, room_id)
+    room = proctor_room(request, room_id)
     try:
         await store.bathroom_return(room, visit_id)
     except KeyError:

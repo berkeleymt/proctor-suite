@@ -8,6 +8,7 @@ import asyncio
 import os
 import subprocess
 import sys
+import time
 import uuid
 
 import asyncpg
@@ -291,5 +292,61 @@ def test_bathroom_delete_and_roster_survive_restart(monkeypatch):
         await third.load(pool)
         assert list(third.roster) == ["1"] and third.roster_source == "contestdojo"
         await pool.close()
+
+    asyncio.run(run())
+
+
+def test_display_sizes_survive_restart_and_retries_stay_no_ops(monkeypatch):
+    monkeypatch.setenv("SEED_ROOMS", "Proj Hall")
+    asyncio.run(reset())
+    migrate()
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        first = Store()
+        await first.load(pool)
+        room = first.rooms["proj-hall"]
+        old = await pool.fetchval("SELECT display::text FROM rooms WHERE room_id='proj-hall'")
+        assert old == "{}"  # migration default; the store reads it as the defaults
+        cid = uuid.uuid4()
+        t = int(time.time() * 1000) - 5000
+        await first.set_display(room, cid, t, {"timer_zoom_pct": 60, "clar_size": 2})
+        want = (room.version, first.snapshot(room).display)
+
+        second = Store()  # "restart"
+        await second.load(pool)
+        back = second.rooms["proj-hall"]
+        assert (back.version, second.snapshot(back).display) == want
+        await second.set_display(back, cid, t, {"timer_zoom_pct": 60, "clar_size": 2})  # retry
+        assert back.version == want[0]
+        await second.set_display(back, uuid.uuid4(), t - 1, {"timer_zoom_pct": 40})  # older click
+        assert second.snapshot(back).display.timer_zoom_pct == 60 and back.version == want[0]
+
+        await pool.execute(
+            "UPDATE rooms SET display='{\"timer_zoom_pct\": 7}' WHERE room_id='proj-hall'"
+        )
+        third = Store()  # a bad value in the column falls back to the default, not a crash
+        await third.load(pool)
+        assert third.snapshot(third.rooms["proj-hall"]).display.timer_zoom_pct == 80
+        await pool.close()
+
+    asyncio.run(run())
+
+
+def test_failed_display_commit_leaves_memory_untouched(monkeypatch):
+    monkeypatch.setenv("SEED_ROOMS", "Proj Two")
+    asyncio.run(reset())
+    migrate()
+
+    async def run() -> None:
+        pool = await db.connect(URL)
+        store = Store()
+        await store.load(pool)
+        room = store.rooms["proj-two"]
+        before = (room.version, dict(room.display))
+        await pool.close()  # the database "goes away"
+        with pytest.raises(Exception):  # noqa: B017 - any DB error
+            await store.set_display(room, uuid.uuid4(), int(time.time() * 1000), {"clar_size": 1})
+        assert (room.version, room.display) == before  # invariant 5
 
     asyncio.run(run())

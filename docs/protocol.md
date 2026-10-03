@@ -181,7 +181,7 @@ For each command: authenticate → authorize → lock the room → check `comman
 
 ### 7.1 RoomSnapshot
 
-`{room_id, room_name, test_name, session_id, version, server_time_ms, timer: TimerSnapshot, deleted, doc_url}`. `deleted` rooms are only ever sent to staff. Always sent whole, so a client can never hold a half-updated state. About 2 KB.
+`{room_id, room_name, test_name, session_id, version, server_time_ms, timer: TimerSnapshot, deleted, doc_url, clarifications, students_out, bathroom_out, bathroom_back, display}` (later fields: §7.5, §7.7, §7.9). `deleted` rooms are only ever sent to staff. Always sent whole, so a client can never hold a half-updated state. About 2 KB.
 
 ### 7.2 Server-Sent Events
 
@@ -252,6 +252,17 @@ Every `RoomSnapshot` carries `students_out` (count, always right), `bathroom_out
 
 Names are looked up when a list is built, so importing a roster fills in names on records that were logged earlier; proctor pages pick them up on their next change.
 
+### 7.9 Projector display sizes (0.13.0)
+
+How big the room's projector shows the timer and the clarifications. **One setting per room**, held by the server, so every display and proctor page of the room shows the same; the display page has no controls (ADR 0019).
+
+- `RoomSnapshot.display = {timer_zoom_pct, clar_size, timer_zoom_at_ms, clar_size_at_ms}`. `timer_zoom_pct` is one of `DISPLAY_TIMER_ZOOM_PCT` (40-100 by 10; % of the largest timer that fits; default 80). `clar_size` is `"auto"` (default; the projector picks, from its own screen) or a step `0`..`DISPLAY_CLAR_STEPS - 1` (0 = smallest). `*_at_ms` is the click time of the change in effect, null = never changed.
+- `PATCH /api/rooms/{room_id}/display` with `{command_id, claimed_at_ms, timer_zoom_pct?, clar_size?}` (at least one field; omitted or null = unchanged). **Only that room's proctor** (control login). Admins, PMs and display pages get 403: admins deliberately can't resize (PM, 2026-10-03). Returns the room's `RoomSnapshot`.
+- **Merge rule, per field: last click wins.** A change replaces the current one only if `(claimed_at_ms, command_id)` is greater (`command_id` compared as text, to break ties). So a retry (same id and time) is a no-op, and a click that arrives late but was made earlier than the one in effect changes nothing (the response then shows the newer value). `claimed_at_ms` later than the server's receipt counts as the receipt (a device clock that runs fast can't block later clicks); below 0 counts as 0. Any change bumps the room `version` and is streamed like every other room change.
+- Stored in `rooms.display` (jsonb, migration 0010), loaded at startup; unreadable values fall back to the defaults. Not reset by a timer Reset or by room edits.
+- **Client (control page):** a click is saved in the browser first (`localStorage["display:<room_id>"]`: value, click time, `command_id`, and once sent, `ack` = the room version that includes it), then sent by a queue: one request in flight, `REQUEST_TIMEOUT_S`, full-jitter backoff, the same `command_id` on every retry. 401/408/429/5xx/network errors are retried (a 401 waits for the proctor to sign back in); other 4xx drop the click. **Client (display page):** shows the snapshot's value, except a click saved in the same browser that the server hasn't confirmed and that is newer than the snapshot's `*_at_ms`, or one confirmed in a version this page hasn't received yet. So a display window on the proctor's laptop follows at once, even with the server down.
+- The step Auto picked is measured on the projector and stays in that browser (`localStorage["clarsize:auto"]`); the proctor page uses it as the starting point for ¶−/¶+ when the display runs in the same browser.
+
 ## 8. Client network behavior (invariant 2)
 
 Applies to every loop: clock sync, stream, polling, outbox flush.
@@ -296,6 +307,7 @@ Applies to every loop: clock sync, stream, polling, outbox flush.
 | `GET /api/staff/clarifications` | staff (admin/pm) | — | `{clarifications: [ClarificationAdmin]}` |
 | `POST /api/staff/clarifications` | staff (admin/pm) | `{body, room_ids \| null}` | `ClarificationAdmin` (201); 422 `unknown_room` |
 | `PATCH /api/staff/clarifications/{id}` | staff (admin/pm) | `{hidden, room_id?}` or `{body}` | `ClarificationAdmin`; 404 `unknown_clarification`; 422 `empty` / `edit_limit` / `unknown_room` / `not_in_room` |
+| `PATCH /api/rooms/{room_id}/display` | that room's proctor only (0.13.0) | `SetDisplayRequest {command_id, claimed_at_ms, timer_zoom_pct?, clar_size?}` | `RoomSnapshot`; last click per field wins (§7.9); 422 nothing to change or a value off the steps; 403 admins, PMs, displays |
 | `POST /api/rooms/{room_id}/bathroom` | that room's proctor only (0.11.0) | `{id (uuid), student_id}` | `RoomSnapshot` (0.10.0). Same `id` again = same visit, no new entry. 409 `already_out` / `id_conflict` / `too_many_out`; 422 empty or over 20 characters |
 | `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` | that room's proctor only (0.11.0) | — | `RoomSnapshot`; already back = no change; 404 `unknown_visit` |
 | `GET /api/staff/bathroom` | admin/PM | `?status&room_id&q&deleted&limit` | `BathroomLogResponse` (0.11.0, §7.8) |
@@ -337,6 +349,8 @@ Source of truth: `server/app/protocol/constants.py`.
 | `MAX_BATHROOM_OUT` / `MAX_BATHROOM_BACK` | 50 / 20 | students out per room / recent returns per snapshot (0.10.0) |
 | `MAX_ADMIN_BATHROOM` / `MAX_ADMIN_BATHROOM_EXPORT` | 500 / 5000 | admin bathroom rows by default / most one request may ask for (0.11.0) |
 | `MAX_ROSTER_ROWS` / `MAX_BATHROOM_IDS` | 500 / 1000 | admin roster rows per list / records per delete request (0.11.0) |
+| `DISPLAY_TIMER_ZOOM_PCT` / `DISPLAY_TIMER_ZOOM_DEFAULT` | 40, 50, …, 100 / 80 | projector timer sizes (0.13.0) |
+| `DISPLAY_CLAR_STEPS` | 8 | projector clarification sizes `0`..`7`, plus `"auto"` (0.13.0) |
 | `CLIENT_HEADER` | `X-Proctor-Client` | CSRF header |
 | cookie names | `display_sid`, `control_sid`, `staff_sid` | one per surface |
 | `STAFF_SESSION_TTL_H` | 24 | staff session lifetime |
@@ -367,3 +381,4 @@ Bathroom log, clarifications, messages, practice-mode switching beyond the `?pra
 | 0.10.0 | 2026-10-02 | Bathroom log (proctor). Added `POST /api/rooms/{room_id}/bathroom` and `POST /api/rooms/{room_id}/bathroom/{visit_id}/return` (§7.7). `RoomSnapshot` gains `students_out`, `bathroom_out`, `bathroom_back` (all required). Migration 0008 (`bathroom_visits`). |
 | 0.11.0 | 2026-10-02 | Admin Bathroom log and the roster (§7.8). Added `GET /api/staff/bathroom`, `POST /api/staff/bathroom/action` (soft delete / restore / empty), `GET /api/staff/roster`, `POST /api/staff/roster/import`, `POST /api/staff/roster/sync`, `GET /api/roster/lookup`. **Breaking:** recording and returning a student is now that room's proctor only (admins/PMs get 403). `BathroomVisit` gains `student_name`; soft-deleted records are left out of snapshots and `students_out`. Response fields `BathroomVisit.back_ms` and `student_name` are now required-but-nullable (no defaults). Migration 0009 (`bathroom_visits.deleted`, `roster_students`). |
 | 0.12.0 | 2026-10-02 | Added `POST /api/staff/roster/clear` (privacy cleanup of the roster; §7.8). No change to existing endpoints. |
+| 0.13.0 | 2026-10-03 | Projector display sizes, one per room (§7.9). Added `PATCH /api/rooms/{room_id}/display` (room's proctor only; last click per field wins) and required `RoomSnapshot.display`. New constants `DISPLAY_TIMER_ZOOM_PCT`, `DISPLAY_TIMER_ZOOM_DEFAULT`, `DISPLAY_CLAR_STEPS`. Migration 0010 (`rooms.display`). Also: a signed-in display page calling a proctor-only endpoint (bathroom, display sizes) now gets 403, not 401. |

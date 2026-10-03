@@ -1,38 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { TIMER_PCTS, type TimerPct } from "../displaySettings";
 
-const STEPS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
-const DEFAULT = 0.8;
-
-/** Persisted zoom level (index into STEPS) per surface. 1 = the largest size that still fits. */
-export function useZoom(key: string) {
-  const [i, setI] = useState(() => {
-    try {
-      const v = Number(localStorage.getItem(`zoom:${key}`));
-      return STEPS.includes(v) ? STEPS.indexOf(v) : STEPS.indexOf(DEFAULT);
-    } catch {
-      return STEPS.indexOf(DEFAULT);
-    }
-  });
-  const set = (n: number) => {
-    const j = Math.max(0, Math.min(STEPS.length - 1, n));
-    setI(j);
-    try {
-      localStorage.setItem(`zoom:${key}`, String(STEPS[j]));
-    } catch {
-      /* storage may be unavailable; zoom just won't persist */
-    }
-  };
-  return { zoom: STEPS[i], smaller: () => set(i - 1), bigger: () => set(i + 1), canSmaller: i > 0, canBigger: i < STEPS.length - 1 };
-}
-
-/** A− / A+ buttons. */
-export function ZoomButtons({ z, label = "Timer size" }: { z: ReturnType<typeof useZoom>; label?: string }) {
+/** A− / size / A+ for the projector timer, on the proctor page. */
+export function TimerSizeButtons({ pct, onChange }: { pct: TimerPct; onChange: (p: TimerPct) => void }) {
+  const i = TIMER_PCTS.indexOf(pct);
+  const label = "Display timer size";
   return (
     <span className="zoom" role="group" aria-label={label}>
-      <button onClick={z.smaller} disabled={!z.canSmaller} aria-label={`${label}: smaller`}>
+      <button onClick={() => onChange(TIMER_PCTS[i - 1])} disabled={i <= 0} aria-label={`${label}: smaller`}>
         A−
       </button>
-      <button onClick={z.bigger} disabled={!z.canBigger} aria-label={`${label}: bigger`}>
+      <output className="size" aria-label={`${label} now`}>{pct}%</output>
+      <button onClick={() => onChange(TIMER_PCTS[i + 1])} disabled={i >= TIMER_PCTS.length - 1} aria-label={`${label}: bigger`}>
         A+
       </button>
     </span>
@@ -75,25 +54,4 @@ export function FitText({ text, zoom, className = "" }: { text: string; zoom: nu
       </span>
     </div>
   );
-}
-
-/** True while the pointer/keyboard/touch was active in the last `ms`; used to fade controls. */
-export function useActive(ms = 4000) {
-  const [on, setOn] = useState(true);
-  useEffect(() => {
-    let t: number;
-    const wake = () => {
-      setOn(true);
-      clearTimeout(t);
-      t = window.setTimeout(() => setOn(false), ms);
-    };
-    wake();
-    const ev = ["pointermove", "pointerdown", "keydown"] as const;
-    ev.forEach((e) => window.addEventListener(e, wake));
-    return () => {
-      clearTimeout(t);
-      ev.forEach((e) => window.removeEventListener(e, wake));
-    };
-  }, [ms]);
-  return on;
 }

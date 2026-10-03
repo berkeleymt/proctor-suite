@@ -69,9 +69,13 @@ button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
 .display header, .display footer { display: flex; align-items: center; gap: 16px; color: var(--muted); font-size: clamp(14px, 2vw, 26px); }
 .display header .where { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .display footer { justify-content: center; }
-.ctl { transition: opacity 300ms var(--ease); } .ctl.hide { opacity: 0; } .ctl:focus-within { opacity: 1; }
 .zoom { display: inline-flex; gap: 6px; }
 .zoom button { min-height: 40px; min-width: 48px; padding: 0 12px; }
+.zoom .size { min-width: 4.5em; align-self: center; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; }
+.projector { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; }
+.note { margin: 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, transparent); font-size: 14px; }
+.projector h2 { font-size: 15px; margin: 0; }
+.projector .size-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
 .fit { min-width: 0; min-height: 0; display: grid; place-items: center; overflow: hidden; }
 .fit > span { font-family: var(--mono); font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; transition: color 300ms var(--ease); }
 .clock-wrap { display: grid; gap: 8px; justify-items: center; }
@@ -165,7 +169,6 @@ button.bad { color: var(--bad); }
 .clars.manual { overflow-y: auto; }
 .clars-h { font-size: clamp(18px, 3.4vh, 40px); font-weight: 600; letter-spacing: 0; color: var(--muted); margin: 0 0 0.5vh; } /* describes the list; quiet on purpose */
 .display iframe.doc { width: 100%; height: 100%; min-height: 0; border: 0; border-top: 2px solid var(--line); background: #fff; }
-.ctl { display: inline-flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Admin header on narrow screens: ☰, current tab, light. The menu opens over the page (no layout shift). */
 .burger, .cur, .mob-only { display: none; }
