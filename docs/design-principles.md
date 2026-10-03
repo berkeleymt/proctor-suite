@@ -10,4 +10,15 @@ Source: PM direction, 2026-10-01 (consistency added the same day). The prototype
 5. **Well-formed.** Consistent alignment, spacing, and states (hover, focus, disabled, loading, empty, error) for every control. Works on a phone held in one hand, a laptop, and a projector across a room. Keyboard and screen-reader usable.
 6. **Calm when it matters.** The display and proctor screens are used under stress or in front of students. Big, quiet, unambiguous; risky actions ask once, clearly, and say what will happen to students.
 
+## Rules pinned by tests
+
+A test fails if one of these breaks. Change the rule on purpose (new ADR), not by accident.
+
+| Rule | Test |
+|---|---|
+| Timers rows always show the same five buttons in the same places; unavailable = greyed out with a reason, never hidden ([ADR 0020](adr/0020-admin-timer-buttons-fixed-slots.md)) | `web/src/test/admin-actions.test.ts`, `admin-page.test.tsx` |
+| Nothing on the Timers page moves or resizes when timers change state, rooms are ticked, or a note appears; buttons never wrap | `web/src/test/layout.browser.test.tsx` (real browser) |
+| Row buttons and the bulk bar share one look (`ActionBar`, `--act-*` tokens) | `layout.browser.test.tsx` ("same button size") |
+| The projector display has no controls ([ADR 0019](adr/0019-display-sizes-on-proctor-page.md)) | `web/src/test/display.test.tsx` |
+
 Applies to: `web/` screens, copy, empty and error states, the proctor guide, and the runbook's screenshots. Skills `/apple-design` and `/animate` (.skill files) are the reference for motion and feel.

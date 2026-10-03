@@ -5,30 +5,19 @@ import { dropRoom, mergePresence, mergeRooms, useClock, useLive, useTick } from 
 import { go } from "../main";
 import { usePageTitle } from "../brand";
 import { label } from "./Display";
+import { ActionBar, Sized, type Act } from "../components/ActionBar";
+import { bulkSlots, plan, rowSlots, STATUSES, type Action, type Kind, type SlotSpec } from "./adminActions";
 
 type Rooms = { rooms: Snapshot[]; presence?: RoomPresence[]; version?: number };
-type Kind = "permit" | "start" | "pause" | "resume" | "adjust" | "reset";
-type Action = "permit" | "start" | "adjust" | "pause" | "resume" | "reset";
 type Confirm = { title: string; detail: string; confirm: string; run: () => void };
 type Filters = { room: string; test: string; status: string; dur: string; dev: string };
 const NO_FILTER: Filters = { room: "", test: "", status: "", dur: "", dev: "" };
-const STATUSES = ["NOT_PERMITTED", "PERMITTED", "RUNNING", "PAUSED", "ENDED"] as const;
+const STATUS_LABELS = STATUSES.map((st) => label({ timer: { status: st } } as Snapshot));
 const mins = (s: Snapshot) => Math.round(s.timer.duration_ms / 60_000);
 const started = (s: Snapshot) => !["NOT_PERMITTED", "PERMITTED"].includes(s.timer.status);
 const inProgress = (s: Snapshot) => ["RUNNING", "PAUSED"].includes(s.timer.status);
 const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const why = (e: unknown) => (e instanceof ApiError ? e.message : "Couldn't reach the server. Try again.");
-
-/** What a bulk action would do to one room: the commands to send, or none (skipped). */
-function plan(action: Action, s: Snapshot): Kind[] {
-  const st = s.timer.status;
-  if (action === "adjust") return st === "ENDED" ? [] : ["adjust"];
-  if (action === "pause") return st === "RUNNING" ? ["pause"] : [];
-  if (action === "resume") return st === "PAUSED" ? ["resume"] : [];
-  if (action === "reset") return st === "PAUSED" || st === "ENDED" ? ["reset"] : [];
-  if (action === "permit") return st === "NOT_PERMITTED" ? ["permit"] : [];
-  return st === "NOT_PERMITTED" ? ["permit", "start"] : st === "PERMITTED" ? ["start"] : [];
-}
 
 /** Run `fn` over items, a few at a time, so 50 rooms don't open 50 connections (invariant 2). */
 async function pool<T>(items: T[], fn: (t: T) => Promise<string>, size = 6) {
@@ -59,7 +48,7 @@ function Dev({ name, p }: { name: string; p?: SurfacePresence }) {
     <span className={`dev${on ? " on" : ""}`} title={title}>
       <span className={`dot ${on ? "ok" : "off"}`} />
       {name}
-      {on && p!.online > 1 ? ` ×${p!.online}` : ""}
+      <span className="n">{on && p!.online > 1 ? `×${p!.online}` : ""}</span>
     </span>
   );
 }
@@ -214,6 +203,14 @@ export function Admin() {
   const [filters, setFilters] = useState<Filters>(NO_FILTER);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [working, setWorking] = useState(false);
+  // A short note that fades on its own: why a greyed-out button can't run. Floats, so nothing moves.
+  const [tip, setTip] = useState({ text: "", at: 0 });
+  const hint = (text: string) => setTip({ text, at: Date.now() });
+  useEffect(() => {
+    if (!tip.text) return;
+    const t = setTimeout(() => setTip({ text: "", at: 0 }), 4000);
+    return () => clearTimeout(t);
+  }, [tip]);
   useEffect(() => {
     if (unauthorized) go("/login");
   }, [unauthorized]);
@@ -316,7 +313,7 @@ export function Admin() {
     setWorking(false);
   }
 
-  const bulk = (action: Action) => finish(pool(chosen.filter((s) => plan(action, s).length), (s) => runRoom(s, plan(action, s))));
+  const bulk = (action: Action) => finish(pool(chosen.filter((s) => plan(action, s.timer.status).length), (s) => runRoom(s, plan(action, s.timer.status))));
 
   async function bulkEdit(m: number | undefined, t: string | undefined) {
     setBulkEditing(false);
@@ -359,8 +356,8 @@ export function Admin() {
     reset: ["Reset", "Clocks go back to full time and rooms need Allow start again."],
   };
   const askBulk = (e: React.MouseEvent, action: Action) => {
-    const n = chosen.filter((s) => plan(action, s).length).length;
-    if (!n) return setErr("None of the selected rooms can do that right now.");
+    const n = chosen.filter((s) => plan(action, s.timer.status).length).length;
+    if (!n) return;
     const skipped = chosen.length - n;
     ask(e, {
       title: `${TEXT[action][0]} ${n} room${n === 1 ? "" : "s"}?`,
@@ -378,60 +375,34 @@ export function Admin() {
       return n;
     });
 
-  /** The buttons for one row, by timer state. Same order everywhere: main action, +5 min, more. */
-  function actions(s: Snapshot) {
-    const st = s.timer.status;
-    return (
-      <span className="row" style={{ flexWrap: "nowrap" }}>
-        {st === "NOT_PERMITTED" && <button onClick={() => act(s, ["permit"])}>Allow start</button>}
-        {st === "PERMITTED" && (
-          <button className="primary" onClick={() => act(s, ["start"])}>
-            Start
-          </button>
-        )}
-        {st === "RUNNING" && (
-          <button
-            onClick={(e) =>
-              ask(e, { title: `Pause ${s.room_name}?`, detail: "Students will see the clock stop.", confirm: "Pause", run: () => act(s, ["pause"]) })
-            }
-          >
-            Pause
-          </button>
-        )}
-        {st === "PAUSED" && (
-          <button className="primary" onClick={() => act(s, ["resume"])}>
-            Resume
-          </button>
-        )}
-        {(st === "PAUSED" || st === "ENDED") && (
-          <button
-            onClick={(e) =>
-              ask(e, {
-                title: `Reset ${s.room_name}?`,
-                detail: `The clock goes back to ${mins(s)} minutes and the room needs Allow start again.`,
-                confirm: "Reset",
-                run: () => reset(s),
-              })
-            }
-          >
-            Reset
-          </button>
-        )}
-        {st !== "ENDED" && (
-          <button
-            onClick={(e) =>
-              ask(e, { title: `Add 5 minutes to ${s.room_name}?`, detail: "Students will see the change right away.", confirm: "Add 5 min", run: () => act(s, ["adjust"]) })
-            }
-          >
-            +5 min
-          </button>
-        )}
-        <button onClick={() => setEditing(s)}>Edit…</button>
-        <button disabled={inProgress(s)} onClick={() => setDeleting([s])}>
-          Delete…
-        </button>
-      </span>
-    );
+  /** Turn the button specs from adminActions into buttons. Same specs, same buttons, same places. */
+  const wire = (groups: SlotSpec[][], run: (spec: SlotSpec, e: React.MouseEvent) => void, busy = ""): Act[][] =>
+    groups.map((g) => g.map((spec) => ({ ...spec, why: spec.why || busy, run: (e: React.MouseEvent) => run(spec, e) })));
+
+  /** One room's buttons. Every row shows the same five; ones that can't run are greyed out and say why. */
+  function rowActions(s: Snapshot) {
+    const run = (spec: SlotSpec, e: React.MouseEvent) => {
+      const a = spec.key === "main" ? spec.action : spec.key;
+      if (a === "pause") ask(e, { title: `Pause ${s.room_name}?`, detail: "Students will see the clock stop.", confirm: "Pause", run: () => act(s, ["pause"]) });
+      else if (a === "adjust") ask(e, { title: `Add 5 minutes to ${s.room_name}?`, detail: "Students will see the change right away.", confirm: "Add 5 min", run: () => act(s, ["adjust"]) });
+      else if (a === "reset")
+        ask(e, { title: `Reset ${s.room_name}?`, detail: `The clock goes back to ${mins(s)} minutes and the room needs Allow start again.`, confirm: "Reset", run: () => reset(s) });
+      else if (a === "edit") setEditing(s);
+      else if (a === "delete") setDeleting([s]);
+      else if (a) act(s, [a as Kind]);
+    };
+    return <ActionBar label={`Actions for ${s.room_name}`} groups={wire(rowSlots(s.timer.status), run)} onBlocked={hint} />;
+  }
+
+  /** The bulk bar's buttons: same groups and look as a row, one button per action. */
+  function bulkActions() {
+    const run = (spec: SlotSpec, e: React.MouseEvent) => {
+      if (spec.key === "edit") setBulkEditing(true);
+      else if (spec.key === "delete") setDeleting(chosen);
+      else askBulk(e, spec.action!);
+    };
+    const groups = wire(bulkSlots(chosen.map((s) => s.timer.status)), run, working ? "Still working on the last action." : "");
+    return <ActionBar label="Actions for selected rooms" groups={groups} onBlocked={hint} />;
   }
 
   return (
@@ -447,35 +418,20 @@ export function Admin() {
         </button>
       </AdminBar>
       {chosen.length > 0 && (
-        <div className="bulk" role="toolbar" aria-label="Selected rooms">
-          <strong>{chosen.length} selected</strong>
-          <button disabled={working} onClick={(e) => askBulk(e, "permit")}>
-            Allow start
+        <div className="bulkbar" role="toolbar" aria-label="Selected rooms">
+          <span className="bulk-count">
+            <Sized text={`${chosen.length} selected`} all={[`${shown.length} selected`]} />
+            <span className="spin" role="img" aria-label="Working" hidden={!working} />
+          </span>
+          {bulkActions()}
+          <button type="button" className="act bulk-clear" aria-label="Clear selection" title="Clear selection" onClick={() => setSel(new Set())}>
+            ✕
           </button>
-          <button className="primary" disabled={working} onClick={(e) => askBulk(e, "start")}>
-            Start
-          </button>
-          <button disabled={working} onClick={(e) => askBulk(e, "pause")}>
-            Pause
-          </button>
-          <button className="primary" disabled={working} onClick={(e) => askBulk(e, "resume")}>
-            Resume
-          </button>
-          <button disabled={working} onClick={(e) => askBulk(e, "reset")}>
-            Reset
-          </button>
-          <button disabled={working} onClick={(e) => askBulk(e, "adjust")}>
-            +5 min
-          </button>
-          <button disabled={working} onClick={() => setBulkEditing(true)}>
-            Edit…
-          </button>
-          <button disabled={working} onClick={() => setDeleting(chosen)}>
-            Delete…
-          </button>
-          {working && <span className="muted">Working…</span>}
         </div>
       )}
+      <p className="toast" role="status" hidden={!tip.text}>
+        {tip.text}
+      </p>
       <p className="error" role="alert" hidden={!err}>
         {err}
       </p>
@@ -544,16 +500,16 @@ export function Admin() {
               <span>{s.room_name}</span>
               <span className="muted">{s.test_name}</span>
               <span className="pill" data-s={st}>
-                {label(s)}
+                <Sized text={label(s)} all={STATUS_LABELS} />
               </span>
-              <span className="mono">{fmt(st === "ENDED" ? 0 : remainingMs(s, serverNow()))}</span>
+              <span className="mono rem">{fmt(st === "ENDED" ? 0 : remainingMs(s, serverNow()))}</span>
               <span className="mono">{mins(s)}m</span>
               <span className="mono">{s.students_out || "–"}</span>
               <span className="devs">
                 <Dev name="Proctor" p={p?.control} />
                 <Dev name="Display" p={p?.display} />
               </span>
-              {actions(s)}
+              {rowActions(s)}
             </div>
           );
         })}

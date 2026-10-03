@@ -261,3 +261,36 @@ button.bad { color: var(--bad); }
 .bulk.quiet { box-shadow: none; border: 1px solid var(--line); }
 .note { margin: 12px 20px; font-size: 14px; }
 .block-empty { display: grid; justify-items: center; gap: 12px; padding: 64px 24px; max-width: 520px; margin: 0 auto; }
+
+/* Action bars (components/ActionBar.tsx). The Timers rows and the floating bulk bar share this look:
+   change the tokens to restyle every action button at once. A button that can't run is greyed out
+   in place, never hidden, so nothing moves when a timer changes state. Tests: src/test/layout.browser.test.tsx. */
+:root { --act-h: 36px; --act-pad: 12px; --act-gap: 6px; --act-group-gap: 10px; --act-radius: 10px; --act-font: 14px; --float-top: 71px; }
+.acts { display: inline-flex; align-items: center; gap: var(--act-group-gap); }
+.acts-group { display: inline-flex; align-items: center; gap: var(--act-gap); }
+.acts-group + .acts-group { padding-left: var(--act-group-gap); border-left: 1px solid var(--line); }
+.acts .act, .act { min-height: var(--act-h); padding: 0 var(--act-pad); border-radius: var(--act-radius); font-size: var(--act-font); white-space: nowrap; }
+.act[data-tone="primary"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.act[data-tone="danger"] { color: var(--bad); }
+.acts .act[aria-disabled="true"] { background: var(--card); border-color: var(--line); color: var(--muted); opacity: 0.5; cursor: not-allowed; }
+.acts .act[aria-disabled="true"]:active { transform: none; }
+/* Text as wide as its longest value (Sized): all values share one cell, only the current one shows. */
+.sized { display: inline-grid; justify-items: center; }
+.sized > * { grid-area: 1 / 1; }
+.sized > [aria-hidden="true"] { visibility: hidden; }
+.tr .rem { min-width: 8ch; text-align: right; }  /* 12:00:00 at most */
+.dev .n { display: inline-block; min-width: 2.5ch; }
+
+/* Bulk bar: floats over the top of the table while rooms are ticked, so ticking moves nothing. */
+.bulkbar { position: fixed; z-index: 6; top: var(--float-top); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); overflow-x: auto; display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 2px 6px rgb(0 0 0 / 0.08), 0 16px 40px rgb(0 0 0 / 0.18); animation: float-in 200ms var(--ease); }
+.bulk-count { display: inline-flex; align-items: center; gap: 8px; font-size: var(--act-font); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bulkbar .bulk-clear { min-width: var(--act-h); padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
+.spin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 700ms linear infinite; }
+.spin[hidden] { display: inline-block; visibility: hidden; }  /* keeps its space */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes float-in { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* Toast: a short note at the bottom (why a greyed-out button can't run). Fades on its own. */
+.toast { position: fixed; z-index: 9; left: 50%; bottom: 24px; transform: translateX(-50%); width: max-content; max-width: min(520px, calc(100vw - 32px)); margin: 0; padding: 10px 16px; border-radius: 12px; background: var(--text); color: var(--bg); font-size: 14px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.2); animation: toast-in 180ms var(--ease); }
+.toast[hidden] { display: none; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
