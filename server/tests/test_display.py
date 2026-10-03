@@ -37,14 +37,15 @@ def test_defaults_then_proctor_sets_and_the_display_sees_it(monkeypatch):
     assert s0["display"] == {
         "timer_zoom_pct": 80, "clar_size": "auto", "timer_zoom_at_ms": None, "clar_size_at_ms": None,
     }  # fmt: skip
-    r = put(p, rid, timer_zoom_pct=60)
+    t = now() - 10_000  # explicit, increasing click times: two calls can share a millisecond
+    r = put(p, rid, at=t, timer_zoom_pct=60)
     assert r.status_code == 200, r.text
     s1 = d.get(f"/api/rooms/{rid}/snapshot").json()
     assert s1["display"]["timer_zoom_pct"] == 60 and s1["display"]["clar_size"] == "auto"
     assert s1["version"] > s0["version"] and s1["display"]["timer_zoom_at_ms"] is not None
-    s2 = put(p, rid, clar_size=5).json()  # the other field is left alone
+    s2 = put(p, rid, at=t + 1, clar_size=5).json()  # the other field is left alone
     assert (s2["display"]["timer_zoom_pct"], s2["display"]["clar_size"]) == (60, 5)
-    s3 = put(p, rid, clar_size="auto").json()
+    s3 = put(p, rid, at=t + 2, clar_size="auto").json()
     assert s3["display"]["clar_size"] == "auto" and s3["version"] > s2["version"]
     # the staff list carries it too (no admin control uses it, but the snapshot is one shape)
     row = next(x for x in admin.get("/api/staff/rooms").json()["rooms"] if x["room_id"] == rid)
@@ -135,6 +136,7 @@ def test_a_click_from_the_future_counts_as_its_arrival(monkeypatch):
     p = proctor(monkeypatch, rid)
     s = put(p, rid, at=now() + 3_600_000, timer_zoom_pct=40).json()  # device clock an hour fast
     assert s["display"]["timer_zoom_at_ms"] <= now()
+    time.sleep(0.005)  # a real next click comes later than the first one's arrival
     s2 = put(p, rid, timer_zoom_pct=70).json()  # so it can't lock out the next real click
     assert s2["display"]["timer_zoom_pct"] == 70
     assert put(p, rid, at=-5, clar_size=2).json()["display"]["clar_size_at_ms"] == 0
